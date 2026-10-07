@@ -1,0 +1,64 @@
+/* Modesty palette */
+:root {
+  color-scheme: dark;
+  --spice-text: #e4e2e3;
+  --spice-rgb-text: 228,226,227;
+  --spice-subtext: #c5c6cd;
+  --spice-rgb-subtext: 197,198,205;
+  --spice-main: #131315;
+  --spice-rgb-main: 19,19,21;
+  --spice-main-elevated: #212122;
+  --spice-rgb-main-elevated: 33,33,34;
+  --spice-sidebar: #0d0d0e;
+  --spice-rgb-sidebar: 13,13,14;
+  --spice-player: #1c1c1d;
+  --spice-rgb-player: 28,28,29;
+  --spice-card: #212122;
+  --spice-rgb-card: 33,33,34;
+  --spice-shadow: #000000;
+  --spice-rgb-shadow: 0,0,0;
+  --spice-selected-row: #e4e2e3;
+  --spice-rgb-selected-row: 228,226,227;
+  --spice-button: #bdc7dd;
+  --spice-rgb-button: 189,199,221;
+  --spice-button-active: #bdc7dd;
+  --spice-rgb-button-active: 189,199,221;
+  --spice-button-disabled: #8f9097;
+  --spice-rgb-button-disabled: 143,144,151;
+  --spice-tab-active: #2b2b2d;
+  --spice-rgb-tab-active: 43,43,45;
+  --spice-notification: #2b2b2d;
+  --spice-rgb-notification: 43,43,45;
+  --spice-notification-error: #ffb4ab;
+  --spice-rgb-notification-error: 255,180,171;
+  --spice-misc: #bdc7dd;
+  --spice-rgb-misc: 189,199,221;
+  --spice-highlight: #2b2b2d;
+  --spice-rgb-highlight: 43,43,45;
+  --spice-highlight-elevated: #363638;
+  --spice-rgb-highlight-elevated: 54,54,56;
+  --modesty-on-accent: #252f40;
+  --modesty-line: color-mix(in srgb, #505257 38%, transparent);
+  --modesty-hover: color-mix(in srgb, #e4e2e3 7%, transparent);
+  --modesty-selection: color-mix(in srgb, #bdc7dd 13%, #131315);
+}
+.encore-dark-theme, .encore-light-theme, .encore-base-set {
+  --background-base: var(--spice-main) !important;
+  --background-highlight: var(--spice-highlight) !important;
+  --background-press: var(--spice-highlight-elevated) !important;
+  --background-elevated-base: var(--spice-card) !important;
+  --background-elevated-highlight: var(--spice-highlight-elevated) !important;
+  --background-elevated-press: var(--spice-highlight) !important;
+  --background-tinted-base: var(--spice-card) !important;
+  --background-tinted-highlight: var(--spice-highlight) !important;
+  --background-tinted-press: var(--spice-highlight-elevated) !important;
+  --text-base: var(--spice-text) !important;
+  --text-subdued: var(--spice-subtext) !important;
+  --text-bright-accent: var(--spice-button) !important;
+  --essential-base: var(--spice-text) !important;
+  --essential-subdued: var(--spice-subtext) !important;
+  --essential-bright-accent: var(--spice-button) !important;
+  --decorative-base: var(--spice-text) !important;
+  --decorative-subdued: var(--spice-button-disabled) !important;
+}
+.encore-bright-accent-set { --background-base: var(--spice-button); --background-highlight: var(--spice-button-active); --text-base: var(--modesty-on-accent); --essential-base: var(--modesty-on-accent); }

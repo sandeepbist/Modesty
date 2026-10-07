@@ -1,0 +1,12 @@
+{
+  "toggles": {
+    "music": {
+      "spotify": {
+        "enable": true,
+        "command": [
+          "spotify"
+        ]
+      }
+    }
+  }
+}

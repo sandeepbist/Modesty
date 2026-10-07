@@ -1,0 +1,24 @@
+/* Modesty generated palette */
+@define-color accent_color #bdc7dd;
+@define-color accent_bg_color #bdc7dd;
+@define-color accent_fg_color #252f40;
+@define-color window_bg_color #131315;
+@define-color window_fg_color #e4e2e3;
+@define-color view_bg_color #0d0d0e;
+@define-color view_fg_color #e4e2e3;
+@define-color headerbar_bg_color #212122;
+@define-color headerbar_fg_color #e4e2e3;
+@define-color popover_bg_color #212122;
+@define-color popover_fg_color #e4e2e3;
+@define-color card_bg_color #212122;
+@define-color card_fg_color #e4e2e3;
+@define-color sidebar_bg_color #1c1c1d;
+@define-color sidebar_fg_color #e4e2e3;
+@define-color theme_bg_color #131315;
+@define-color theme_fg_color #e4e2e3;
+@define-color theme_base_color #0d0d0e;
+@define-color theme_text_color #e4e2e3;
+@define-color theme_selected_bg_color #bdc7dd;
+@define-color theme_selected_fg_color #252f40;
+@define-color primary #bdc7dd;
+@define-color error_color #ffb4ab;
