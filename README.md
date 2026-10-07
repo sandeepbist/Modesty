@@ -172,6 +172,17 @@ mixed Qt major/minor versions, Quickshell Qt warnings and a compositor that diff
 from the installed binary block installation. New minor releases need a reviewed
 compatibility range; these checks do not guarantee every driver or plugin works.
 
+If Quickshell reports that it was built against a different Qt version, the
+interactive installer offers an optional rebuild before applying configs.
+It preserves `quickshell` or `quickshell-git`, builds as your normal user and uses
+sudo only for package dependencies and installation. Compilation may take several
+minutes and needs at least 3 GiB free in the temporary filesystem. Compilation
+defaults to two jobs unless you set `CMAKE_BUILD_PARALLEL_LEVEL`. Stable 0.3.1-1 needs a checksummed
+[upstream Qt 6.12 fix](https://github.com/quickshell-mirror/quickshell/commit/5d5d49873fe8cf1f99ddfd5006ceb2057c5c9b13),
+which this repair backports without switching to the development package.
+Declining repair or using `--non-interactive` stops before replacing configs.
+OTA never performs this rebuild; rerun the interactive installer to repair Qt.
+
 Update Arch separately with a full system upgrade. Rebuild your installed AUR
 Quickshell variant when Qt changes, and run `hyprpm update` after compositor
 updates. Do not remove a pacman lock to bypass an active package transaction.
@@ -207,7 +218,8 @@ The installer records files it replaces in
 `~/.local/state/modesty-install/receipt.json`. Uninstall backs up their current
 contents, including later edits, restores the first recorded originals and removes
 files that it originally created. It stops the running Modesty shell after safety
-checks. Log out before using the restored desktop. Unrelated files, packages,
+checks. Finish assistant work, voice input and recording first. Log out before
+using the restored desktop. Unrelated files, packages,
 accounts, keys, conversations, model caches and the checkout remain in place.
 
 Backups remain under `~/.local/state/modesty-install-backups/<timestamp>/`, or
@@ -239,13 +251,14 @@ A fresh installation does not require Caelestia.
 - **An external monitor has no brightness slider:** DDC brightness is not
   implemented. The built-in slider uses supported backlight devices.
 
-Offline checks have passed in an Arch container. The current installer and
-uninstaller have also passed as a normal user in a disposable home on the
-maintainer's installed Arch system. UI, audio and reload have been checked on the
-live desktop. The current full package-install path has not completed a fresh
-container verification: the test environment hit disk and loader failures.
-Physical GPU drivers, login behavior and every hardware setup remain outside
-container coverage. If installation fails,
+Offline checks have passed on the maintainer's Arch desktop and in an Arch
+container. Fresh-container testing also covered package provisioning, the stable
+Quickshell Qt 6.12 repair, interactive installation as a normal user and uninstall.
+Disposable-home checks covered repeat installs, original config restoration,
+edited-file backups and preservation of personal files, keys and model caches.
+UI, audio and reload have been checked on the live desktop. Physical GPU drivers,
+login behavior and optional plugin builds remain outside container coverage.
+If installation fails,
 [open an issue](https://github.com/sandeepbist/Modesty/issues/new/choose) with the
 command, error and package versions. Remove keys and personal data from logs.
 
