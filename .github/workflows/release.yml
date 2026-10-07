@@ -1,0 +1,111 @@
+name: Release draft
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing reviewed tag matching VERSION (for example v0.1.0)'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ inputs.tag }}
+  cancel-in-progress: false
+jobs:
+  package:
+    name: Verify and package
+    if: github.repository == 'sandeepbist/Modesty' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      revision: ${{ steps.version.outputs.revision }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # Execute reviewed main code; never execute code selected by tag input.
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require configured maintainer approval
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh api "repos/$GH_REPO/environments/release" > "$RUNNER_TEMP/release-environment.json"
+          python3 - "$RUNNER_TEMP/release-environment.json" <<'PYTHON'
+          import json, sys
+          environment = json.load(open(sys.argv[1]))
+          reviewers = [reviewer for rule in environment['protection_rules']
+                       if rule['type'] == 'required_reviewers' for reviewer in rule['reviewers']]
+          if not any(r['type'] == 'User' and r['reviewer']['login'] == 'sandeepbist' for r in reviewers):
+              raise SystemExit('Configure the release environment with maintainer approval before dispatching.')
+          if not (environment.get('deployment_branch_policy') or {}).get('protected_branches'):
+              raise SystemExit('Restrict the release environment to protected branches before dispatching.')
+          PYTHON
+      - name: Check tag, main history and exact CI revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/release.py build --tag "$RELEASE_TAG" --verify-ci --output "$RUNNER_TEMP/release"
+      - name: Identify release candidate
+        id: version
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          echo "revision=$(git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")" >> "$GITHUB_OUTPUT"
+          if [[ "$RELEASE_TAG" == *-rc.* ]]; then
+            echo 'prerelease=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'prerelease=false' >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-package
+          path: ${{ runner.temp }}/release/
+          if-no-files-found: error
+          retention-days: 7
+  draft:
+    name: Create reviewed release draft
+    needs: package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      # This job downloads data only; it never checks out or executes source.
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-package
+          path: release-package
+      - name: Verify downloads and create draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          PRERELEASE: ${{ needs.package.outputs.prerelease }}
+          RELEASE_REVISION: ${{ needs.package.outputs.revision }}
+        run: |
+          set -euo pipefail
+          cd release-package
+          sha256sum -c SHA256SUMS
+          python3 - <<'PYTHON'
+          import json, os, subprocess
+          def api(path):
+              return json.loads(subprocess.check_output(['gh', 'api', f'repos/{os.environ["GH_REPO"]}/{path}'], text=True))
+          obj = api(f'git/ref/tags/{os.environ["RELEASE_TAG"]}')['object']
+          for _ in range(16):
+              if obj['type'] != 'tag':
+                  break
+              obj = api(f'git/tags/{obj["sha"]}')['object']
+          if obj['type'] != 'commit' or obj['sha'] != os.environ['RELEASE_REVISION']:
+              raise SystemExit('Remote tag changed after packaging; release refused.')
+          PYTHON
+          args=(--draft --verify-tag --title "Modesty $RELEASE_TAG" --notes-file release-notes.md)
+          if [ "$PRERELEASE" = true ]; then args+=(--prerelease); fi
+          # Existing drafts/releases are never overwritten; inspect before retrying.
+          gh release create "$RELEASE_TAG" Modesty-*.tar.gz Modesty-*.zip SHA256SUMS "${args[@]}"

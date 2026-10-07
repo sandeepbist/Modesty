@@ -3,14 +3,42 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
   group: checks-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
+  quick:
+    name: Quick checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Validate source and release metadata
+        run: |
+          python3 tests/release.py
+          python3 scripts/release.py check
+          python3 - <<'PYTHON'
+          import ast, pathlib
+          for path in pathlib.Path('.').rglob('*.py'):
+              if '.git' not in path.parts:
+                  ast.parse(path.read_text(), filename=str(path))
+          PYTHON
+          node tests/layout.cjs
+          node tests/search.cjs
+      - name: Validate Actions workflows
+        run: |
+          curl -fsSL https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz -o "$RUNNER_TEMP/actionlint.tar.gz"
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $RUNNER_TEMP/actionlint.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -shellcheck= -pyflakes=
   offline:
     name: Offline checks on Arch
+    needs: quick
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -22,7 +50,7 @@ jobs:
         run: |
           cat > "$RUNNER_TEMP/modesty-arch-check.sh" <<'CHECK'
             set -euo pipefail
-            pacman -Syu --noconfirm --needed git nodejs python python-dbus python-gobject python-pillow dbus quickshell hyprland qt6-wayland qt6-multimedia qt6-imageformats networkmanager network-manager-applet bluez bluez-utils upower pipewire wireplumber brightnessctl playerctl matugen foot bubblewrap
+            pacman -Syu --noconfirm --needed git nodejs python python-dbus python-gobject python-pillow dbus quickshell hyprland qt6-wayland qt6-multimedia qt6-imageformats networkmanager network-manager-applet bluez bluez-utils upower pipewire wireplumber brightnessctl playerctl matugen foot bubblewrap libqalculate
             export XDG_RUNTIME_DIR=$(mktemp -d)
             # A Qt upgrade can precede the repository's Quickshell rebuild.
             # Check a minimal config, then rebuild the same stable package only
