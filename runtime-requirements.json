@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "hyprland": {"minimum": [0, 56, 0], "before": [0, 57, 0]},
+  "quickshell": {"minimum": [0, 3, 1], "before": [0, 4, 0]},
+  "qtMajor": 6,
+  "executables": {
+    "quickshell": "quickshell or quickshell-git",
+    "Hyprland": "hyprland or hyprland-git",
+    "hyprctl": "hyprland or hyprland-git",
+    "nmcli": "networkmanager",
+    "nm-connection-editor": "network-manager-applet",
+    "bluetoothctl": "bluez-utils",
+    "brightnessctl": "brightnessctl",
+    "playerctl": "playerctl",
+    "matugen": "matugen",
+    "foot": "foot",
+    "bwrap": "bubblewrap"
+  },
+  "pythonModules": {"dbus": "python-dbus", "gi": "python-gobject", "PIL": "python-pillow"},
+  "qtPackages": ["qt6-base", "qt6-declarative", "qt6-wayland", "qt6-multimedia", "qt6-imageformats"]
+}

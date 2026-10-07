@@ -21,7 +21,7 @@ jobs:
         # Namespace tests need bubblewrap. Fork code runs only on hosted runners.
         run: |
           docker run --rm --privileged -v "$PWD:/work" -w /work archlinux:base bash -lc '
-            pacman -Syu --noconfirm --needed git nodejs python python-dbus python-gobject python-pillow dbus quickshell hyprland qt6-multimedia qt6-imageformats networkmanager network-manager-applet bluez bluez-utils upower pipewire wireplumber brightnessctl playerctl matugen foot bubblewrap
+            pacman -Syu --noconfirm --needed git nodejs python python-dbus python-gobject python-pillow dbus quickshell hyprland qt6-wayland qt6-multimedia qt6-imageformats networkmanager network-manager-applet bluez bluez-utils upower pipewire wireplumber brightnessctl playerctl matugen foot bubblewrap
             export XDG_RUNTIME_DIR=$(mktemp -d)
             mkdir -p /run/dbus
             dbus-daemon --system --fork

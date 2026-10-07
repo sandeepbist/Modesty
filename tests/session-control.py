@@ -3,9 +3,11 @@
 import importlib.util
 from pathlib import Path
 import tempfile
+import sys
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT/'scripts'))
 spec = importlib.util.spec_from_file_location('handoff', ROOT/'scripts/session-control.py')
 mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
 originals = {}

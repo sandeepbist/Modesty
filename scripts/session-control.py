@@ -94,18 +94,19 @@ def stop_modesty():
             raise RuntimeError('The previous shell is still exiting; a duplicate was not started.')
         time.sleep(.05)
 
-def validate_shell():
+def validate_shell(root=ROOT):
     """A Quickshell load failure can exit zero; require the completion marker too."""
-    env = dict(os.environ, QT_QPA_PLATFORM='offscreen', MODESTY_PREVIEW='1',
+    from desktop_environment import clean_environment
+    env = dict(clean_environment(), QT_QPA_PLATFORM='offscreen', MODESTY_PREVIEW='1',
                MODESTY_COMPAT='0')
-    result = subprocess.run(['quickshell', '--no-color', '-p', str(ROOT/'typecheck.qml')],
+    result = subprocess.run(['quickshell', '--no-color', '-p', str(root/'typecheck.qml')],
                             env=env, capture_output=True, text=True, timeout=15)
     output = result.stdout + result.stderr
-    if result.returncode or 'VALIDATION COMPLETE' not in output or re.search(r'\bERROR\b|WARN scene:|VALIDATION FAILED|ReferenceError:|TypeError:', output):
+    if result.returncode or 'VALIDATION COMPLETE' not in output or re.search(r'\bERROR\b|WARN scene:|VALIDATION FAILED|ReferenceError:|TypeError:|COMPATIBILITY WARNING|(?i:Qt.*(?:mismatch|incompatible))', output):
         raise RuntimeError('Modesty validation failed; the running shell was kept.\n' + output[-5000:])
     if os.environ.get('WAYLAND_DISPLAY'):
         env['QT_QPA_PLATFORM'] = 'wayland'
-        result = subprocess.run(['quickshell', '--no-color', '-p', str(ROOT/'layercheck.qml')],
+        result = subprocess.run(['quickshell', '--no-color', '-p', str(root/'layercheck.qml')],
                                 env=env, capture_output=True, text=True, timeout=15)
         output = result.stdout + result.stderr
         if result.returncode or 'VALIDATION COMPLETE' not in output or re.search(r'\bERROR\b|ReferenceError:|TypeError:', output):
