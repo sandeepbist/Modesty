@@ -99,6 +99,7 @@ def restore(path, original):
     else:
         source = Path(original)
         if source.is_symlink():
+            path.parent.mkdir(parents=True, exist_ok=True)
             temporary = path.with_name('.modesty-restore-'+path.name)
             try:
                 temporary.unlink(missing_ok=True)

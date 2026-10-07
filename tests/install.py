@@ -4,10 +4,13 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import tempfile
 import subprocess
-from unittest.mock import patch
+import sys
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("installer", ROOT / "install.py")
@@ -161,3 +164,68 @@ with patch.object(installer.shutil, "which", return_value="/usr/bin/uv"), patch.
     installer.install_voice()
     run.assert_called_once_with("python3", str(ROOT / "scripts/luma-voice.py"), "--install")
 print("PASS shared voice setup installs missing dependency and reuses existing uv without administrator commands")
+
+# Qt repair keeps the installed package flavor and checksums the stable backport.
+for package in ('quickshell', 'quickshell-git'):
+    commands=[];recipes=[]
+    def rebuild_command(*args,cwd=None,env=None):
+        commands.append(args)
+        if args[0]=='git':
+            target=Path(args[-1]);target.mkdir()
+            (target/'PKGBUILD').write_text('pkgver=0.3.1\npkgrel=1\n')
+        else:
+            assert env.get('CMAKE_BUILD_PARALLEL_LEVEL')
+            recipes.append((cwd/'PKGBUILD').read_text())
+            if package=='quickshell':
+                # PKGBUILD is a Git checkout; its nested source tree must not
+                # silently inherit that repository when applying the backport.
+                subprocess.run(['git','init',str(cwd)],check=True,capture_output=True)
+                srcdir=cwd/'src';probe=srcdir/'quickshell/src/probe';probe.parent.mkdir(parents=True)
+                probe.write_text('old\n')
+                (srcdir/'quickshell-qt6.12.patch').write_text('diff --git a/src/probe b/src/probe\n--- a/src/probe\n+++ b/src/probe\n@@ -1 +1 @@\n-old\n+new\n')
+                subprocess.run(['bash','-c',recipes[-1]+'\nprepare'],cwd=cwd,env=dict(os.environ,srcdir=str(srcdir)),check=True,capture_output=True)
+                assert probe.read_text()=='new\n'
+    with patch.object(installer,'run',side_effect=rebuild_command),contextlib.redirect_stdout(io.StringIO()):
+        installer.rebuild_quickshell({package})
+    assert commands[0][4].endswith('/'+package+'.git'),commands
+    assert commands[1]==('makepkg','-si'),commands
+    if package=='quickshell':
+        assert '5d5d49873fe8cf1f99ddfd5006ceb2057c5c9b13.patch' in recipes[0]
+        assert 'b8a7eab0f883070a26283140e06d252a0aa3483287c54bbb0c3aacb6e82eb0b2' in recipes[0]
+    else:
+        assert 'prepare()' not in recipes[0]
+with patch.object(installer,'run') as command:
+    try:installer.rebuild_quickshell({'custom-quickshell'})
+    except RuntimeError:pass
+    else:raise AssertionError('Unknown package variant rebuilt')
+    command.assert_not_called()
+with patch.object(installer.shutil,'disk_usage',return_value=SimpleNamespace(free=0)),patch.object(installer,'run') as command,contextlib.redirect_stdout(io.StringIO()):
+    try:installer.rebuild_quickshell({'quickshell'})
+    except RuntimeError as error:assert '3 GiB' in str(error)
+    else:raise AssertionError('Qt rebuild accepted insufficient temporary space')
+    command.assert_not_called()
+print('PASS optional Qt repair preserves stable/git variants, pins the upstream backport and refuses custom packages')
+
+with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stdout(io.StringIO()):
+    home=Path(directory)
+    control=SimpleNamespace(health=Mock(return_value={'locked':False}),assert_unlocked=Mock(),stop_modesty=Mock())
+    busy=Mock(side_effect=RuntimeError('Finish recording before reloading.'))
+    spec=SimpleNamespace(loader=SimpleNamespace(exec_module=lambda module:None))
+    with (
+        patch.object(installer,'HOME',home),
+        patch.object(installer,'CONFIG',home/'.config'),
+        patch.object(installer,'STATE',home/'.local/state'),
+        patch.object(installer.os,'geteuid',return_value=1000),
+        patch.object(sys,'argv',['install.py','--uninstall','--non-interactive']),
+        patch.object(installer.installation,'uninstall') as uninstall,
+        patch.object(installer.installation,'uninstall_plan',return_value=[]),
+        patch.object(installer.importlib.util,'spec_from_file_location',return_value=spec),
+        patch.object(installer.importlib.util,'module_from_spec',return_value=control),
+        patch.dict(sys.modules,{'updates':SimpleNamespace(busy_work=busy)}),
+    ):
+        try:installer.main()
+        except RuntimeError as error:assert 'Finish recording' in str(error)
+        else:raise AssertionError('Uninstall interrupted active desktop work')
+        control.stop_modesty.assert_not_called()
+        uninstall.assert_called_once_with(ROOT,home,home/'.local/state',True)
+print('PASS uninstall refuses active work before stopping the shell or changing files')

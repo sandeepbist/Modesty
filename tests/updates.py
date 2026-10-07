@@ -43,6 +43,8 @@ with patch.object(compatibility, 'capture', side_effect=installed), patch.object
         rejected(lambda: compatibility.require(ROOT), 'supported range')
     with patch.object(compatibility, 'capture', side_effect=lambda argv: 'Quickshell 0.3.1 COMPATIBILITY WARNING: Quickshell was built against Qt 6.10' if argv[0]=='quickshell' else installed(argv)):
         rejected(lambda: compatibility.require(ROOT), 'Qt mismatch')
+    with patch.object(compatibility, 'capture', side_effect=lambda argv: 'Quickshell 0.3.1\nWARN: Quickshell was built against Qt 6.11.2 but the system has updated to Qt 6.12.0 without rebuilding the package.' if argv[0]=='quickshell' else installed(argv)):
+        rejected(lambda: compatibility.require(ROOT), 'Qt mismatch')
     with patch.object(compatibility.shutil, 'which', side_effect=lambda name: None if name=='bwrap' else '/usr/bin/tool'):
         rejected(lambda: compatibility.require(ROOT), 'bubblewrap')
 print('PASS stable/git versions, unsupported runtime, missing dependencies and mixed/compiled Qt gates')

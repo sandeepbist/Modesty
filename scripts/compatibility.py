@@ -10,6 +10,10 @@ import subprocess
 from desktop_environment import clean_environment
 
 
+class QtMismatch(RuntimeError):
+    """The installed Quickshell binary needs a matching Qt build."""
+
+
 def version(text):
     match = re.search(r'(?<!\d)(\d+)\.(\d+)(?:\.(\d+))?', text)
     if not match:
@@ -23,6 +27,10 @@ def capture(argv):
     if result.returncode:
         raise RuntimeError('Cannot run ' + argv[0] + ': ' + (result.stderr or result.stdout)[-800:])
     return result.stdout + result.stderr
+
+
+def qt_mismatch(output):
+    return bool(re.search(r'COMPATIBILITY WARNING|Qt.*(?:mismatch|incompatible)|built against Qt.+(?:but|system|updated)', output, re.I))
 
 
 def inspect(root, live=True):
@@ -48,7 +56,7 @@ def inspect(root, live=True):
                 errors.append(f'{name} {versions[name]} is outside this revision’s supported range '
                               f'{".".join(map(str, bounds["minimum"]))} to below '
                               f'{".".join(map(str, bounds["before"]))}. Keep the current shell or use a compatible revision.')
-            if re.search(r'COMPATIBILITY WARNING|Qt.*(?:mismatch|incompatible)', output, re.I):
+            if qt_mismatch(output):
                 errors.append('Quickshell reports a Qt mismatch. Finish a full Arch upgrade and rebuild your installed Quickshell package.')
         except (RuntimeError, ValueError, OSError, subprocess.TimeoutExpired) as error:
             errors.append(str(error))

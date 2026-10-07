@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / 'scripts'))
 import compatibility
 import installation
+from desktop_environment import clean_environment
 HOME = Path.home()
 SETUP = ROOT / "setup"
 STATE = Path(os.environ.get("XDG_STATE_HOME") or HOME / ".local/state")
@@ -48,15 +49,47 @@ def ask(label, default=True):
         print("Enter y or n.")
 
 
-def run(*args, cwd=None):
+def run(*args, cwd=None, env=None):
     print("$", " ".join(args))
-    subprocess.run(args, check=True, cwd=cwd)
+    subprocess.run(args, check=True, cwd=cwd, env=env)
 
 
 def install_voice():
     if not shutil.which("uv"):
         run("sudo", "pacman", "-Syu", "--needed", "uv")
     run("python3", str(ROOT / "scripts/luma-voice.py"), "--install")
+
+
+def rebuild_quickshell(installed, unattended=False):
+    package = next((p for p in ('quickshell', 'quickshell-git') if p in installed), None)
+    if package is None:
+        raise RuntimeError('No recognized Quickshell package to rebuild. Repair your custom package manually.')
+    origin = ('https://gitlab.archlinux.org/archlinux/packaging/packages/quickshell.git'
+              if package == 'quickshell' else 'https://aur.archlinux.org/quickshell-git.git')
+    print(f'Rebuilding {package} for installed Qt; its package variant is preserved.')
+    with tempfile.TemporaryDirectory(prefix='modesty-quickshell-') as folder:
+        if shutil.disk_usage(folder).free < 3*1024**3:
+            raise RuntimeError('Free at least 3 GiB in the temporary filesystem before rebuilding Quickshell. No dotfiles were changed.')
+        checkout = Path(folder)/package
+        run('git', 'clone', '--depth', '1', origin, str(checkout))
+        build = checkout/'PKGBUILD'
+        recipe = build.read_text()
+        if package == 'quickshell' and re.search(r'(?m)^pkgver=0\.3\.1$', recipe) and re.search(r'(?m)^pkgrel=1$', recipe):
+            # Official stable 0.3.1 predates this upstream Qt 6.12 fix. Keep
+            # the release and backport the immutable, checksummed upstream patch.
+            if re.search(r'(?m)^prepare\s*\(', recipe):
+                raise RuntimeError('Stable package preparation changed. Repair it manually; no dotfiles were changed.')
+            build.write_text(recipe+'''\n# Backport upstream Qt 6.12 compatibility to stable 0.3.1.
+pkgrel="${pkgrel}.1"
+source+=("quickshell-qt6.12.patch::https://github.com/quickshell-mirror/quickshell/commit/5d5d49873fe8cf1f99ddfd5006ceb2057c5c9b13.patch")
+sha256sums+=("b8a7eab0f883070a26283140e06d252a0aa3483287c54bbb0c3aacb6e82eb0b2")
+prepare() {
+    GIT_CEILING_DIRECTORIES="$srcdir" git -C "$srcdir/quickshell" apply --exclude=changelog/next.md "$srcdir/quickshell-qt6.12.patch"
+}
+''')
+        build_env = clean_environment()
+        build_env.setdefault('CMAKE_BUILD_PARALLEL_LEVEL', '2')
+        run('makepkg', '-si', *(['--noconfirm'] if unattended else []), cwd=checkout, env=build_env)
 
 
 def aur_helper():
@@ -244,6 +277,8 @@ def main():
                 running = control.health()
                 if running:
                     control.assert_unlocked()
+                    from updates import busy_work
+                    busy_work()
                     control.stop_modesty()
                 try:
                     installation.uninstall(ROOT, HOME, STATE)
@@ -345,7 +380,15 @@ def main():
         compatibility.require(ROOT, live=False)
         spec = importlib.util.spec_from_file_location('install_session', ROOT/'scripts/session-control.py')
         control = importlib.util.module_from_spec(spec); spec.loader.exec_module(control)
-        control.validate_shell()
+        try:
+            control.validate_shell(headless=not bool(os.environ.get('WAYLAND_DISPLAY')))
+        except compatibility.QtMismatch as error:
+            print(error)
+            if args.non_interactive or not ask('Rebuild your installed Quickshell variant for current Qt? Source compilation may take several minutes.', False):
+                raise
+            rebuild_quickshell(installed_packages())
+            compatibility.require(ROOT, live=False)
+            control.validate_shell(headless=not bool(os.environ.get('WAYLAND_DISPLAY')))
     install_files(groups, False)
     if not args.non_interactive and "desktop" in groups and not plugins:
         PLUGIN_QUEUE.unlink(missing_ok=True)

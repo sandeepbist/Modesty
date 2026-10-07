@@ -94,7 +94,7 @@ def stop_modesty():
             raise RuntimeError('The previous shell is still exiting; a duplicate was not started.')
         time.sleep(.05)
 
-def validate_shell(root=ROOT):
+def validate_shell(root=ROOT, headless=False):
     """A Quickshell load failure can exit zero; require the completion marker too."""
     from desktop_environment import clean_environment
     env = dict(clean_environment(), QT_QPA_PLATFORM='offscreen', MODESTY_PREVIEW='1',
@@ -102,7 +102,15 @@ def validate_shell(root=ROOT):
     result = subprocess.run(['quickshell', '--no-color', '-p', str(root/'typecheck.qml')],
                             env=env, capture_output=True, text=True, timeout=15)
     output = result.stdout + result.stderr
-    if result.returncode or 'VALIDATION COMPLETE' not in output or re.search(r'\bERROR\b|WARN scene:|VALIDATION FAILED|ReferenceError:|TypeError:|COMPATIBILITY WARNING|(?i:Qt.*(?:mismatch|incompatible))', output):
+    from compatibility import QtMismatch, qt_mismatch
+    if qt_mismatch(output):
+        raise QtMismatch('Quickshell reports a Qt mismatch. Finish a full Arch upgrade and rebuild your installed Quickshell package. The running shell was kept.\n'+output[-3000:])
+    checked = output
+    if headless:
+        # Before the first desktop login there may be no PipeWire server. This
+        # connection error does not prevent checking QML imports and bindings.
+        checked = re.sub(r'^.*ERROR quickshell.service.pipewire.loop: Failed to connect pipewire context\. Errno: \d+\s*$', '', output, flags=re.M)
+    if result.returncode or 'VALIDATION COMPLETE' not in output or re.search(r'\bERROR\b|WARN scene:|VALIDATION FAILED|ReferenceError:|TypeError:', checked):
         raise RuntimeError('Modesty validation failed; the running shell was kept.\n' + output[-5000:])
     if os.environ.get('WAYLAND_DISPLAY'):
         env['QT_QPA_PLATFORM'] = 'wayland'

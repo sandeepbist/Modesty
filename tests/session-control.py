@@ -57,6 +57,18 @@ with patch.object(mod.subprocess, 'run', return_value=CompletedProcess([], 0, 'E
     else: raise AssertionError('Zero-exit QML load failure was accepted')
 with patch.object(mod.subprocess, 'run', return_value=CompletedProcess([], 0, 'DEBUG qml: VALIDATION COMPLETE', '')):
     mod.validate_shell()
+with patch.dict(mod.os.environ, {'WAYLAND_DISPLAY':''}):
+    absent_audio='ERROR quickshell.service.pipewire.loop: Failed to connect pipewire context. Errno: 112\nDEBUG qml: VALIDATION COMPLETE'
+    with patch.object(mod.subprocess,'run',return_value=CompletedProcess([],0,absent_audio,'')):
+        mod.validate_shell(headless=True)
+        try:mod.validate_shell()
+        except RuntimeError:pass
+        else:raise AssertionError('Live validation ignored missing audio')
+    for failure in ('ERROR: Failed to load configuration', 'WARN: Quickshell was built against Qt 6.11.2 but the system has updated to Qt 6.12.0 without rebuilding the package.'):
+        with patch.object(mod.subprocess,'run',return_value=CompletedProcess([],0,failure+'\nDEBUG qml: VALIDATION COMPLETE','')):
+            try:mod.validate_shell(headless=True)
+            except RuntimeError:pass
+            else:raise AssertionError('Headless validation accepted broken QML or a Qt mismatch')
 with tempfile.TemporaryDirectory() as tmp:
     marker = Path(tmp)/'main'; marker.touch()
     with patch.object(mod,'MARKER',marker), patch.object(mod,'assert_unlocked'), patch.object(mod,'validate_shell',side_effect=RuntimeError('bad QML')), patch.object(mod,'stop_modesty') as stop, patch.object(mod,'start') as start:

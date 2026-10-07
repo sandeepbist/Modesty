@@ -113,3 +113,14 @@ with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stdout(io.S
     rejected(lambda:installation.install([(source,home/'redirect/unsafe')],lambda p:p.read_bytes(),directory,home,state,False),'parent is a symlink')
     rejected(lambda:installation.safe_target(directory/'outside',home,state),'Unsafe installation path')
 print('PASS no-receipt refusal, explicit legacy adoption, edited-file exclusion and symlink/path escape guards')
+
+with tempfile.TemporaryDirectory(prefix='modesty-deleted-config-') as directory, contextlib.redirect_stdout(io.StringIO()):
+    directory=Path(directory);home=directory/'home';home.mkdir();state=home/'.local/state'
+    source=directory/'template';source.write_text('installed config')
+    original=directory/'original';original.write_text('original config')
+    target=home/'.config/deleted/app';target.parent.mkdir(parents=True);target.symlink_to(original)
+    installation.install([(source,target)],lambda p:p.read_bytes(),directory,home,state,False)
+    target.unlink();target.parent.rmdir()
+    installation.uninstall(directory,home,state)
+    assert target.is_symlink() and target.read_text()=='original config'
+print('PASS original symlink restored after the installed config directory was deleted')
