@@ -54,76 +54,82 @@ Rectangle {
         }
         TapHandler { id:tileTap; enabled:root.usable; onTapped:{Hints.hide(root);root.activate();} }
     }
-    Item {
-        anchors.fill:parent; visible:root.level
+    Loader {
+        anchors.fill:parent; active:root.level
+        sourceComponent: Item {
+            anchors.fill:parent
 
-        Icon {
-            x:root.vertical?(parent.width-width)/2:14
-            y:root.vertical?parent.height-height-17:(parent.height-height)/2
-            icon:root.icon;size:root.vertical?Math.min(24,root.width-24):22
-            color:root.vertical&&levelSlider.position>.25?Theme.bgSolid:Theme.text;z:2
-        }
-        PanelText {
-            id:levelValue
-            anchors.right:parent.right;anchors.rightMargin:root.vertical?0:40
-            y:root.vertical?16:(parent.height-height)/2
-            width:root.vertical?parent.width:38;height:14
-            visible:root.vertical?root.height>95:root.width>=170
-            horizontalAlignment:root.vertical?Text.AlignHCenter:Text.AlignRight
-            text:Math.round(levelSlider.position*100)+"%";font.pixelSize:11;font.features:({tnum:1})
-            color:root.vertical&&levelSlider.position>.85?Theme.bgSolid:Theme.subtext;z:2
-        }
-        Slider {
-            id:levelSlider;padding:0;hoverEnabled:true
-            x:root.vertical?8:48
-            y:root.vertical?8:(parent.height-height)/2
-            width:root.vertical?parent.width-16:Math.max(16,parent.width-(levelValue.visible?132:88))
-            height:root.vertical?parent.height-16:Preferences.sliderThickness+16
-            orientation:root.vertical?Qt.Vertical:Qt.Horizontal;from:0;to:1
-            stepSize:.01;snapMode:Slider.SnapAlways;wheelEnabled:true
-            Binding {target:levelSlider;property:"value";value:root.kind==="sound"?Math.min(1,Audio.volume):SystemInfo.brightness;when:!levelSlider.pressed;restoreMode:Binding.RestoreNone}
-            enabled:root.usable&&(root.kind==="sound"?!!Audio.sink:SystemInfo.brightnessAvailable)
-            onMoved:root.kind==="sound"?Audio.setVolume(value):SystemInfo.setBrightness(value)
-            Accessible.name:root.title
-            background:Rectangle {
-                width:levelSlider.width;height:root.vertical?levelSlider.height:Preferences.sliderThickness
-                y:root.vertical?0:8;radius:root.vertical?Math.min(14,width/2):height/2
-                color:Theme.withAlpha(Theme.text,.09)
-                // A clipped fill reaches a real zero, with rounded outer corners.
-                clip:true
-                border.width:1;border.color:Theme.withAlpha(Theme.text,levelSlider.pressed ? .16 : levelSlider.hovered ? .1 : 0)
-                Behavior on border.color {ColorAnimation {duration:Tokens.animFast}}
-                Rectangle {
-                    x:0;y:root.vertical?parent.height-height:0
-                    width:root.vertical?parent.width:parent.width*levelSlider.position
-                    height:root.vertical?parent.height*levelSlider.position:parent.height
-                    radius:Math.min(parent.radius,width/2,height/2);color:Theme.accent
-                    Behavior on width {enabled:!levelSlider.pressed;NumberAnimation {duration:Tokens.animFast;easing.type:Easing.OutCubic}}
-                    Behavior on height {enabled:!levelSlider.pressed;NumberAnimation {duration:Tokens.animFast;easing.type:Easing.OutCubic}}
-                }
+            Icon {
+                x:root.vertical?(parent.width-width)/2:14
+                y:root.vertical?parent.height-height-17:(parent.height-height)/2
+                icon:root.icon;size:root.vertical?Math.min(24,root.width-24):22
+                color:root.vertical&&levelSlider.position>.25?Theme.bgSolid:Theme.text;z:2
             }
-            handle:Item {}
+            PanelText {
+                id:levelValue
+                anchors.right:parent.right;anchors.rightMargin:root.vertical?0:40
+                y:root.vertical?16:(parent.height-height)/2
+                width:root.vertical?parent.width:38;height:14
+                visible:root.vertical?root.height>95:root.width>=170
+                horizontalAlignment:root.vertical?Text.AlignHCenter:Text.AlignRight
+                text:Math.round(levelSlider.position*100)+"%";font.pixelSize:11;font.features:({tnum:1})
+                color:root.vertical&&levelSlider.position>.85?Theme.bgSolid:Theme.subtext;z:2
+            }
+            Slider {
+                id:levelSlider;padding:0;hoverEnabled:true
+                x:root.vertical?8:48
+                y:root.vertical?8:(parent.height-height)/2
+                width:root.vertical?parent.width-16:Math.max(16,parent.width-(levelValue.visible?132:88))
+                height:root.vertical?parent.height-16:Preferences.sliderThickness+16
+                orientation:root.vertical?Qt.Vertical:Qt.Horizontal;from:0;to:1
+                stepSize:.01;snapMode:Slider.SnapAlways;wheelEnabled:true
+                Binding {target:levelSlider;property:"value";value:root.kind==="sound"?Math.min(1,Audio.volume):SystemInfo.brightness;when:!levelSlider.pressed;restoreMode:Binding.RestoreNone}
+                enabled:root.usable&&(root.kind==="sound"?!!Audio.sink:SystemInfo.brightnessAvailable)
+                onMoved:root.kind==="sound"?Audio.setVolume(value):SystemInfo.setBrightness(value)
+                Accessible.name:root.title
+                background:Rectangle {
+                    width:levelSlider.width;height:root.vertical?levelSlider.height:Preferences.sliderThickness
+                    y:root.vertical?0:8;radius:root.vertical?Math.min(14,width/2):height/2
+                    color:Theme.withAlpha(Theme.text,.09)
+                    // A clipped fill reaches a real zero, with rounded outer corners.
+                    clip:true
+                    border.width:1;border.color:Theme.withAlpha(Theme.text,levelSlider.pressed ? .16 : levelSlider.hovered ? .1 : 0)
+                    Behavior on border.color {ColorAnimation {duration:Tokens.animFast}}
+                    Rectangle {
+                        x:0;y:root.vertical?parent.height-height:0
+                        width:root.vertical?parent.width:parent.width*levelSlider.position
+                        height:root.vertical?parent.height*levelSlider.position:parent.height
+                        radius:Math.min(parent.radius,width/2,height/2);color:Theme.accent
+                        Behavior on width {enabled:!levelSlider.pressed;NumberAnimation {duration:Tokens.animFast;easing.type:Easing.OutCubic}}
+                        Behavior on height {enabled:!levelSlider.pressed;NumberAnimation {duration:Tokens.animFast;easing.type:Easing.OutCubic}}
+                    }
+                }
+                handle:Item {}
+            }
+            IconButton {
+                anchors.right:parent.right;anchors.rightMargin:4;anchors.verticalCenter:parent.verticalCenter
+                size:14;icon:"chevron_right";label:root.title+" options";visible:!root.vertical
+                enabled:root.usable;onClicked:root.activate()
+            }
+            TapHandler {enabled:root.vertical&&root.usable;acceptedButtons:Qt.RightButton;onTapped:root.activate()}
         }
-        IconButton {
-            anchors.right:parent.right;anchors.rightMargin:4;anchors.verticalCenter:parent.verticalCenter
-            size:14;icon:"chevron_right";label:root.title+" options";visible:!root.vertical
-            enabled:root.usable;onClicked:root.activate()
-        }
-        TapHandler {enabled:root.vertical&&root.usable;acceptedButtons:Qt.RightButton;onTapped:root.activate()}
     }
-    Art {
-        anchors.fill:parent;visible:root.kind==="media";source:root.kind==="media"?Media.artUrl:"";radius:root.radius
-        Rectangle { anchors.fill:parent;radius:root.radius;color:Media.artUrl?"#aa141b17":Theme.surfaceSolid }
-        PanelText { x:12;y:11;visible:root.width>=100&&root.height>=90;width:parent.width-(root.width < 132 ? 42 : 24);text:Media.title||"Nothing playing";font.pixelSize:12;font.weight:Font.DemiBold;color:Media.artUrl?"#f5ffffff":Theme.text }
-        PanelText { x:12;y:29;visible:root.width>=100&&root.height>=90;width:parent.width-24;text:Media.artist;font.pixelSize:11;color:Media.artUrl?"#bdffffff":Theme.subtext }
-        RepeatButton {anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 3; size: 11; visible: root.width < 132 && root.height>=90; enabled: root.usable && Media.canRepeat}
-        Row { anchors.horizontalCenter:parent.horizontalCenter;anchors.bottom:parent.bottom;anchors.bottomMargin:12;spacing:root.width>160?6:1
-            IconButton { icon:"skip_previous";label:"Previous";size:12;visible:root.width>=100;enabled:root.usable&&Media.canGoPrevious;onClicked:Media.previous() }
-            IconButton { icon:Media.playing?"pause":"play_arrow";label:"Play / pause";size:17;background:Theme.accent;color:Theme.accentText;enabled:root.usable&&!!Media.active;onClicked:Media.togglePlaying() }
-            IconButton { icon:"skip_next";label:"Next";size:12;visible:root.width>=100;enabled:root.usable&&Media.canGoNext;onClicked:Media.next() }
-            RepeatButton {visible: root.width >= 132; size: 12; enabled: root.usable && Media.canRepeat}
+    Loader {
+        anchors.fill:parent; active:root.kind==="media"
+        sourceComponent: Art {
+            anchors.fill:parent;source:Media.artUrl;radius:root.radius
+            Rectangle { anchors.fill:parent;radius:root.radius;color:Media.artUrl?"#aa141b17":Theme.surfaceSolid }
+            PanelText { x:12;y:11;visible:root.width>=100&&root.height>=90;width:parent.width-(root.width < 132 ? 42 : 24);text:Media.title||"Nothing playing";font.pixelSize:12;font.weight:Font.DemiBold;color:Media.artUrl?"#f5ffffff":Theme.text }
+            PanelText { x:12;y:29;visible:root.width>=100&&root.height>=90;width:parent.width-24;text:Media.artist;font.pixelSize:11;color:Media.artUrl?"#bdffffff":Theme.subtext }
+            RepeatButton {anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 3; size: 11; visible: root.width < 132 && root.height>=90; enabled: root.usable && Media.canRepeat}
+            Row { anchors.horizontalCenter:parent.horizontalCenter;anchors.bottom:parent.bottom;anchors.bottomMargin:12;spacing:root.width>160?6:1
+                IconButton { icon:"skip_previous";label:"Previous";size:12;visible:root.width>=100;enabled:root.usable&&Media.canGoPrevious;onClicked:Media.previous() }
+                IconButton { icon:Media.playing?"pause":"play_arrow";label:"Play / pause";size:17;background:Theme.accent;color:Theme.accentText;enabled:root.usable&&!!Media.active;onClicked:Media.togglePlaying() }
+                IconButton { icon:"skip_next";label:"Next";size:12;visible:root.width>=100;enabled:root.usable&&Media.canGoNext;onClicked:Media.next() }
+                RepeatButton {visible: root.width >= 132; size: 12; enabled: root.usable && Media.canRepeat}
+            }
+            Rectangle { x:10;y:parent.height-6;width:parent.width-20;height:2;radius:1;color:Theme.withAlpha(Theme.text,0.15);Rectangle { width:parent.width*Media.progress;height:2;color:Theme.accent;radius:1 } }
         }
-        Rectangle { x:10;y:parent.height-6;width:parent.width-20;height:2;radius:1;color:Theme.withAlpha(Theme.text,0.15);Rectangle { width:parent.width*Media.progress;height:2;color:Theme.accent;radius:1 } }
     }
     Loader {
         anchors.fill:parent;active:root.kind==="notifications";visible:active

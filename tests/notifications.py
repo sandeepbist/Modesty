@@ -23,6 +23,10 @@ ShellRoot {
         function popups(): int { return Notifications.popups.length; }
         function dnd(): void { Notifications.dnd = true; }
         function invoke(): void { Notifications.list[0].invokeAction("default"); }
+        function burst(): void {
+            for (let i = 0; i < 80; i++) Notifications.remind("burst-" + i, "Burst " + i, "", () => {}, () => {});
+        }
+        function oldest(): string { return Notifications.list[Notifications.list.length - 1]?.summary || ""; }
     }
 }
 '''
@@ -73,6 +77,10 @@ with tempfile.TemporaryDirectory(prefix='modesty-notifications-') as tmp:
             wait_for(lambda: call('count') == '3')
             wait_for(lambda: call('popups') == '0')
             print('PASS DND stores history without showing a popup')
+            call('burst')
+            wait_for(lambda: call('count') == '50')
+            assert call('oldest') == 'Burst 30'
+            print('PASS notification burst retains exactly the newest 50 records after close animations')
         finally:
             proc.terminate(); proc.wait(timeout=5)
             log.seek(0); content = log.read()

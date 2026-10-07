@@ -14,24 +14,44 @@ Singleton {
     property string loadedKey:""
     property string error:""
     readonly property string trackKey:Media.artist+"\n"+Media.title
+    // Validate ordering once per lyric payload. Older/malformed caches retain
+    // the previous first-future-cue behavior through the linear fallback.
+    readonly property bool orderedLines:lines.every((line,index)=>Number.isFinite(line.time)&&(index===0||line.time>=lines[index-1].time))
+    readonly property int lyricIndex: {
+        if (loadedKey !== trackKey) return -1;
+        const position = Media.position;
+        if (!orderedLines) {
+            for (let i = 0; i < lines.length; i++) if (lines[i].time > position) return i - 1;
+            return lines.length - 1;
+        }
+        let low = 0, high = lines.length;
+        while (low < high) {
+            const middle = Math.floor((low + high) / 2);
+            if (lines[middle].time <= position) low = middle + 1;
+            else high = middle;
+        }
+        return low - 1;
+    }
     readonly property string lyric: {
         if(!Preferences.mediaLyrics||loadedKey!==trackKey)return "";
-        let current="";
-        for(const line of lines){if(line.time>Media.position)break;current=line.text;}
-        return current;
+        return lyricIndex >= 0 ? lines[lyricIndex].text : "";
     }
     readonly property real lineRemaining: {
         if (loadedKey !== trackKey) return 8;
-        for (const line of lines) if (line.time > Media.position) return Math.max(1, line.time - Media.position);
-        return 8;
+        const next = lines[lyricIndex + 1];
+        return next ? Math.max(1, next.time - Media.position) : 8;
     }
     onTrackKeyChanged:{lines=[];loadedKey="";lyricsDelay.restart();}
     onListeningChanged:if(listening)lyricsDelay.restart()
     Connections {target:Preferences;function onMediaLyricsChanged(){if(Preferences.mediaLyrics)lyricsDelay.restart();else{root.lines=[];root.loadedKey="";lyrics.running=false;}}}
+    function receiveBars(data: string): void {
+        const values = data.split(";").filter(v=>v.length).slice(0,6).map(v=>Math.max(0,Math.min(1,Number(v)/100)));
+        if (values.length === 6 && values.every(Number.isFinite) && values.some((value,index)=>value!==bars[index])) bars = values;
+    }
     Process {
         id:analyzer;running:root.listening&&Preferences.mediaVisualizer
         command:["cava","-p",Qt.resolvedUrl("../assets/audio/cava.conf").toString().replace("file://","")]
-        stdout:SplitParser {onRead:data=>{const values=data.split(";").filter(v=>v.length).slice(0,6).map(v=>Math.max(0,Math.min(1,Number(v)/100)));if(values.length===6)root.bars=values;}}
+        stdout:SplitParser {onRead:data=>root.receiveBars(data)}
         onExited:code=>{root.bars=[0,0,0,0,0,0];if(code!==0)root.error="Audio visualizer is unavailable";}
     }
     Timer {id:lyricsDelay;interval:250;onTriggered:{

@@ -7,6 +7,11 @@ function reconcile(model, next, key) {
         let found=-1;
         for(let j=i;j<model.count;j++) if(model.get(j)[key]===next[i][key]){found=j;break;}
         if(found<0)model.insert(i,next[i]);
-        else {if(found!==i)model.move(found,i,1);model.set(i,next[i]);}
+        else {
+            if(found!==i)model.move(found,i,1);
+            const current=model.get(i);
+            // Streaming changes the last row; leave the rest of the model alone.
+            if(Object.keys(next[i]).some(role=>current[role]!==next[i][role]))model.set(i,next[i]);
+        }
     }
 }

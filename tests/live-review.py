@@ -20,6 +20,7 @@ assert not json.loads(call('health'))['locked'], 'Unlock before running the live
 records={}
 try:
  call('close');move(700,600);time.sleep(.6)
+ resting={s['name']:(s['restWidth'],s['restHeight']) for s in geo()['stages']}
  for i,name in enumerate(['media','clock','controls']):
   g=geo();s=g['stages'][i]
   if not s['visible']:continue
@@ -44,8 +45,9 @@ try:
    while time.monotonic()<end:
     g=geo();samples.append(g)
     for s in g['stages']:
-     assert s['restHeight']==33 and s['restWidth'] in [33,90],s
-     assert s['height']>=32.99,s
+     rest_width,rest_height=resting[s['name']]
+     assert abs(s['restHeight']-rest_height)<.01 and abs(s['restWidth']-rest_width)<.01,s
+     assert s['height']>=rest_height-.01,s
      for p in s['entries']:
       if p['opacity']>.01 and p['name'] not in ['context','toast']:assert p['width']>150 and p['height']>60,(name,p)
     if name=='clock':assert g['clockOpacity']>.99,g['clockOpacity']

@@ -148,39 +148,7 @@ Item {
             Repeater {id:turnRepeater;model:turns
                 onItemAdded:root.turnRevision++
                 onItemRemoved:root.turnRevision++
-                Item {
-                    id:turn;required property var model
-                    property real arrival:1
-                    readonly property real naturalHeight:(model.role==="user"?body.implicitHeight:document.naturalHeight+(turnSources.visible?12+turnSources.height:0)+(turnActions.visible?10+turnActions.naturalHeight:0))+(model.role==="user"?26:8)
-                    width:flow.width;height:naturalHeight*arrival;clip:arrival<.999
-                    Component.onCompleted:if(model.fresh){arrival=0;entry.start();}
-                    NumberAnimation {id:entry;target:turn;property:"arrival";to:1;duration:Tokens.animSlow;easing.type:Easing.OutQuint}
-                    Item {
-                        width:parent.width;height:turn.naturalHeight
-                        transform:Translate {y:5*(1-turn.arrival)}
-                        TextMetrics {id:userMeasure;font:body.font;text:turn.model.text}
-                        Rectangle {id:userBubble;x:parent.width-width-8;y:0;width:Math.min(parent.width-28,Math.max(80,userMeasure.boundingRect.width+28));height:turn.naturalHeight;radius:16;color:Theme.withAlpha(Theme.text,.04);visible:turn.model.role==="user"}
-                        TextEdit {
-                            id:body;width:userBubble.width-28
-                            visible:turn.model.role==="user"
-                            x:userBubble.x+14;y:turn.model.role==="user"?13:4
-                            text:turn.model.text;readOnly:true;selectByMouse:true;wrapMode:TextEdit.Wrap;textFormat:TextEdit.PlainText
-                            color:Theme.text;selectionColor:Theme.accent;selectedTextColor:Theme.accentText
-                            font.family:Tokens.font;font.pixelSize:Preferences.lumaTextSize;font.weight:Font.Normal
-                            font.letterSpacing:-.1
-                            font.preferTypoLineMetrics:true;font.hintingPreference:Font.PreferVerticalHinting
-                            renderType:Tokens.textRenderType
-                            Accessible.name:(turn.model.role==="user"?"You: ":"Luma: ")+text
-                        }
-                        LumaDocument {id:document;y:4;x:2;width:parent.width-10;visible:turn.model.role==="assistant";text:turn.model.text;presentation:JSON.parse(turn.model.presentation);animate:root.visible}
-                        LumaActions {id:turnActions;y:turnSources.visible?turnSources.y+turnSources.height+10:document.y+document.height+10;width:parent.width-8;entries:JSON.parse(turn.model.execution);visible:turn.model.role==="assistant"&&entries.length>0;animate:root.visible}
-                        LumaSources {
-                            id:turnSources;y:document.y+document.height+12;width:parent.width
-                            sources:JSON.parse(turn.model.citations);visible:turn.model.role==="assistant"&&sources.length>0
-                            animate:root.visible;onOpened:url=>Qt.openUrlExternally(url);onExpanded:root.stopFollowing()
-                        }
-                    }
-                }
+                ConversationTurn {width:flow.width;animate:root.visible;onExpanded:root.stopFollowing()}
             }
             LumaSection {
                 id:sourceSection
