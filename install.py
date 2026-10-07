@@ -51,6 +51,12 @@ def run(*args, cwd=None):
     subprocess.run(args, check=True, cwd=cwd)
 
 
+def install_voice():
+    if not shutil.which("uv"):
+        run("sudo", "pacman", "-Syu", "--needed", "uv")
+    run("python3", str(ROOT / "scripts/luma-voice.py"), "--install")
+
+
 def aur_helper():
     helper = shutil.which("paru") or shutil.which("yay")
     if helper:
@@ -236,6 +242,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="show changes without installing")
     parser.add_argument("--non-interactive", action="store_true", help="install all saved files only when dependencies are ready")
     parser.add_argument("--finish-plugins", action="store_true", help="build the plugins selected during installation after Hyprland starts")
+    parser.add_argument("--install-voice", action="store_true", help="install only optional local voice and its dependencies")
     args = parser.parse_args()
     if os.geteuid() == 0:
         parser.error("Run as your desktop user, not root; the installer uses sudo only for packages.")
@@ -245,6 +252,19 @@ def main():
         parser.error("Clone path and home directory must not contain whitespace because Hyprland keybind commands use them.")
     if CONFIG != HOME / ".config":
         parser.error("This saved Hyprland config requires the default ~/.config directory; unset XDG_CONFIG_HOME before installing.")
+    if args.install_voice:
+        if args.dry_run or args.non_interactive or args.finish_plugins:
+            parser.error("--install-voice requires interactive setup")
+        try:
+            install_voice()
+            print("Local English voice installed. Hold Ctrl + backtick in Luma to speak.")
+        except (RuntimeError, subprocess.CalledProcessError, OSError) as error:
+            print(f"Voice setup failed: {error}. Retry from Settings → Voice.")
+            raise
+        finally:
+            if sys.stdin.isatty():
+                input("Press Enter to close setup.")
+        return
     if args.finish_plugins:
         if args.dry_run or args.non_interactive:
             parser.error("--finish-plugins requires an interactive terminal")
@@ -290,9 +310,7 @@ def main():
         print("Required packages ready.")
 
     if not args.non_interactive and ask("Install local English hold-to-talk for Luma (Moonshine Small CPU runtime)?", False):
-        if not shutil.which("uv"):
-            run("sudo", "pacman", "-Syu", "--needed", "uv")
-        run("python3", str(ROOT / "scripts/luma-voice.py"), "--install")
+        install_voice()
 
     if extras and not args.non_interactive and ask("Install optional apps, Spotify tools, and extra fonts?", True):
         helper = aur_helper()

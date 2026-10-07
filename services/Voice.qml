@@ -21,6 +21,29 @@ Singleton {
     property real loadSeconds:0
     property int peakMiB:0
     property string runtime:""
+    readonly property string installer:Qt.resolvedUrl("../install.py").toString().replace("file://", "")
+    property bool installed:false
+    readonly property bool installing:setup.running
+    readonly property bool checking:installationStatus.running
+    property string setupMessage:""
+    function checkInstallation():void {if(!installationStatus.running)installationStatus.running=true;}
+    function install():void {
+        if(installing||active||Preferences.preview||Session.isLocked())return;
+        setupMessage="Setup window opened. Follow download progress there.";
+        error="";refreshPending=false;stopWorker();setup.running=true;
+    }
+    Process {
+        id:installationStatus;command:["python3",root.backend,"--status"]
+        stdout:StdioCollector {onStreamFinished:{try{root.installed=!!JSON.parse(text).installed;}catch(e){root.setupMessage="Couldn't check voice installation.";}}}
+    }
+    Process {
+        id:setup;command:["foot","--title=Luma voice setup","python3",root.installer,"--install-voice"]
+        onExited:code=>{
+            root.setupMessage=code===0?"Setup finished. Hold Ctrl + backtick to speak.":"Setup interrupted or failed. Retry installation.";
+            if(code===0){root.available=true;root.error="";Preferences.set("lumaVoice",true);if(Preferences.lumaVoiceWarm)root.prepare();}
+            root.checkInstallation();
+        }
+    }
     readonly property string status:error||(!ready&&active?"Preparing voice…":phase==="starting"?"Opening microphone…":phase==="listening"?"Listening":phase==="finishing"?"Finishing…":"")
     signal started()
     signal submitted(string text)
@@ -42,12 +65,12 @@ Singleton {
         worker.running=false;shutdown.restart();
     }
     function prepare():void {
-        if(Preferences.preview||!Preferences.lumaVoice||Session.isLocked())return;
+        if(installing||Preferences.preview||!Preferences.lumaVoice||Session.isLocked())return;
         if(!worker.running){ready=false;available=true;worker.running=true;}
         idle.restart();
     }
     function begin():void {
-        if(held||active||!Preferences.lumaVoice||Preferences.preview||Session.isLocked()||Luma.busy||Recorder.selecting)return;
+        if(installing||held||active||!Preferences.lumaVoice||Preferences.preview||Session.isLocked()||Luma.busy||Recorder.selecting)return;
         CanvasState.show();if(!CanvasState.opened)return;
         error="";transcript="";level=0;held=true;identity=Date.now().toString(36)+"-"+(++sequence);phase="starting";
         started();prepare();

@@ -78,7 +78,12 @@ upstream; see the [Hyprland plugin guide](https://wiki.hypr.land/Plugins/Using-P
 ### Optional local voice
 
 Hold **Ctrl + backtick** to speak to Luma; release to submit. The installer offers
-an isolated Moonshine Small English CPU runtime. Manual setup:
+an isolated Moonshine Small English CPU runtime. If you skip it, open
+**Settings → Luma → Voice → Install local voice**. Setup opens a terminal with
+download progress, installs any missing dependency, and verifies the model.
+Enter your password if a system package is needed, then close setup when finished.
+No API key or manual configuration is required. The same panel shows installation
+status and offers repair/retry. Manual setup:
 
 ```sh
 sudo pacman -Syu --needed uv

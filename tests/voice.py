@@ -7,6 +7,8 @@ import json
 import sys
 import tempfile
 import threading
+import subprocess
+import os
 from enum import IntEnum
 from types import SimpleNamespace as NS
 from unittest.mock import patch
@@ -142,3 +144,27 @@ with tempfile.TemporaryDirectory() as directory:
             assert alias.resolve() == previous
             assert not alias.with_name(".small-streaming-en.tmp").exists()
 print("PASS cached model integrity and preservation of the selected model on failure")
+
+with tempfile.TemporaryDirectory() as directory:
+    result = subprocess.run([sys.executable, str(Path(voice.__file__)), "--status"],
+                            env=dict(os.environ, XDG_DATA_HOME=directory, XDG_CACHE_HOME=directory),
+                            capture_output=True, text=True, check=True)
+    assert json.loads(result.stdout)["installed"] is False
+    assert not list(Path(directory).iterdir())
+print("PASS voice installation status checks a fresh home without creating files or loading a model")
+
+from qml import run
+run('''import QtQuick
+import Quickshell
+import "modules/settings" as Settings
+import qs.services
+ShellRoot {
+    FloatingWindow {visible:false;implicitWidth:480;implicitHeight:300;Settings.VoiceSettings {anchors.fill:parent}}
+    Timer {interval:600;running:true;onTriggered:{
+        if(Voice.checking)throw new Error("Installation status did not finish");
+        Voice.install();
+        if(Voice.installing)throw new Error("Preview launched system installation");
+        console.log("VOICE SETUP CHECK PASS");Qt.quit();
+    }}
+}
+''', 'VOICE SETUP CHECK PASS')

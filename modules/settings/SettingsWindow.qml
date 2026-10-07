@@ -212,7 +212,7 @@ FloatingWindow {
                                             }
                                             Loader {
                                                 Layout.fillWidth:true;active:!!card.modelData.custom;visible:active
-                                                sourceComponent:card.modelData.custom==="controls"?controlComponent:card.modelData.custom==="shortcuts"?shortcutsComponent:card.modelData.custom==="terminal"?terminalComponent:card.modelData.custom==="profile"?profileComponent:card.modelData.custom==="searchAi"?searchAiComponent:card.modelData.custom==="knowledge"?knowledgeComponent:null
+                                                sourceComponent:card.modelData.custom==="controls"?controlComponent:card.modelData.custom==="shortcuts"?shortcutsComponent:card.modelData.custom==="terminal"?terminalComponent:card.modelData.custom==="profile"?profileComponent:card.modelData.custom==="searchAi"?searchAiComponent:card.modelData.custom==="knowledge"?knowledgeComponent:card.modelData.custom==="voice"?voiceComponent:null
                                             }
                                         }
                                     }
@@ -228,6 +228,7 @@ FloatingWindow {
         Component {id:shortcutsComponent;ShortcutSettings {}}
         Component {id:searchAiComponent;SearchAiSettings {}}
         Component {id:knowledgeComponent;KnowledgeSettings {}}
+        Component {id:voiceComponent;VoiceSettings {}}
         Component {id:controlComponent;Island.ControlEditor {}}
         Component {id:terminalComponent;TerminalArtSettings {Component.onCompleted:{if(root.artworkRequested){galleryOpen=true;root.artworkRequested=false;}}}}
         Component {id:profileComponent;RowLayout {spacing:16

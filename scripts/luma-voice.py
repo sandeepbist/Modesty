@@ -58,7 +58,7 @@ def download_model():
 def install():
     uv = shutil.which("uv") or str(Path.home() / ".local/bin/uv")
     if not Path(uv).is_file():
-        raise RuntimeError("Install uv first: sudo pacman -S uv")
+        raise RuntimeError("Install local voice from Settings → Voice, or rerun ./install.sh")
     if not (ENV / "bin/python").is_file():
         subprocess.run([uv, "venv", "--python", sys.executable, str(ENV)], check=True)
     python = str(ENV / "bin/python")
@@ -75,7 +75,7 @@ def load_model():
     os.environ["OPENBLAS_NUM_THREADS"] = "1"
     from moonshine_voice import ModelArch, Transcriber
     if not MODEL.is_dir():
-        raise RuntimeError("Voice model missing. Run python3 scripts/luma-voice.py --install")
+        raise RuntimeError("Voice model missing. Install local voice in Settings → Voice.")
     started = time.monotonic()
     speech = Transcriber(model_path=MODEL, model_arch=ModelArch.SMALL_STREAMING,
                          options={"max_tokens_per_second": 6.5,
@@ -330,10 +330,15 @@ def serve(audio=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--install", action="store_true", help="install isolated Moonshine runtime and verified Small model")
+    parser.add_argument("--status", action="store_true", help="check installation without loading the model or opening a microphone")
     parser.add_argument("--download", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--prepare", action="store_true", help="load/measure the model without opening a microphone")
     parser.add_argument("--audio", type=Path, help="verify hold/release using recorded 16 kHz audio instead of microphone")
     args = parser.parse_args()
+    if args.status:
+        print(json.dumps({"installed": (ENV / "bin/python").is_file() and MODEL.is_dir(),
+                          "model": "Moonshine Small Streaming · English · CPU"}))
+        return
     try:
         os.nice(max(0, 10 - os.getpriority(os.PRIO_PROCESS, 0)))
     except OSError:
@@ -344,7 +349,7 @@ def main():
     if Path(sys.prefix).resolve() != ENV.resolve():
         python = ENV / "bin/python"
         if not python.is_file():
-            emit("unavailable", text="Install voice first: python3 scripts/luma-voice.py --install")
+            emit("unavailable", text="Install local voice in Settings → Voice first.")
             return
         os.execv(str(python), [str(python), str(Path(__file__).resolve()), *sys.argv[1:]])
     if args.download:

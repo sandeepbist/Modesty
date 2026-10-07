@@ -148,3 +148,12 @@ with tempfile.TemporaryDirectory() as directory, patch.object(installer, "PLUGIN
     installer.save_plugin_queue(["scrolloverview"])
     assert json.loads(installer.PLUGIN_QUEUE.read_text()) == ["scrolloverview"]
 print("PASS interactive wallpaper/plugin choices, preserved wallpaper, failed-build parsing, plugin install/reuse and first-login queue")
+
+with patch.object(installer.shutil, "which", return_value=None), patch.object(installer, "run") as run:
+    installer.install_voice()
+    assert run.call_args_list[0].args == ("sudo", "pacman", "-Syu", "--needed", "uv")
+    assert run.call_args_list[1].args == ("python3", str(ROOT / "scripts/luma-voice.py"), "--install")
+with patch.object(installer.shutil, "which", return_value="/usr/bin/uv"), patch.object(installer, "run") as run:
+    installer.install_voice()
+    run.assert_called_once_with("python3", str(ROOT / "scripts/luma-voice.py"), "--install")
+print("PASS shared voice setup installs missing dependency and reuses existing uv without administrator commands")
