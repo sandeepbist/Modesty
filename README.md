@@ -35,6 +35,14 @@ Existing files are backed up before replacement. Package installation uses a ful
 Arch update. AUR apps and local voice are separate choices. Review planned file
 changes without writing anything with `./install.sh --dry-run`.
 
+The interactive installer explains proposed package, service and repair changes
+before asking for approval. These approvals default to **No**. It lists files to
+create or replace and the backup location before the final config approval.
+Declining or cancelling stops that step; earlier approved package, service and
+model changes are retained. File rollback only restores configs.
+`--non-interactive` explicitly approves all saved configs, but refuses missing
+dependencies, disabled services and Qt repairs instead of fixing them silently.
+
 After installation, **log out and select Hyprland** in your login manager, or run
 `start-hyprland` from a TTY. Keep the checkout at the same path: startup and
 shortcuts use it. Home and checkout paths must not contain whitespace. This
@@ -64,6 +72,8 @@ python3 install.py --finish-plugins
 
 Run `hyprpm update` after compositor updates. Plugin compatibility depends on
 upstream. Both plugins are optional.
+The setup terminal lists selected repositories and asks before building,
+enabling or reloading plugins. Declining keeps the selection pending.
 
 ### Optional local voice
 
@@ -225,7 +235,8 @@ accounts, keys, conversations, model caches and the checkout remain in place.
 Backups remain under `~/.local/state/modesty-install-backups/<timestamp>/`, or
 your custom state directory. Keep them until you have checked the restored files.
 An interrupted file transaction blocks further changes. Recover it with
-`./install.sh --recover-install`; recovery backs up surviving files first.
+`./install.sh --recover-install`; recovery previews affected files, asks for
+approval and backs up surviving files first. Add `--dry-run` to preview only.
 
 Older installations have no receipt. Review `./install.sh --adopt-existing --dry-run`,
 then use `./install.sh --adopt-existing` to record exact template
