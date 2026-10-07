@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Interactive, backup-first Arch installer for the saved Modesty desktop."""
 import argparse
-import datetime as dt
 import importlib.util
 import json
 import os
@@ -14,6 +13,9 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT / 'scripts'))
+import compatibility
+import installation
 HOME = Path.home()
 SETUP = ROOT / "setup"
 STATE = Path(os.environ.get("XDG_STATE_HOME") or HOME / ".local/state")
@@ -76,8 +78,9 @@ def installed_packages():
 
 
 def missing_core(installed):
-    alternatives = {"hyprland": "hyprland-git", "quickshell": "quickshell-git", "hyprpm": "hyprpm-git"}
-    return [p for p in CORE if p not in installed and alternatives.get(p) not in installed]
+    alternatives = {"hyprland": ("hyprland-git",), "quickshell": ("quickshell-git",),
+                    "hyprpm": ("hyprpm-git",), "firefox": ("zen-browser-bin", "zen-browser")}
+    return [p for p in CORE if p not in installed and not any(name in installed for name in alternatives.get(p, ()))]
 
 
 def plugin_status():
@@ -187,54 +190,18 @@ def rendered(source):
     return value.replace("@MODESTY_ROOT@", str(ROOT)).replace("@HOME@", str(HOME)).encode()
 
 
-def backup_file(source, destination):
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    if source.is_symlink():
-        destination.symlink_to(os.readlink(source))
-    else:
-        shutil.copy2(source, destination)
-
-
-def install_files(groups, dry_run):
+def planned_files(groups):
     files = [(source, destination(source, group)) for group in groups
              for source in files_for(group) if source.is_file()]
     if "wallpapers" not in groups:
         # Keep the user's current wallpaper selection and its matching palettes.
         files = [(source, target) for source, target in files if source.name not in
                  {"wallpaper.json", "wallpaper-data.json", "wallpaper-palette.json"}]
-    for _, target in files:
-        if target.is_dir() and not target.is_symlink():
-            raise RuntimeError(f"Destination is a directory: {target}; no dotfiles were changed.")
-    stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-    backup = STATE / "modesty-install-backups" / stamp
-    writes = 0
-    backed_up = 0
-    for source, target in files:
-        content = rendered(source)
-        if target.is_file() and not target.is_symlink() and target.read_bytes() == content:
-            continue
-        if dry_run:
-            print("Would install", target)
-            writes += 1
-            continue
-        if target.exists() or target.is_symlink():
-            relative = target.relative_to(HOME) if target.is_relative_to(HOME) else Path("state") / target.relative_to(STATE)
-            backup_file(target, backup / relative)
-            backed_up += 1
-        target.parent.mkdir(parents=True, exist_ok=True)
-        temporary = None
-        try:
-            with tempfile.NamedTemporaryFile(dir=target.parent, prefix=".modesty-", delete=False) as handle:
-                temporary = Path(handle.name)
-                handle.write(content)
-            temporary.chmod(source.stat().st_mode & 0o777)
-            os.replace(temporary, target)
-        finally:
-            if temporary is not None:
-                temporary.unlink(missing_ok=True)
-        writes += 1
-    print(f"{'Planned' if dry_run else 'Installed'} {writes} files; backed up {backed_up} existing files" + (f" to {backup}" if backed_up else "") + ".")
-    return writes
+    return files
+
+
+def install_files(groups, dry_run):
+    return installation.install(planned_files(groups), rendered, ROOT, HOME, STATE, dry_run)
 
 
 def main():
@@ -243,15 +210,52 @@ def main():
     parser.add_argument("--non-interactive", action="store_true", help="install all saved files only when dependencies are ready")
     parser.add_argument("--finish-plugins", action="store_true", help="build the plugins selected during installation after Hyprland starts")
     parser.add_argument("--install-voice", action="store_true", help="install only optional local voice and its dependencies")
+    parser.add_argument("--uninstall", action="store_true", help="back up current installed files and restore recorded originals")
+    parser.add_argument("--adopt-existing", action="store_true", help="record exact template matches from an older installation; originals remain unknown")
+    parser.add_argument("--recover-install", action="store_true", help="back up surviving files and restore an interrupted file transaction")
     args = parser.parse_args()
     if os.geteuid() == 0:
         parser.error("Run as your desktop user, not root; the installer uses sudo only for packages.")
-    if not shutil.which("pacman"):
+    maintenance = args.uninstall or args.adopt_existing or args.recover_install
+    if not maintenance and not shutil.which("pacman"):
         parser.error("This installer needs Arch Linux and pacman.")
     if any(c.isspace() for c in str(ROOT) + str(HOME)):
         parser.error("Clone path and home directory must not contain whitespace because Hyprland keybind commands use them.")
     if CONFIG != HOME / ".config":
         parser.error("This saved Hyprland config requires the default ~/.config directory; unset XDG_CONFIG_HOME before installing.")
+    if maintenance:
+        if sum((args.uninstall, args.adopt_existing, args.recover_install)) != 1 or args.finish_plugins or args.install_voice:
+            parser.error('Choose only one uninstall, adoption or recovery operation.')
+        if args.recover_install and args.dry_run:
+            parser.error('--recover-install does not support --dry-run')
+        if args.adopt_existing:
+            files = planned_files(["desktop", "shell", "apps", "spotify", "wallpapers", "fonts"])
+            installation.adopt(files, rendered, ROOT, HOME, STATE, True)
+            if not args.dry_run and (args.non_interactive or ask('Adopt exact matches? Originals are unknown; uninstall will back up these files before removal.', False)):
+                installation.adopt(files, rendered, ROOT, HOME, STATE)
+        elif args.uninstall:
+            installation.uninstall(ROOT, HOME, STATE, True)
+            if not args.dry_run and (args.non_interactive or ask('Back up installed files, restore originals and uninstall?', False)):
+                # Refuse before stopping anything if a required original is unavailable.
+                files = installation.uninstall_plan(ROOT, HOME, STATE)
+                installation.require_space(files, STATE, removing=True)
+                spec = importlib.util.spec_from_file_location('uninstall_session', ROOT/'scripts/session-control.py')
+                control = importlib.util.module_from_spec(spec); spec.loader.exec_module(control)
+                running = control.health()
+                if running:
+                    control.assert_unlocked()
+                    control.stop_modesty()
+                try:
+                    installation.uninstall(ROOT, HOME, STATE)
+                except Exception:
+                    if running and not (STATE/'modesty-install/transaction.json').exists():
+                        control.start()
+                    raise
+        else:
+            if args.non_interactive or ask('Back up surviving files and recover the interrupted transaction?', False):
+                with installation.locked(STATE):
+                    installation.recover(ROOT, HOME, STATE)
+        return
     if args.install_voice:
         if args.dry_run or args.non_interactive or args.finish_plugins:
             parser.error("--install-voice requires interactive setup")
@@ -337,6 +341,11 @@ def main():
             print("No dotfiles changed.")
             return
     plugins = choose_plugins() if not args.non_interactive and "desktop" in groups else []
+    if any(group in groups for group in ('desktop', 'shell')):
+        compatibility.require(ROOT, live=False)
+        spec = importlib.util.spec_from_file_location('install_session', ROOT/'scripts/session-control.py')
+        control = importlib.util.module_from_spec(spec); spec.loader.exec_module(control)
+        control.validate_shell()
     install_files(groups, False)
     if not args.non_interactive and "desktop" in groups and not plugins:
         PLUGIN_QUEUE.unlink(missing_ok=True)

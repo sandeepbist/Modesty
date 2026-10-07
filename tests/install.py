@@ -14,6 +14,7 @@ spec = importlib.util.spec_from_file_location("installer", ROOT / "install.py")
 installer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(installer)
 GROUPS = ["desktop", "shell", "apps", "spotify", "wallpapers", "fonts"]
+assert not installer.missing_core(set(installer.CORE)-{'hyprland','quickshell','hyprpm','firefox'}|{'hyprland-git','quickshell-git','hyprpm-git','zen-browser-bin'})
 
 with tempfile.TemporaryDirectory(prefix="modesty-install-check-") as directory:
     home = Path(directory) / "home"
