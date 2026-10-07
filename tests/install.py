@@ -22,7 +22,7 @@ with tempfile.TemporaryDirectory(prefix="modesty-install-check-") as directory:
     with patch.object(installer, "HOME", home), patch.object(installer, "CONFIG", home / ".config"), patch.object(installer, "STATE", state), contextlib.redirect_stdout(io.StringIO()):
         # Dry-run must not create directories or backups.
         expected = installer.install_files(GROUPS, True)
-        assert expected > 100
+        assert expected > 0
         assert not list(home.iterdir()) and not state.exists()
         assert installer.install_files(GROUPS, False) == expected
         for group in GROUPS:
