@@ -26,13 +26,16 @@ details in a public issue.
    This uses a disposable home and source copy; it does not install packages.
 4. Check UI changes in a native Hyprland session, including reduced motion. Include
    a screenshot or short clip and say what you tested.
-5. Open a PR against `main`. Describe the trigger, resulting behavior and checks.
+5. Add user-visible changes to `[Unreleased]` in `CHANGELOG.md`. Do not bump
+   `VERSION` or create a release tag in an ordinary feature PR.
+6. Open a PR against `main`. Describe the trigger, resulting behavior and checks.
 
 Discuss larger features in an issue before starting. Keep commits focused and
 avoid unrelated formatting. Do not include generated logs, caches, model files,
 personal config exports, credentials or research notes. CI runs on hosted runners
-with read-only repository permissions. GitHub may ask the maintainer to approve
-workflow runs from new contributors.
+with read-only repository permissions; CodeQL gets permission to upload security
+results. Review bots advise; they do not merge contributions. GitHub may ask the
+maintainer to approve workflow runs from new contributors.
 
 Settings updates select `main` revisions with passing push checks. Dependency
 changes must update `runtime-requirements.json`, the installer and relevant tests.

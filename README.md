@@ -147,6 +147,10 @@ python3 install.py --install-voice
 
 ## Update
 
+[Versioned downloads and release notes](https://github.com/sandeepbist/Modesty/releases)
+· [Changelog](CHANGELOG.md). Release archives are installation snapshots; clone
+the repository for Settings updates. Published versions appear on GitHub Releases.
+
 **Modesty has a built-in updater in Settings → System → Updates.**
 
 1. Choose **Check for updates**.
@@ -353,6 +357,7 @@ Bug reports, small fixes, accessibility improvements and feature proposals are
 welcome. Read [the contribution guide](.github/CONTRIBUTING.md), fork the repo and
 open a pull request. Discuss larger changes in an issue first. **The maintainer
 reviews and merges contributions.** Opening a PR does not grant write access.
+Maintainers: see [checks, review and releases](.github/MAINTAINING.md).
 
 <details>
 <summary>Checks to run and source layout</summary>
