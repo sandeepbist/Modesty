@@ -1,20 +1,20 @@
 # Modesty
 
 A Quickshell desktop for Arch Linux and Hyprland. Three small pills expand into
-media controls, a calendar and a control center. Modesty also includes a launcher,
-Luma search and assistant, notifications, a lock screen and a window companion.
+media controls, a calendar and a control center, with a launcher, Luma search and
+assistant, notifications, a lock screen and a window companion.
 
 ![Modesty control center on the maintainer's desktop](assets/showcase/controls.png)
 
-**[Install](#install) · [Screenshots and video](#screenshots-and-video) ·
-[Contribute](.github/CONTRIBUTING.md) ·
-[Report a bug](https://github.com/sandeepbist/Modesty/issues/new/choose)**
+**[Install](#install) · [Use](#use) · [Update](#update) ·
+[Screenshots and video](#screenshots-and-video) · [Uninstall](#uninstall-and-restore) ·
+[Contribute](#contribute) · [Get help](https://github.com/sandeepbist/Modesty/issues/new/choose)**
 
 ## Install
 
-Start with **x86_64 Arch Linux**, working graphics drivers, a normal user account,
-internet access and sudo. The installer sets up desktop configs and dependencies.
-It does not install Arch, graphics drivers, a bootloader or a login manager.
+You need **x86_64 Arch Linux**, working graphics drivers, a normal user account,
+internet access and sudo. Modesty installs desktop configs and dependencies;
+it does not install Arch, graphics drivers, a bootloader or a login manager.
 
 ```sh
 sudo pacman -Syu --needed git
@@ -23,77 +23,91 @@ cd ~/App/Modesty
 ./install.sh
 ```
 
-Run as your desktop user, not root. The installer walks you through:
+Run as your desktop user, **not root**. The interactive installer explains proposed
+changes and asks for approval. Change approvals default to **No**; files and backup
+locations are shown before config replacement.
 
-1. Required Arch packages and NetworkManager/Bluetooth services.
-2. Which configs to install: desktop, shell, apps, fonts and Spotify theme.
-3. Whether to install the supplied wallpapers or keep your existing selection.
-4. Optional cursor effects and the Super + Tab window overview.
-5. Optional local speech recognition for Luma.
-
-Existing files are backed up before replacement. Package installation uses a full
-Arch update. AUR apps and local voice are separate choices. Review planned file
-changes without writing anything with `./install.sh --dry-run`.
-
-The interactive installer explains proposed package, service and repair changes
-before asking for approval. These approvals default to **No**. It lists files to
-create or replace and the backup location before the final config approval.
-Declining or cancelling stops that step; earlier approved package, service and
-model changes are retained. File rollback only restores configs.
-`--non-interactive` explicitly approves all saved configs, but refuses missing
-dependencies, disabled services and Qt repairs instead of fixing them silently.
+| Installer choice | What it sets up |
+| --- | --- |
+| Required dependencies | Arch packages and NetworkManager/Bluetooth services |
+| Configs | Desktop, shell, apps, bundled fonts and Spotify theme |
+| Wallpapers | Supplied collection, or keep your existing wallpaper and palette |
+| Optional plugins | Dynamic cursor effects and Super + Tab window overview |
+| Optional local voice | Moonshine Small English speech recognition for Luma |
+| Optional extras | AUR apps, Spotify tools and extra fonts |
 
 After installation, **log out and select Hyprland** in your login manager, or run
 `start-hyprland` from a TTY. Keep the checkout at the same path: startup and
-shortcuts use it. Home and checkout paths must not contain whitespace. This
-profile uses `~/.config`; unset `XDG_CONFIG_HOME` before installing.
-Destination parent directories must be real directories, not symlinks. The
-installer refuses redirected paths before replacing files.
+shortcuts use it.
 
-The profile uses Hyprland's Lua configuration. Monitor arrangement, scale,
-brightness permissions and suspend/hibernate support depend on your hardware.
-Set those for your machine. Firefox, Pavucontrol and Adwaita cursors are defaults;
-installed Zen and Pwvucontrol take priority.
+<details>
+<summary>Install previews, backups and path requirements</summary>
 
-### Optional plugins
+- Use `--dry-run` to preview changes without writing anything: `./install.sh --dry-run`.
+- Existing files are backed up before replacement. Package installation uses a
+  full Arch update; AUR apps and local voice are separate choices.
+- Declining or cancelling stops that step. Earlier approved package, service and
+  model changes are retained; file rollback only restores configs.
+- `--non-interactive` explicitly approves all saved configs, but refuses missing
+  dependencies, disabled services and Qt repairs instead of fixing them silently.
+- Home and checkout paths must not contain whitespace. This profile uses
+  `~/.config`; unset `XDG_CONFIG_HOME` before installing.
+- Destination parent directories must be real directories, not symlinks. The
+  installer refuses redirected paths before replacing files.
+- The profile uses Hyprland's Lua configuration. Set monitor arrangement, scale,
+  brightness permissions and suspend/hibernate support for your hardware.
+- Firefox, Pavucontrol and Adwaita cursors are defaults; installed Zen and
+  Pwvucontrol take priority.
+- Spotify needs a separate installation and first launch before
+  `spicetify backup apply`.
 
-The installer asks separately about
-[dynamic cursor effects](https://github.com/VirtCode/hypr-dynamic-cursors) and
-[window overview](https://github.com/yayuuu/hyprland-scroll-overview).
-It builds and enables selected plugins through `hyprpm`, with Modesty's settings.
+</details>
 
-On a fresh TTY install, plugin setup finishes after your first Hyprland login.
-A terminal opens automatically; enter your sudo password if requested. If an
-upstream build fails, the desktop stays usable. Retry from the checkout:
+<details>
+<summary>Optional cursor effects and window overview</summary>
+
+- The installer asks separately about
+  [dynamic cursor effects](https://github.com/VirtCode/hypr-dynamic-cursors) and
+  [window overview](https://github.com/yayuuu/hyprland-scroll-overview). It builds
+  and enables selected plugins through `hyprpm`, with Modesty's settings.
+- On a fresh TTY install, setup finishes after your first Hyprland login. A
+  terminal opens automatically; enter your sudo password if requested.
+- The terminal lists selected repositories and asks before building, enabling or
+  reloading plugins. Declining keeps the selection pending.
+- Plugin compatibility depends on upstream. Both plugins are optional; a failed
+  upstream build leaves the desktop usable. Run `hyprpm update` after compositor
+  updates.
+
+Retry setup from the checkout after checking Hyprland compatibility:
 
 ```sh
 python3 install.py --finish-plugins
 ```
 
-Run `hyprpm update` after compositor updates. Plugin compatibility depends on
-upstream. Both plugins are optional.
-The setup terminal lists selected repositories and asks before building,
-enabling or reloading plugins. Declining keeps the selection pending.
+</details>
 
-### Optional local voice
+<details>
+<summary>Optional local voice: installation and privacy</summary>
 
 Choose voice during installation, or open **Settings → Luma → Voice → Install
-local voice** later. Setup downloads and verifies Moonshine Small English and
-installs an isolated CPU runtime. The panel also offers repair/retry. Terminal
-setup uses the same installer:
+local voice**. The panel also offers repair/retry. Terminal setup uses the same
+installer:
 
 ```sh
 python3 install.py --install-voice
 ```
 
-Hold **Ctrl + backtick** to speak to Luma; release to submit. Transcription runs
-locally and needs no API key. Voice loads on demand; Settings can keep it ready.
-Models and the Python environment stay outside the checkout.
+- Setup downloads and verifies Moonshine Small English and installs an isolated
+  CPU runtime. Models and the Python environment stay outside the checkout.
+- Hold **Ctrl + backtick** to speak to Luma; release to submit. Transcription runs
+  locally and needs no API key.
+- Voice loads on demand; Settings can keep it ready.
+- **AI answers use your configured cloud provider.** Submitted speech becomes
+  text sent to that provider, together with enabled context and tool results.
+  Local speech recognition does not make the assistant itself local.
+- Application launching, calculations and local search work without an AI key.
 
-**Luma's AI answers use your configured cloud provider.** Submitted speech becomes
-text sent to that provider, together with enabled context and tool results.
-Local speech recognition does not make the assistant itself local. Application
-launching, calculations and local search work without an AI key.
+</details>
 
 ## Use
 
@@ -108,22 +122,126 @@ launching, calculations and local search work without an AI key.
 | Super + L | Lock screen |
 | Escape / outside click | Dismiss the current panel |
 
-Volume and brightness changes temporarily widen the clock pill. Settings controls
-spacing, motion, colors, control-center layout, notifications and the companion.
-Reduced motion is supported. Microphone/camera activity appears while capture is
-active; the privacy panel provides microphone mute controls.
+| Feature | What to expect |
+| --- | --- |
+| Volume and brightness | Changes temporarily widen the clock pill |
+| Settings | Spacing, motion, colors, control-center layout, notifications and companion; reduced motion supported |
+| Privacy indicators | Microphone/camera activity while capture is active; microphone mute controls in the privacy panel |
+| Luma | Applications, files, file contents, clipboard entries, calculations, web search and desktop actions; AI answers use your configured cloud provider |
+| Agent activity | T3 Code task status: working, waiting and completion feedback |
 
-Luma searches applications, files, file contents and clipboard entries, handles
-calculations and web search, and can perform desktop actions. Configure an
-optional provider key in Settings. Desktop access defaults to **Review**, and
-knowledge folders start empty. Every generic command asks for confirmation in
-Review mode. Full access allows broader automatic actions; enable it deliberately.
-See [security and privacy](.github/SECURITY.md) before enabling AI context/tools.
+<details>
+<summary>Luma permissions and supported agent integrations</summary>
 
-**Agent activity tracking currently works with T3 Code only.** Modesty reads task
-status metadata to show working, waiting and completion feedback; it does not
-read T3 prompts or credentials. Standalone Codex, Claude Code and OpenCode CLI
-integration is planned and is not implemented yet.
+- Configure an optional provider key in Settings. Desktop access defaults to
+  **Review**, and knowledge folders start empty. Every generic command asks for
+  confirmation in Review mode.
+- Full access allows broader automatic actions; enable it deliberately. Read
+  [security and privacy](.github/SECURITY.md) before enabling AI context/tools.
+- **Agent activity tracking currently works with T3 Code only.** Modesty reads
+  task status metadata, not T3 prompts or credentials.
+- Standalone Codex, Claude Code and OpenCode CLI integration is planned and is
+  not implemented yet.
+
+</details>
+
+## Update
+
+**Modesty has a built-in updater in Settings → System → Updates.**
+
+1. Choose **Check for updates**.
+2. Choose **Download** to validate the new revision.
+3. Choose **Install and reload** to apply it and restart the shell.
+
+Checks and downloads run only when requested. The updater uses the latest `main`
+revision with passing GitHub checks, validates it in a separate checkout, then
+switches and reloads. If startup fails, it attempts to restore and restart the
+previous revision. **Roll back** restores the revision saved before the last update.
+
+**Don't see Updates in Settings?** Your installation may predate the updater.
+Review upstream changes and local edits, then run from your Modesty checkout on
+`main`:
+
+```sh
+git pull --ff-only
+python3 scripts/session-control.py restart
+```
+
+If Git reports local changes or diverged history, resolve those first; keep your
+custom work. If the release needs new configs or dependencies, review and rerun
+`./install.sh` before restarting. Future updates can then use Settings.
+
+<details>
+<summary>Update requirements and what stays unchanged</summary>
+
+| Requirement | Details |
+| --- | --- |
+| Checkout | Clean `main` branch with the official origin |
+| Local changes | Edits, untracked files, diverged history and forks need manual updates; conflicting ignored files also block installation |
+| Session | Finish voice input, assistant work and recording first; reload is refused while the desktop is locked |
+| Free space | At least 256 MiB on both checkout and state filesystems; larger downloads can require more |
+
+- Updates preserve installed configs, packages, plugins, keys and model files.
+  They do not apply new `setup/` defaults or install dependencies.
+- For new configs or packages, review changes and rerun the installer separately.
+  It skips identical files and backs up replacements, including customized configs.
+- Update Arch separately with a full system upgrade. Rebuild your installed AUR
+  Quickshell variant when Qt changes; run `hyprpm update` after compositor updates.
+- Do not remove a pacman lock to bypass an active package transaction.
+
+For a manual update that also applies reviewed installation defaults:
+
+```sh
+git pull --ff-only
+./install.sh
+python3 scripts/session-control.py restart
+```
+
+</details>
+
+<details>
+<summary>Supported versions and optional Qt repair</summary>
+
+| Runtime | Supported versions |
+| --- | --- |
+| Hyprland | 0.56.x |
+| Quickshell | 0.3.1 or newer within 0.3.x |
+| Package variants | Stable and `-git`, checked by actual runtime version; variants are not changed |
+
+- Requirements live in [`runtime-requirements.json`](runtime-requirements.json).
+  Missing dependencies, mixed Qt major/minor versions, Quickshell Qt warnings and
+  a compositor that differs from the installed binary block installation.
+- New minor releases need a reviewed compatibility range. These checks do not
+  guarantee every driver or plugin works.
+- If Quickshell was built against a different Qt version, the interactive
+  installer offers an optional rebuild before applying configs. It preserves
+  `quickshell` or `quickshell-git`, builds as your normal user and uses sudo only
+  for package dependencies and installation.
+- Compilation may take several minutes and needs at least 3 GiB free in the
+  temporary filesystem. It defaults to two jobs unless you set
+  `CMAKE_BUILD_PARALLEL_LEVEL`.
+- Stable 0.3.1-1 needs a checksummed
+  [upstream Qt 6.12 fix](https://github.com/quickshell-mirror/quickshell/commit/5d5d49873fe8cf1f99ddfd5006ceb2057c5c9b13),
+  which the repair backports without switching to the development package.
+- Declining repair or using `--non-interactive` stops before replacing configs.
+  OTA never performs this rebuild; rerun the interactive installer to repair Qt.
+
+</details>
+
+<details>
+<summary>Interrupted update or unavailable Settings panel</summary>
+
+Run from the checkout:
+
+```sh
+python3 scripts/updates.py status
+python3 scripts/updates.py rollback
+```
+
+Rollback requires the saved revision, a clean checkout and a compatible runtime.
+It does not undo a separate system upgrade or installer run.
+
+</details>
 
 ## Screenshots and video
 
@@ -144,78 +262,18 @@ collection. Colors, panel layout and apps can differ on your machine.
 [Watch the full-resolution clip](assets/showcase/island.mp4) ·
 [Watch volume and brightness transitions](assets/showcase/sliders.mp4)
 
-## Customize, update and restore
+## Customize
 
-User preferences live in `$XDG_STATE_HOME/modesty`, normally
-`~/.local/state/modesty`. Change apps and shortcuts in
-`~/.config/modesty/desktop/hypr-vars.lua`. Public installation templates live in
-`setup/`; the installer does not copy the maintainer's live home directory.
+| Location | Purpose |
+| --- | --- |
+| `$XDG_STATE_HOME/modesty` (normally `~/.local/state/modesty`) | User preferences |
+| `~/.config/modesty/desktop/hypr-vars.lua` | Apps and shortcuts |
+| `setup/` | Public installation templates; the installer does not copy the maintainer's live home directory |
+
 Keys, saved network credentials, Bluetooth pairings, conversations, personal
 notes and model caches are not part of the install.
 
-### Update from Settings
-
-Open **Settings → System → Updates**. Choose **Check for updates**, **Download**,
-then **Install and reload**. Checks and downloads run only when requested. The
-updater selects the latest `main` revision only after its GitHub checks pass,
-loads the download in a separate checkout, then switches and reloads the shell.
-If startup fails, it attempts to restore the previous revision and restart it.
-**Roll back** restores the revision saved before the last update.
-
-Automatic updates require a clean checkout on `main` with the official origin.
-Local edits, untracked files, diverged history and forks need manual updates;
-ignored files that conflict with incoming files also block installation. Finish
-voice input, assistant work and recording before reloading. Reload is refused
-while the desktop is locked. Keep at least 256 MiB free on both the checkout and
-state filesystems; larger downloads can require more.
-
-Updates preserve installed configs, packages, plugins, keys and model files.
-They do not apply new `setup/` defaults or install dependencies. If a release needs
-new configs or packages, review those changes and rerun the installer separately.
-It skips identical files and backs up replacements, including customized configs.
-
-Compatibility checks accept stable and `-git` packages by their actual runtime
-versions, without changing package variants. This revision supports **Hyprland
-0.56.x** and **Quickshell 0.3.1 or newer within 0.3.x**. Requirements live in
-[`runtime-requirements.json`](runtime-requirements.json). Missing dependencies,
-mixed Qt major/minor versions, Quickshell Qt warnings and a compositor that differs
-from the installed binary block installation. New minor releases need a reviewed
-compatibility range; these checks do not guarantee every driver or plugin works.
-
-If Quickshell reports that it was built against a different Qt version, the
-interactive installer offers an optional rebuild before applying configs.
-It preserves `quickshell` or `quickshell-git`, builds as your normal user and uses
-sudo only for package dependencies and installation. Compilation may take several
-minutes and needs at least 3 GiB free in the temporary filesystem. Compilation
-defaults to two jobs unless you set `CMAKE_BUILD_PARALLEL_LEVEL`. Stable 0.3.1-1 needs a checksummed
-[upstream Qt 6.12 fix](https://github.com/quickshell-mirror/quickshell/commit/5d5d49873fe8cf1f99ddfd5006ceb2057c5c9b13),
-which this repair backports without switching to the development package.
-Declining repair or using `--non-interactive` stops before replacing configs.
-OTA never performs this rebuild; rerun the interactive installer to repair Qt.
-
-Update Arch separately with a full system upgrade. Rebuild your installed AUR
-Quickshell variant when Qt changes, and run `hyprpm update` after compositor
-updates. Do not remove a pacman lock to bypass an active package transaction.
-
-For a manual update, review upstream changes and your custom configs first:
-
-```sh
-git pull --ff-only
-./install.sh
-python3 scripts/session-control.py restart
-```
-
-If an update is interrupted and the panel is unavailable, run from the checkout:
-
-```sh
-python3 scripts/updates.py status
-python3 scripts/updates.py rollback
-```
-
-Rollback requires the saved revision, a clean checkout and a compatible runtime.
-It does not undo a separate system upgrade or installer run.
-
-### Uninstall and restore
+## Uninstall and restore
 
 Preview removal, then confirm it interactively:
 
@@ -224,54 +282,70 @@ Preview removal, then confirm it interactively:
 ./install.sh --uninstall
 ```
 
-The installer records files it replaces in
-`~/.local/state/modesty-install/receipt.json`. Uninstall backs up their current
-contents, including later edits, restores the first recorded originals and removes
-files that it originally created. It stops the running Modesty shell after safety
-checks. Finish assistant work, voice input and recording first. Log out before
-using the restored desktop. Unrelated files, packages,
-accounts, keys, conversations, model caches and the checkout remain in place.
+Uninstall backs up current installed files, including later edits, restores the
+first recorded originals and removes files Modesty originally created. It stops
+the running shell after safety checks. Finish assistant work, voice input and
+recording first; **log out before using the restored desktop**.
 
-Backups remain under `~/.local/state/modesty-install-backups/<timestamp>/`, or
-your custom state directory. Keep them until you have checked the restored files.
-An interrupted file transaction blocks further changes. Recover it with
-`./install.sh --recover-install`; recovery previews affected files, asks for
-approval and backs up surviving files first. Add `--dry-run` to preview only.
+Unrelated files, packages, accounts, keys, conversations, model caches and the
+checkout remain in place.
 
-Older installations have no receipt. Review `./install.sh --adopt-existing --dry-run`,
-then use `./install.sh --adopt-existing` to record exact template
-matches. Customized files are excluded. Their original contents are unknown,
-so uninstall backs up and removes adopted files; restore pre-Modesty configs
-from older backups manually. Adoption cannot reconstruct missing originals.
+<details>
+<summary>Receipts, backups, interrupted installs and older setups</summary>
 
-Declining wallpapers preserves your existing wallpaper and palette. Spotify
-needs a separate installation and first launch before `spicetify backup apply`.
+| Record | Location |
+| --- | --- |
+| Installation receipt | `~/.local/state/modesty-install/receipt.json` |
+| Backups | `~/.local/state/modesty-install-backups/<timestamp>/`, or your custom state directory |
 
-For an existing Caelestia Lua setup, `./launch.sh --switch` performs a reversible
-shell handoff; `./launch.sh --restore` restores that handoff when its backup exists.
+The installer records files it replaces in the receipt. Keep backups until you
+have checked the restored files.
+
+**Interrupted file transaction:** further changes are blocked. Preview recovery
+with `./install.sh --recover-install --dry-run`, then run
+`./install.sh --recover-install`. Recovery previews affected files, asks for
+approval and backs up surviving files first.
+
+**Older installation with no receipt:** review
+`./install.sh --adopt-existing --dry-run`, then use `./install.sh --adopt-existing`
+to record exact template matches. Customized files are excluded. Original contents
+are unknown, so uninstall backs up and removes adopted files; restore pre-Modesty
+configs from older backups manually. Adoption cannot reconstruct missing originals.
+
+**Existing Caelestia Lua setup:** `./launch.sh --switch` performs a reversible
+shell handoff; `./launch.sh --restore` restores it when its backup exists.
 A fresh installation does not require Caelestia.
+
+</details>
 
 ## Troubleshooting
 
-- **The shell did not start:** from the checkout, run
-  `quickshell ipc -p "$PWD/shell.qml" call island health`. If no instance exists,
-  run `python3 scripts/session-control.py restart` and keep its error output.
-- **A plugin failed to build:** retry `python3 install.py --finish-plugins` after
-  checking compatibility with your Hyprland version.
-- **Voice is missing:** use Install/Repair under Settings → Luma → Voice.
-- **An external monitor has no brightness slider:** DDC brightness is not
-  implemented. The built-in slider uses supported backlight devices.
+**Found a bug, stuck during setup, or unable to fix an issue?**
+[Open an issue ticket](https://github.com/sandeepbist/Modesty/issues/new/choose).
+Include what you tried, steps to reproduce, the command, error and package
+versions. Remove keys and personal data from logs or screenshots before sharing.
 
-Offline checks have passed on the maintainer's Arch desktop and in an Arch
-container. Fresh-container testing also covered package provisioning, the stable
-Quickshell Qt 6.12 repair, interactive installation as a normal user and uninstall.
-Disposable-home checks covered repeat installs, original config restoration,
-edited-file backups and preservation of personal files, keys and model caches.
-UI, audio and reload have been checked on the live desktop. Physical GPU drivers,
-login behavior and optional plugin builds remain outside container coverage.
-If installation fails,
-[open an issue](https://github.com/sandeepbist/Modesty/issues/new/choose) with the
-command, error and package versions. Remove keys and personal data from logs.
+| Problem | Try this |
+| --- | --- |
+| Shell did not start | From the checkout, run `quickshell ipc -p "$PWD/shell.qml" call island health`. If no instance exists, run `python3 scripts/session-control.py restart` and keep its error output |
+| Plugin failed to build | Check Hyprland compatibility, then retry `python3 install.py --finish-plugins` |
+| Voice is missing | Use Install/Repair under Settings → Luma → Voice |
+| Updates page is missing | [Pull the latest revision and restart](#update) |
+| External monitor has no brightness slider | DDC brightness is not implemented; the slider uses supported backlight devices |
+
+<details>
+<summary>What has been tested</summary>
+
+- Offline checks passed on the maintainer's Arch desktop and in an Arch container.
+- Fresh-container tests covered package provisioning, stable Quickshell Qt 6.12
+  repair, interactive installation as a normal user and uninstall.
+- Disposable-home checks covered repeat installs, original config restoration,
+  edited-file backups and preservation of personal files, keys and model caches.
+- UI, audio and reload were checked on the live desktop.
+- Physical GPU drivers, login behavior and optional plugin builds remain outside
+  container coverage.
+
+</details>
 
 ## Contribute
 
@@ -280,33 +354,43 @@ welcome. Read [the contribution guide](.github/CONTRIBUTING.md), fork the repo a
 open a pull request. Discuss larger changes in an issue first. **The maintainer
 reviews and merges contributions.** Opening a PR does not grant write access.
 
+<details>
+<summary>Checks to run and source layout</summary>
+
 Run offline checks before submitting code:
 
 ```sh
 python3 tests/check.py
 ```
 
-Checks need desktop dependencies and Node.js. They cover real Git update and
-rollback transactions, installer backups and recovery, template isolation,
-backend behavior, isolated D-Bus services, security boundaries and QML loading.
-Live input/hardware checks require explicit `--live` and are not part of this
-command. QML loading checks do not replace visual review.
+- Checks need desktop dependencies and Node.js. They cover real Git update and
+  rollback transactions, installer backups and recovery, template isolation,
+  backend behavior, isolated D-Bus services, security boundaries and QML loading.
+- Live input/hardware checks require explicit `--live` and are not part of this
+  command. QML loading checks do not replace visual review.
 
-With the required packages and services already installed, run the real CLI in
-a disposable home and source copy:
+With required packages and services already installed, run the real CLI as a
+normal user in a disposable home and source copy:
 
 ```sh
 python3 tests/installer-cli.py --isolated-home
 ```
 
-Run as a normal user. This check does not install packages, start a desktop or
-change your real home. It checks dry-run, install, repeat install and uninstall,
-including preservation of original files, edits, keys and model data.
+This check does not install packages, start a desktop or change your real home.
+It checks dry-run, install, repeat install and uninstall, including preservation
+of original files, edits, keys and model data.
 
-`services/` owns shared state; `modules/` owns UI; `components/` and `theme/` contain
-shared visuals; `scripts/` handles system integration; `setup/` contains portable
-installation defaults. Research, private notes and disposable outputs stay out
-of the public source tree.
+| Directory | Responsibility |
+| --- | --- |
+| `services/` | Shared state |
+| `modules/` | UI |
+| `components/` and `theme/` | Shared visuals |
+| `scripts/` | System integration |
+| `setup/` | Portable installation defaults |
+
+Research, private notes and disposable outputs stay out of the public source tree.
+
+</details>
 
 ## License and credits
 
