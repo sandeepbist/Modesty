@@ -111,10 +111,10 @@ def restore(path, original):
             atomic(path, source.read_bytes(), source.stat().st_mode & 0o777)
 
 
-def recover(root, home, state):
+def recover(root, home, state, dry_run=False):
     journal = state/'modesty-install/transaction.json'
     if not journal.exists():
-        print('No interrupted file operation to recover.'); return
+        print('No interrupted file operation to recover.'); return 0
     data = json.loads(journal.read_text())
     if data.get('home') != str(home) or data.get('state') != str(state):
         raise RuntimeError('Recovery record belongs to another installation.')
@@ -124,9 +124,14 @@ def recover(root, home, state):
             raise RuntimeError('Unsafe recovery backup path.')
         if original and not (Path(original).exists() or Path(original).is_symlink()):
             raise RuntimeError('Recovery backup missing: '+original)
+    for name, original in data['before'].items():
+        print('Would restore' if original else 'Would remove', name)
+    print('Surviving files will be backed up under', state/'modesty-install-backups')
+    require_space([(Path(name), original, 0) for name, original in data['before'].items()], state, removing=True)
+    if dry_run:
+        return len(data['before'])
     # Back up whatever survived an interruption before restoring the transaction.
     folder = state/'modesty-install-backups'/('recovery-'+dt.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
-    require_space([(Path(name), original, 0) for name, original in data['before'].items()], state, removing=True)
     folder.mkdir(parents=True, mode=0o700)
     for name in data['before']:
         path = Path(name)
@@ -137,6 +142,7 @@ def recover(root, home, state):
     atomic(state/'modesty-install/receipt.json', json.dumps(data['receipt']).encode())
     journal.unlink()
     print('Interrupted operation restored. Surviving files backed up to', folder)
+    return len(data['before'])
 
 
 def transaction(files, root, home, state, removing=False):
@@ -200,7 +206,12 @@ def install(files, rendered, root, home, state, dry_run):
     changes = [(target, rendered(source), source.stat().st_mode & 0o777) for source, target in files
                if target.is_symlink() or not target.is_file() or target.read_bytes() != rendered(source)]
     if dry_run:
-        for target, _, _ in changes: print('Would install', target)
+        if (state/'modesty-install/transaction.json').exists():
+            raise RuntimeError('An interrupted installation needs recovery. Run ./install.sh --recover-install first.')
+        receipt(root, home, state)
+        require_space(changes, state)
+        for target, _, _ in changes:
+            print('Would replace' if target.exists() or target.is_symlink() else 'Would install', target)
         print('Planned', len(changes), 'files.'); return len(changes)
     with locked(state):
         folder, count = transaction(changes, root, home, state)
@@ -228,6 +239,7 @@ def uninstall_plan(root, home, state):
 
 def uninstall(root, home, state, dry_run=False):
     files = uninstall_plan(root, home, state)
+    require_space(files, state, removing=True)
     for target, original, _ in files:
         print('Would restore' if original else 'Would remove', target)
     if dry_run:

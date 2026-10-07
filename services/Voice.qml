@@ -39,7 +39,7 @@ Singleton {
     Process {
         id:setup;command:["foot","--title=Luma voice setup","python3",root.installer,"--install-voice"]
         onExited:code=>{
-            root.setupMessage=code===0?"Setup finished. Hold Ctrl + backtick to speak.":"Setup interrupted or failed. Retry installation.";
+            root.setupMessage=code===0?"Setup finished. Hold Ctrl + backtick to speak.":code===130?"Setup cancelled. Voice settings unchanged.":"Setup interrupted or failed. Retry installation.";
             if(code===0){root.available=true;root.error="";Preferences.set("lumaVoice",true);if(Preferences.lumaVoiceWarm)root.prepare();}
             root.checkInstallation();
         }

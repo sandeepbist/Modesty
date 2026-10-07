@@ -33,6 +33,7 @@ with tempfile.TemporaryDirectory(prefix='modesty-receipt-check-') as directory, 
     assert installation.install(files,render,source,home,state,True)==3
     assert not state.exists() and a.read_bytes()==before and b.is_symlink()
     with patch.object(installation.shutil,'disk_usage',return_value=SimpleNamespace(free=0)):
+        rejected(lambda:installation.install(files,render,source,home,state,True),'Insufficient disk space')
         rejected(lambda:installation.install(files,render,source,home,state,False),'Insufficient disk space')
     assert a.read_bytes()==before and b.is_symlink() and not c.exists()
     actual=installation.atomic
@@ -54,8 +55,14 @@ with tempfile.TemporaryDirectory(prefix='modesty-receipt-check-') as directory, 
         except KeyboardInterrupt: pass
         else: raise AssertionError('Interrupt ignored')
     assert a.read_text()=='installed a' and (state/'modesty-install/transaction.json').exists()
+    backups=set((state/'modesty-install-backups').iterdir())
+    assert installation.recover(source,home,state,True)==3
+    assert a.read_text()=='installed a' and (state/'modesty-install/transaction.json').exists()
+    assert set((state/'modesty-install-backups').iterdir())==backups
     rejected(lambda:installation.install(files,render,source,home,state,False),'recover-install')
+    rejected(lambda:installation.install(files,render,source,home,state,True),'recover-install')
     with patch.object(installation.shutil,'disk_usage',return_value=SimpleNamespace(free=0)):
+        rejected(lambda:installation.recover(source,home,state,True),'Insufficient disk space')
         rejected(lambda:installation.recover(source,home,state),'Insufficient disk space')
     assert a.read_text()=='installed a' and (state/'modesty-install/transaction.json').exists()
     installation.recover(source,home,state)

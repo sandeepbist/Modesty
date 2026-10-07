@@ -55,9 +55,19 @@ def run(*args, cwd=None, env=None):
 
 
 def install_voice():
-    if not shutil.which("uv"):
+    missing_uv = not shutil.which("uv")
+    print('Local voice downloads Moonshine Small English and an isolated Python runtime.')
+    print('Runtime: $XDG_DATA_HOME/modesty/stt-moonshine-venv (default ~/.local/share).')
+    print('Models: $XDG_CACHE_HOME/modesty/voice-moonshine (default ~/.cache).')
+    if missing_uv:
+        print('Missing uv: installing it requires sudo pacman -Syu --needed uv, a full Arch upgrade.')
+    if not ask("Install local English hold-to-talk for Luma (Moonshine Small CPU runtime)?", False):
+        print('Local voice skipped.')
+        return False
+    if missing_uv:
         run("sudo", "pacman", "-Syu", "--needed", "uv")
     run("python3", str(ROOT / "scripts/luma-voice.py"), "--install")
+    return True
 
 
 def rebuild_quickshell(installed, unattended=False):
@@ -96,12 +106,13 @@ def aur_helper():
     helper = shutil.which("paru") or shutil.which("yay")
     if helper:
         return helper
-    if not ask("Install yay from the AUR for optional apps?", True):
+    print('No AUR helper found. Proposed fix: build yay from https://aur.archlinux.org/yay.git as your user, then install it with sudo.')
+    if not ask("Install yay from the AUR for optional apps?", False):
         return None
     with tempfile.TemporaryDirectory(prefix="modesty-yay-") as folder:
         checkout = Path(folder) / "yay"
         run("git", "clone", "https://aur.archlinux.org/yay.git", str(checkout))
-        run("makepkg", "-si", "--noconfirm", cwd=checkout)
+        run("makepkg", "-si", cwd=checkout)
     return shutil.which("yay")
 
 
@@ -135,6 +146,16 @@ def missing_plugins():
 
 def install_plugins(names):
     # hyprpm needs a running compositor with the same ABI as its installed binary.
+    if not os.environ.get('HYPRLAND_INSTANCE_SIGNATURE'):
+        raise RuntimeError('Plugin setup needs a running Hyprland session. Log in, then rerun --finish-plugins.')
+    compatibility.require(ROOT)
+    print('Selected plugins:', ', '.join(names))
+    for name in names:
+        print('Source:', PLUGINS[name])
+    print('hyprpm update refreshes all registered plugin repositories and headers. Selected plugins will be built/enabled; Hyprland will reload.')
+    if not ask('Proceed with these plugin changes?', False):
+        print('Plugin setup deferred; the pending selection was kept.')
+        return False
     run("hyprpm", "update")
     for name in names:
         if name not in plugin_status():
@@ -145,6 +166,7 @@ def install_plugins(names):
         raise RuntimeError("Selected plugins did not build or enable. Rerun the installer to retry.")
     run("hyprpm", "reload")
     run("hyprctl", "reload")
+    return True
 
 
 def choose_groups():
@@ -259,8 +281,6 @@ def main():
     if maintenance:
         if sum((args.uninstall, args.adopt_existing, args.recover_install)) != 1 or args.finish_plugins or args.install_voice:
             parser.error('Choose only one uninstall, adoption or recovery operation.')
-        if args.recover_install and args.dry_run:
-            parser.error('--recover-install does not support --dry-run')
         if args.adopt_existing:
             files = planned_files(["desktop", "shell", "apps", "spotify", "wallpapers", "fonts"])
             installation.adopt(files, rendered, ROOT, HOME, STATE, True)
@@ -287,7 +307,9 @@ def main():
                         control.start()
                     raise
         else:
-            if args.non_interactive or ask('Back up surviving files and recover the interrupted transaction?', False):
+            pending = (STATE/'modesty-install/transaction.json').is_file()
+            installation.recover(ROOT, HOME, STATE, True)
+            if pending and not args.dry_run and (args.non_interactive or ask('Back up surviving files and recover the interrupted transaction?', False)):
                 with installation.locked(STATE):
                     installation.recover(ROOT, HOME, STATE)
         return
@@ -295,8 +317,10 @@ def main():
         if args.dry_run or args.non_interactive or args.finish_plugins:
             parser.error("--install-voice requires interactive setup")
         try:
-            install_voice()
-            print("Local English voice installed. Hold Ctrl + backtick in Luma to speak.")
+            if install_voice():
+                print("Local English voice installed. Hold Ctrl + backtick in Luma to speak.")
+            else:
+                raise SystemExit(130)
         except (RuntimeError, subprocess.CalledProcessError, OSError) as error:
             print(f"Voice setup failed: {error}. Retry from Settings → Voice.")
             raise
@@ -314,13 +338,14 @@ def main():
         if not isinstance(names, list) or not names or any(name not in PLUGINS for name in names):
             raise RuntimeError("Invalid pending plugin selection.")
         try:
-            install_plugins(names)
+            completed = install_plugins(names)
         except (subprocess.CalledProcessError, RuntimeError) as error:
             print(f"Plugin setup failed: {error}. Your desktop still works. Rerun with --finish-plugins to retry.")
             input("Press Enter to close this window.")
             raise
-        PLUGIN_QUEUE.unlink()
-        input("Selected plugins installed. Press Enter to close this window.")
+        if completed:
+            PLUGIN_QUEUE.unlink()
+        input("Selected plugins installed. Press Enter to close this window." if completed else "Plugin setup deferred. Press Enter to close this window.")
         return
     print(f"Modesty desktop installer\nRepository: {ROOT}\nHome: {HOME}")
 
@@ -338,7 +363,8 @@ def main():
         return
 
     if core:
-        if args.non_interactive or not ask("Update Arch and install required packages before dotfiles?", True):
+        print('Proposed fix: install the listed required packages with a full Arch upgrade. File rollback does not undo package changes.')
+        if args.non_interactive or not ask("Update Arch and install required packages before dotfiles?", False):
             raise RuntimeError("Required packages are missing; no dotfiles were changed.")
         run("sudo", "pacman", "-Syu", "--needed", *core)
         installed = installed_packages()
@@ -348,10 +374,10 @@ def main():
     else:
         print("Required packages ready.")
 
-    if not args.non_interactive and ask("Install local English hold-to-talk for Luma (Moonshine Small CPU runtime)?", False):
+    if not args.non_interactive:
         install_voice()
 
-    if extras and not args.non_interactive and ask("Install optional apps, Spotify tools, and extra fonts?", True):
+    if extras and not args.non_interactive and ask("Install optional apps, Spotify tools, and extra fonts?", False):
         helper = aur_helper()
         if not helper:
             print("An AUR helper is needed for optional extras. Install paru/yay, then rerun for those apps.")
@@ -363,7 +389,8 @@ def main():
     services = missing_services()
     if services:
         print("Disabled system services:", ", ".join(services))
-        if args.non_interactive or not ask("Enable these services before dotfiles?", True):
+        print('Proposed fix: enable and start these services now and on future boots. Existing network management may need manual review.')
+        if args.non_interactive or not ask("Enable these services before dotfiles?", False):
             raise RuntimeError("Required services are disabled; no dotfiles were changed.")
         run("sudo", "systemctl", "enable", "--now", *services)
         if missing_services():
@@ -372,7 +399,7 @@ def main():
         groups = ["desktop", "shell", "apps", "spotify", "wallpapers", "fonts"]
     else:
         groups = choose_groups()
-        if not groups or not ask("Apply these files with backups for existing files?", True):
+        if not groups:
             print("No dotfiles changed.")
             return
     plugins = choose_plugins() if not args.non_interactive and "desktop" in groups else []
@@ -384,11 +411,18 @@ def main():
             control.validate_shell(headless=not bool(os.environ.get('WAYLAND_DISPLAY')))
         except compatibility.QtMismatch as error:
             print(error)
+            print('Proposed fix: rebuild the installed stable/git Quickshell variant as your user, installing build dependencies and the rebuilt package with sudo. Needs at least 3 GiB temporary space; configs wait for validation.')
             if args.non_interactive or not ask('Rebuild your installed Quickshell variant for current Qt? Source compilation may take several minutes.', False):
                 raise
             rebuild_quickshell(installed_packages())
             compatibility.require(ROOT, live=False)
             control.validate_shell(headless=not bool(os.environ.get('WAYLAND_DISPLAY')))
+    if not args.non_interactive:
+        install_files(groups, True)
+        print('Existing files will be backed up before replacement. Backup location:', STATE/'modesty-install-backups')
+        if not ask("Apply these files with backups for existing files?", False):
+            print('No dotfiles changed. Earlier approved package, service or voice steps are retained.')
+            return
     install_files(groups, False)
     if not args.non_interactive and "desktop" in groups and not plugins:
         PLUGIN_QUEUE.unlink(missing_ok=True)
@@ -397,8 +431,8 @@ def main():
         # Fresh TTY installs cannot use hyprpm until the first compositor login.
         if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
             try:
-                install_plugins(plugins)
-                PLUGIN_QUEUE.unlink()
+                if install_plugins(plugins):
+                    PLUGIN_QUEUE.unlink()
             except (subprocess.CalledProcessError, RuntimeError) as error:
                 print(f"Optional plugins need a retry: {error}")
         if PLUGIN_QUEUE.exists():

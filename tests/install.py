@@ -145,7 +145,7 @@ def plugin_command(*args):
     if args[:2] == ("hyprpm", "enable"):
         status[args[2]] = True
 
-with patch.object(installer, "plugin_status", side_effect=lambda: status.copy()), patch.object(installer, "run", side_effect=plugin_command):
+with patch.object(installer, "plugin_status", side_effect=lambda: status.copy()), patch.object(installer, "run", side_effect=plugin_command), patch.object(installer.compatibility, 'require'), patch.dict(os.environ, {'HYPRLAND_INSTANCE_SIGNATURE':'test'}), patch('builtins.input', return_value='y'):
     installer.install_plugins(["dynamic-cursors"])
     assert commands == [("hyprpm", "update"), ("hyprpm", "add", installer.PLUGINS["dynamic-cursors"]), ("hyprpm", "enable", "dynamic-cursors"), ("hyprpm", "reload"), ("hyprctl", "reload")]
     commands.clear()
@@ -156,11 +156,11 @@ with tempfile.TemporaryDirectory() as directory, patch.object(installer, "PLUGIN
     assert json.loads(installer.PLUGIN_QUEUE.read_text()) == ["scrolloverview"]
 print("PASS interactive wallpaper/plugin choices, preserved wallpaper, failed-build parsing, plugin install/reuse and first-login queue")
 
-with patch.object(installer.shutil, "which", return_value=None), patch.object(installer, "run") as run:
+with patch.object(installer.shutil, "which", return_value=None), patch.object(installer, "run") as run, patch('builtins.input',return_value='y'):
     installer.install_voice()
     assert run.call_args_list[0].args == ("sudo", "pacman", "-Syu", "--needed", "uv")
     assert run.call_args_list[1].args == ("python3", str(ROOT / "scripts/luma-voice.py"), "--install")
-with patch.object(installer.shutil, "which", return_value="/usr/bin/uv"), patch.object(installer, "run") as run:
+with patch.object(installer.shutil, "which", return_value="/usr/bin/uv"), patch.object(installer, "run") as run, patch('builtins.input',return_value='y'):
     installer.install_voice()
     run.assert_called_once_with("python3", str(ROOT / "scripts/luma-voice.py"), "--install")
 print("PASS shared voice setup installs missing dependency and reuses existing uv without administrator commands")
@@ -229,3 +229,38 @@ with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stdout(io.S
         control.stop_modesty.assert_not_called()
         uninstall.assert_called_once_with(ROOT,home,home/'.local/state',True)
 print('PASS uninstall refuses active work before stopping the shell or changing files')
+
+# Declining approval (including an empty answer) never runs package/model/plugin commands.
+for answer in ('n', ''):
+    with patch('builtins.input', return_value=answer), patch.object(installer,'run') as command, patch.object(installer.shutil,'which',return_value=None), contextlib.redirect_stdout(io.StringIO()):
+        assert installer.install_voice() is False
+        assert installer.aur_helper() is None
+        command.assert_not_called()
+    with patch('builtins.input', return_value=answer), patch.object(installer,'run') as command, patch.object(installer.compatibility,'require'), patch.dict(os.environ, {'HYPRLAND_INSTANCE_SIGNATURE':'test'}), contextlib.redirect_stdout(io.StringIO()):
+        assert installer.install_plugins(['dynamic-cursors']) is False
+        command.assert_not_called()
+with patch.object(installer,'run') as command, patch.object(installer.compatibility,'require',side_effect=RuntimeError('Unsupported runtime')), patch.dict(os.environ, {'HYPRLAND_INSTANCE_SIGNATURE':'test'}), patch('builtins.input') as prompt:
+    try:installer.install_plugins(['dynamic-cursors'])
+    except RuntimeError:pass
+    else:raise AssertionError('Plugin setup bypassed runtime validation')
+    command.assert_not_called();prompt.assert_not_called()
+print('PASS declined/default-no voice, AUR and plugin approvals run no commands; runtime failures stop before plugin changes')
+
+for missing_package in (True, False):
+    with tempfile.TemporaryDirectory() as directory,contextlib.redirect_stdout(io.StringIO()):
+        home=Path(directory)
+        packages=set(installer.CORE+installer.EXTRAS)-({'foot'} if missing_package else set())
+        with (
+            patch.object(installer,'HOME',home),patch.object(installer,'CONFIG',home/'.config'),patch.object(installer,'STATE',home/'.local/state'),
+            patch.object(installer.os,'geteuid',return_value=1000),patch.object(sys,'argv',['install.py']),
+            patch.object(installer,'installed_packages',return_value=packages),
+            patch.object(installer,'missing_services',return_value=[] if missing_package else ['NetworkManager']),
+            patch.object(installer.shutil,'which',return_value='/usr/bin/tool'),
+            patch('builtins.input',return_value=''),patch.object(installer,'run') as command,
+        ):
+            try:installer.main()
+            except RuntimeError as error:assert 'Required packages' in str(error) or 'Required services' in str(error),error
+            else:raise AssertionError('Required repair proceeded without approval')
+            command.assert_not_called()
+            assert not list(home.iterdir())
+print('PASS default-no required package/service repairs run no commands and create no files')
