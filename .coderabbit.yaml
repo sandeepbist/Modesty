@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  allow_author_approval: false
+  high_level_summary: true
+  high_level_summary_in_walkthrough: true
+  poem: false
+  review_status: true
+  auto_apply_labels: false
+  auto_assign_reviewers: false
+  path_filters:
+    - '!assets/**'
+    - '!services/vendor/**'
+  auto_review:
+    enabled: true
+    drafts: false
+  finishing_touches:
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
+  path_instructions:
+    - path: '**/*.qml'
+      instructions: >-
+        Review resource lifetimes, binding invalidation, input focus, animation
+        interruption and reduced motion. QML uses Qt JavaScript extensions;
+        do not treat native QML syntax as ordinary browser JavaScript.
+    - path: 'scripts/**'
+      instructions: >-
+        Review subprocess input validation, cancellation, privacy and user data
+        preservation. Package and configuration changes require informed approval.
+    - path: '.github/**'
+      instructions: >-
+        Keep fork checks on hosted runners without secrets. Do not execute PR code
+        through pull_request_target. Pin actions to full SHAs. Bots advise;
+        the maintainer controls merges and release publication.
+chat:
+  auto_reply: false
+issue_enrichment:
+  auto_enrich:
+    enabled: false
+  planning:
+    enabled: false
