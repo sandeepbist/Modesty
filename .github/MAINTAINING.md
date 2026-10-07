@@ -8,10 +8,10 @@ Do not enable automatic merges or grant contributors write access just to accept
 
 | Check | Purpose |
 | --- | --- |
-| Quick checks | Release metadata, archive regressions, Python syntax, JavaScript regressions and workflow lint |
+| Quick checks | Release metadata, archive and artifact transfer regressions, Python syntax, JavaScript regressions and workflow lint |
 | Offline checks on Arch | Installer, updates, backend services and real QML loading on current Arch packages |
-| CodeQL (python) | Security analysis of Python source |
-| CodeQL (actions) | Security analysis of Actions workflows |
+| CodeQL (python) | Extended security analysis of Python source |
+| CodeQL (actions) | Extended security analysis of Actions workflows |
 
 CodeQL does not check QML. Keep the real QML checks and native desktop review.
 Hosted Arch checks run in disposable containers with no desktop credentials. The
@@ -34,6 +34,16 @@ Dependabot groups weekly Actions updates into reviewable PRs. Check the upstream
 repository and new full commit SHA before merging. Arch packages, optional plugins
 and voice model downloads are checked by Modesty's compatibility and installer
 logic; this Dependabot configuration does not maintain those dependencies.
+
+Quick checks upload a tiny package made by the real release packager, download it
+by artifact ID into a fresh directory, and compare all four files with a rebuilt
+package. The check covers extraction paths, checksums, archive contents and
+installer permissions without creating a tag or release. Artifacts expire after
+one day. Release transfers use the same action versions, explicit archived mode,
+and no extra compression around the already compressed source archives. Downloads
+fail on an artifact digest mismatch; `SHA256SUMS` still checks the inner archives.
+CodeQL uses its built-in `security-extended` suite for Python and Actions. Review
+new findings rather than weakening the suite to silence them.
 
 ## One-time GitHub activation
 
@@ -86,7 +96,9 @@ compatibility; every such change still needs migration instructions.
 4. Create and push an annotated `vX.Y.Z` tag on that reviewed commit. Run **Release
    draft** manually from `main`, giving the existing tag. This workflow does not
    create tags or publish releases.
-5. Approve the **release** environment job after inspecting the package job.
+5. Inspect the package job summary: source commit, candidate download and transfer
+   digest. Download the candidate and verify its archives, checksums and notes,
+   then approve the **release** environment job.
    It creates a draft containing `.tar.gz`, `.zip` and `SHA256SUMS`. Its notes come
    from the version's changelog section and include the exact source commit.
 6. Download and verify the draft assets with `sha256sum -c SHA256SUMS`. Check that
