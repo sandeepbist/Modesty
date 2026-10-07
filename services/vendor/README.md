@@ -1,0 +1,1 @@
+`fuzzysort.js` is the QML-compatible MIT-licensed version supplied by the installed Caelestia shell (`/etc/xdg/quickshell/caelestia/utils/scripts/fuzzysort.js`). Its upstream is https://github.com/farzher/fuzzysort. The complete upstream license is retained at the beginning of the source. It is vendored so Modesty does not depend on Caelestia's runtime or install path.

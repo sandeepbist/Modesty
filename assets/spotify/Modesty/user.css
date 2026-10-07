@@ -1,0 +1,123 @@
+/* Modesty — quiet surfaces, crisp type, and the desktop's live palette. */
+@import url("modesty-colors.css");
+@font-face {
+  font-family: "Modesty Inter";
+  src: url("modesty-inter.ttf") format("truetype");
+  font-weight: 100 900;
+  font-display: swap;
+}
+:root {
+  --font-family: "Modesty Inter", sans-serif;
+  --encore-body-font-stack: "Modesty Inter", sans-serif;
+  --encore-title-font-stack: "Modesty Inter", sans-serif;
+  --encore-variable-font-stack: "Modesty Inter", sans-serif;
+  --modesty-ease: cubic-bezier(.2,.8,.2,1);
+}
+body, button, input, textarea, [class*="encore-text"], [class*="Type__TypeElement"] {
+  font-family: "Modesty Inter", sans-serif !important;
+}
+body { background: var(--spice-sidebar); }
+h1, h2, h3 { letter-spacing: -.025em; text-wrap: balance; }
+.Root { background: var(--spice-sidebar); gap: 10px; }
+.Root__main-view, .Root__nav-bar, .Root__right-sidebar {
+  border-radius: 18px !important;
+  background: var(--spice-main) !important;
+  box-shadow: inset 0 0 0 1px var(--modesty-line);
+}
+.main-yourLibraryX-library { background: var(--spice-main) !important; border-radius: 18px; }
+.Root__now-playing-bar {
+  margin: 0 2px 4px;
+  border-radius: 18px;
+  background: var(--spice-player) !important;
+  box-shadow: inset 0 0 0 1px var(--modesty-line);
+}
+.main-nowPlayingBar-nowPlayingBar {
+  padding: 14px 18px;
+  background: transparent !important;
+  border: 0 !important;
+}
+.main-nowPlayingWidget-coverArt, .main-nowPlayingWidget-coverArt img {
+  border-radius: 10px !important;
+}
+.main-nowPlayingWidget-coverArt { box-shadow: 0 3px 12px #0002; }
+.main-trackInfo-name { font-weight: 550; }
+.main-trackInfo-artists { margin-top: 3px; }
+.main-playPauseButton-button, [data-testid="control-button-playpause"] > span {
+  background: var(--spice-button) !important;
+  color: var(--modesty-on-accent) !important;
+  box-shadow: 0 3px 12px #0002;
+}
+.main-playPauseButton-button:hover { background: var(--spice-button-active) !important; }
+.main-playPauseButton-button svg { fill: currentColor; }
+.main-globalNav-searchInputContainer { border-radius: 999px !important; }
+.main-globalNav-searchInputContainer:focus-within {
+  box-shadow: 0 0 0 1px var(--spice-button) !important;
+}
+.main-card-card, [data-encore-id="card"] { border-radius: 14px !important; }
+.main-card-card:hover, [data-encore-id="card"]:hover { background: var(--modesty-hover) !important; }
+.main-cardImage-image, .main-card-imageContainer { border-radius: 10px; }
+.main-card-imageContainer img[style*="50%"] { border-radius: 50%; }
+.main-trackList-trackListRow { border-radius: 9px !important; }
+.main-trackList-trackListRow:hover { background: var(--modesty-hover) !important; }
+.main-trackList-trackListRow[aria-selected="true"] {
+  background: var(--modesty-selection) !important;
+  box-shadow: inset 0 0 0 1px var(--modesty-line);
+}
+.main-contextMenu-menu, .main-userWidget-dropDownMenu, .main-confirmDialog-container {
+  padding: 6px;
+  border-radius: 14px !important;
+  border: 1px solid var(--modesty-line);
+  background: var(--spice-card) !important;
+  box-shadow: 0 12px 38px #0003;
+}
+.main-contextMenu-menuItemButton { border-radius: 8px !important; padding: 11px 12px; }
+.main-contextMenu-menuItemButton:hover { background: var(--modesty-hover) !important; }
+.main-nowPlayingView-section { border-radius: 14px !important; }
+button, a, .main-trackList-trackListRow, .main-card-card, .main-contextMenu-menuItemButton {
+  transition: background-color 150ms var(--modesty-ease), color 150ms var(--modesty-ease),
+              box-shadow 150ms var(--modesty-ease);
+}
+button:focus-visible, a:focus-visible {
+  outline: 2px solid var(--spice-button) !important;
+  outline-offset: 3px;
+}
+.x-progressBar-progressBar { --fg-color: var(--spice-button); --bg-color: var(--modesty-line); }
+.x-progressBar-fillColor { background-color: var(--spice-button) !important; }
+/* No global scaling/filters: text and artwork stay on their native pixel grid. */
+@media (prefers-reduced-motion: reduce) {
+  button, a, .main-trackList-trackListRow, .main-card-card, .main-contextMenu-menuItemButton { transition: none; }
+}
+
+.Root__right-sidebar-peek, .Root__right-sidebar-overlayWrapper { border-radius: 18px !important; }
+
+/* Album headers retain their art; surrounding chrome follows the desktop. */
+.main-home-homeHeader {
+  background-image: linear-gradient(color-mix(in srgb, var(--spice-button) 10%, var(--spice-main)), var(--spice-main)) !important;
+  background-color: var(--spice-main) !important;
+}
+.main-card-imageContainer, .main-cardImage-imageWrapper,
+[data-encore-id="card"] [data-testid="card-image"] {
+  box-shadow: 0 4px 14px #00000014 !important;
+}
+.main-nowPlayingView-contextItemInfo {
+  background: var(--spice-main);
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 8px;
+}
+.Root__right-sidebar [data-testid="panel-header"] {
+  background: var(--spice-main);
+  border-radius: 12px;
+}
+.x-entityImage-imageContainer { box-shadow: 0 3px 12px #00000012 !important; }
+.main-nowPlayingView-contextItemInfo::before { background: none !important; }
+.main-nowPlayingView-canvasVisualEnhancement::before {
+  background: linear-gradient(rgba(var(--spice-rgb-main),.94), transparent 30%, transparent 55%, rgba(var(--spice-rgb-main),.8) 72%, var(--spice-main) 90%) !important;
+}
+.main-nowPlayingView-canvasVisualEnhancement::after {
+  background: linear-gradient(rgba(var(--spice-rgb-main),.63), rgba(var(--spice-rgb-main),.3) 30%, rgba(var(--spice-rgb-main),.3) 70%, var(--spice-main) 95%) !important;
+}
+.main-nowPlayingView-aboutArtist .main-nowPlayingView-sectionHeaderText {
+  color: #fff;
+  text-shadow: 0 1px 6px #0008;
+}
