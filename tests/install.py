@@ -6,6 +6,7 @@ import io
 import json
 from pathlib import Path
 import tempfile
+import subprocess
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -102,3 +103,48 @@ with tempfile.TemporaryDirectory() as directory, patch.object(handoff, "BACKUP",
     unlocked.assert_not_called()
 
 print("PASS clean-home install, all rendered files, idempotence, backups, symlinks, atomic writes, conflicts and private-state isolation")
+
+with tempfile.TemporaryDirectory() as directory:
+    home = Path(directory)
+    state = home / ".local/state"
+    with patch.object(installer, "HOME", home), patch.object(installer, "CONFIG", home / ".config"), patch.object(installer, "STATE", state), contextlib.redirect_stdout(io.StringIO()):
+        installer.install_files(["shell"], False)
+        assert not (home / "Pictures/Wallpapers").exists()
+        assert not any((state / "modesty" / name).exists() for name in ("wallpaper.json", "wallpaper-data.json", "wallpaper-palette.json"))
+        saved = state / "modesty/wallpaper.json"
+        saved.write_text('{"path":"my-wallpaper.png"}')
+        installer.install_files(["shell"], False)
+        assert saved.read_text() == '{"path":"my-wallpaper.png"}'
+
+with patch("builtins.input", side_effect=["y", "y", "y", "n", "n", "y"]):
+    assert installer.choose_groups() == ["desktop", "shell", "apps", "fonts"]
+with patch("builtins.input", side_effect=["y", "n"]):
+    assert installer.choose_plugins() == ["dynamic-cursors"]
+with patch("builtins.input", side_effect=["n", "y"]):
+    assert installer.choose_plugins() == ["scrolloverview"]
+
+# Match actual hyprpm output, including a failed build before an enabled plugin.
+output = "Repository cursors:\n  │ Plugin dynamic-cursors\n  └─ enabled: Plugin failed to build\nRepository overview:\n  │ Plugin scrolloverview\n  └─ enabled: \x1b[32mtrue\x1b[0m\n"
+with patch.object(installer.shutil, "which", return_value="/usr/bin/hyprpm"), patch.object(installer.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, output, "")):
+    assert installer.plugin_status() == {"dynamic-cursors": False, "scrolloverview": True}
+    assert installer.missing_plugins() == ["dynamic-cursors"]
+
+status = {}
+commands = []
+def plugin_command(*args):
+    commands.append(args)
+    if args[:2] == ("hyprpm", "add"):
+        status[next(name for name, url in installer.PLUGINS.items() if url == args[2])] = False
+    if args[:2] == ("hyprpm", "enable"):
+        status[args[2]] = True
+
+with patch.object(installer, "plugin_status", side_effect=lambda: status.copy()), patch.object(installer, "run", side_effect=plugin_command):
+    installer.install_plugins(["dynamic-cursors"])
+    assert commands == [("hyprpm", "update"), ("hyprpm", "add", installer.PLUGINS["dynamic-cursors"]), ("hyprpm", "enable", "dynamic-cursors"), ("hyprpm", "reload"), ("hyprctl", "reload")]
+    commands.clear()
+    installer.install_plugins(["dynamic-cursors"])
+    assert commands == [("hyprpm", "update"), ("hyprpm", "reload"), ("hyprctl", "reload")]
+with tempfile.TemporaryDirectory() as directory, patch.object(installer, "PLUGIN_QUEUE", Path(directory) / "modesty/plugins-pending.json"):
+    installer.save_plugin_queue(["scrolloverview"])
+    assert json.loads(installer.PLUGIN_QUEUE.read_text()) == ["scrolloverview"]
+print("PASS interactive wallpaper/plugin choices, preserved wallpaper, failed-build parsing, plugin install/reuse and first-login queue")

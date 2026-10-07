@@ -35,7 +35,8 @@ Installation copies the reviewed templates in `setup/`, replacing `@HOME@` and
 `@MODESTY_ROOT@` for your machine. It does not export the maintainer's current
 home directory. Existing files and symlinks are backed up under
 `~/.local/state/modesty-install-backups/<timestamp>/`; identical files are skipped.
-Restore individual files from that directory to undo installation.
+Restore individual files from that directory to undo installation. Declining bundled
+wallpapers also preserves your existing wallpaper selection and matching palettes.
 
 Log out, then select **Hyprland** in your login manager, or run `start-hyprland`
 from a TTY. Current Arch Hyprland supports the bundled Lua config. Monitor
@@ -56,23 +57,23 @@ Preferences persist in `$XDG_STATE_HOME/modesty`, normally `~/.local/state/modes
 
 ### Optional Hyprland plugins
 
-The desktop runs without plugins. Dynamic cursor effects and Super+Tab overview
-need matching plugins. After logging into Hyprland, install them with:
+The installer asks separately whether to install **dynamic cursor effects** and
+**Super+Tab window overview**. Both are optional. Choosing them builds and enables
+the plugins with `hyprpm` and uses the bundled stretch/shake cursor settings and
+overview layout. Existing plugin repositories are reused.
+
+On a fresh TTY install, `hyprpm` needs the first running Hyprland session. The
+installer saves your selection, then opens a setup terminal automatically on your
+next Hyprland login. Enter your sudo password there if requested. Successful setup
+removes the pending selection. If a build fails, the desktop stays usable; retry:
 
 ```sh
-hyprpm add https://github.com/VirtCode/hypr-dynamic-cursors.git
-hyprpm add https://github.com/yayuuu/hyprland-scroll-overview.git
-hyprpm update
-hyprpm enable dynamic-cursors
-hyprpm enable scrolloverview
-hyprpm reload
-hyprctl reload
+python3 install.py --finish-plugins
 ```
 
-Startup runs `hyprpm reload`; plugin settings are guarded when plugins are absent.
-Rebuild plugins with `hyprpm update` after compositor updates. Builds and version
-compatibility are controlled by each plugin's upstream. See the
-[Hyprland plugin guide](https://wiki.hypr.land/Plugins/Using-Plugins/).
+Plugin settings are guarded when plugins are absent. Rebuild with `hyprpm update`
+after compositor updates. Plugin versions and build compatibility depend on
+upstream; see the [Hyprland plugin guide](https://wiki.hypr.land/Plugins/Using-Plugins/).
 
 ### Optional local voice
 

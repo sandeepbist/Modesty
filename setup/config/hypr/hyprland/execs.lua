@@ -3,7 +3,14 @@ local fn   = require("utils.functions")
 
 hl.on("hyprland.start", function()
     -- Load any optional plugins enabled by the user.
-    hl.exec_cmd("hyprpm reload")
+    hl.exec_cmd("hyprpm reload && hyprctl reload")
+    -- A fresh TTY installation queues selected plugins for the first real session.
+    local state = os.getenv("XDG_STATE_HOME") or (os.getenv("HOME") .. "/.local/state")
+    local pending = io.open(state .. "/modesty/plugins-pending.json", "r")
+    if pending then
+        pending:close()
+        hl.exec_cmd("foot --title='Modesty plugin setup' python3 @MODESTY_ROOT@/install.py --finish-plugins")
+    end
     -- Keyring and auth
     hl.exec_cmd("gnome-keyring-daemon --start --components=secrets")
     hl.exec_cmd("python3 @MODESTY_ROOT@/scripts/session-control.py auth")
