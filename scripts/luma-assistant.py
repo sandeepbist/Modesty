@@ -1003,7 +1003,7 @@ system_execution contains the exact attempted tools and outcomes for this task. 
                 full_access=payload.get("accessMode")=="full" and system_tools.ipc("status").get("access")=="full"
                 if permission!="deny":
                     if full_access: permission="execute"
-                    elif call["name"]=="run_command" and any(call[k] for k in ("writable","network","session","privileged")): permission="confirm"
+                    elif call["name"]=="run_command": permission="confirm"
                 if permission=="confirm":
                     detail=call["purpose"]+"\n"+(shlex.join(call["argv"]) if call["name"]=="run_command" else json.dumps(call,ensure_ascii=False))
                     pending_system.append(system_tools.defer(payload,system_ledger,call,detail))

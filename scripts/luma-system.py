@@ -16,15 +16,19 @@ from contextlib import contextmanager
 
 ROOT = Path(__file__).resolve().parents[1]
 STATE = Path(os.environ.get("XDG_STATE_HOME", Path.home()/".local/state"))/"modesty"/"luma-system"
-PROTECTED = [Path.home()/p for p in (".ssh", ".gnupg", ".aws", ".azure", ".kube", ".config/gcloud", ".local/share/keyrings", ".mozilla", ".zen", ".config/discord")]
-PROTECTED += [Path(os.environ.get("XDG_CONFIG_HOME", Path.home()/".config"))/"modesty"/p for p in ("gemini.key", "typesafe.key")]
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home()/".config"))
+DATA = Path(os.environ.get("XDG_DATA_HOME", Path.home()/".local/share"))
+PROTECTED = [Path.home()/p for p in (".ssh", ".gnupg", ".aws", ".azure", ".kube", ".mozilla", ".zen", ".password-store", ".netrc", ".git-credentials", ".npmrc", ".pypirc", ".docker", ".bash_history", ".zsh_history", ".t3", ".codex/auth.json", ".claude/.credentials.json")]
+PROTECTED += [CONFIG/p for p in ("gcloud", "gh", "rclone", "discord", "chromium", "google-chrome", "BraveSoftware", "modesty/gemini.key", "modesty/typesafe.key")]
+PROTECTED += [DATA/p for p in ("keyrings", "fish/fish_history", "opencode/auth.json")]
+PROTECTED += list(Path.home().glob(".env*"))
 CATALOG = {
     "application_interfaces": "Discover real registered Obsidian vaults, installed CLI paths and live MPRIS player identities, capabilities, supported URI schemes and track metadata. wait_seconds=1..6 waits for a just-launched application's interface; query only when needed, never continuously poll. Vaults contain Markdown notes; write_file can create researched notes at their real paths and open_uri can open obsidian://open?path=encoded_absolute_path. Multiple vaults require resolving which vault the user intends.",
     "media_control": "Control exact observed MPRIS player id: play, pause, next, previous or open_uri. open_uri needs a real supported URI found in web evidence or observed app data, not an invented track ID. It returns observed playback/track metadata and whether the requested URI was verified. A request accepted by the player is not proof of successful playback. No Spotify Web API credentials are required for its exposed desktop interface.",
     "list_directory": "List real children and metadata of path. Discover folders/configuration before choosing a file; maximum 160 entries per page. Use offset for another page.",
     "read_file": "Read up to 48,000 characters of a real UTF-8 text file at path, starting at offset. Returns SHA256 and coverage. Read relevant local configuration, notes, code or logs without requiring an attachment. Credentials and browser/keyring data are excluded.",
     "write_file": "Create, append or replace a UTF-8 file at path with content. mode defaults to create and never overwrites; append/replace require the SHA256 returned by read_file. Existing revisions are backed up; changed files cause a conflict instead of lost edits. Use actual newline characters, not literal backslash-n text. Verify content after writing.",
-    "run_command": "Execute argv (array of exact arguments, no shell interpolation) in cwd. Default isolation has read-only files, isolated PID/network namespaces, no desktop/system DBus, and protected credentials hidden. Use native performance/hardware tools for actual host readings. Changes require confirmation and run with writable home; network or session access requires confirmation. session=true exposes actual host processes and desktop/service sockets for a necessary CLI/API operation. Set privileged=true only for a necessary administrator command: confirmation then native pkexec authentication. Timeout 1..120 seconds. Shell/code arguments are executable, not harmless text. Inspect actual exit status/stdout/stderr; do not claim success from a command proposal.",
+    "run_command": "Execute argv (array of exact arguments, no shell interpolation) in cwd. Every generic command requires confirmation in review mode, including read-only commands. Default isolation has read-only files, isolated PID/network namespaces, no desktop/system DBus, and known credential locations hidden. Use native performance/hardware tools for actual host readings. Writable home, network or session access expands the approved scope. session=true exposes actual host processes and desktop/service sockets for a necessary CLI/API operation. Set privileged=true only for a necessary administrator command: confirmation then native pkexec authentication. Timeout 1..120 seconds. Shell/code arguments are executable, not harmless text. Inspect actual exit status/stdout/stderr; do not claim success from a command proposal.",
     "desktop_state": "Observe real compositor windows, installed application identities, media players and current Modesty service state. Does not read screen contents or hidden app data.",
     "desktop_action": "Execute one existing native action using action_name and action_args as a JSON object string, then observe service state. Use exact installed IDs and native validated values. Launch/close applications, media, reminders, appearance, focus and other supported controls. Media actions accept id=exact observed MPRIS player DBus name to target that player. A launch request does not prove an app opened.",
     "open_uri": "Open uri through its installed native handler (files, websites or application URI navigation). Derive an app-specific URI from verified documentation/configuration, never invent a successful navigation. Only requests for that destination authorize this operation."
@@ -67,7 +71,7 @@ def checked_path(value):
     if not path.is_absolute():
         raise ValueError("Use an absolute filesystem path")
     path=path.resolve()
-    if any(path==p.resolve() or p.resolve() in path.parents for p in PROTECTED) or path.name.startswith(".env") or path.suffix in {".key",".pem",".p12"} or STATE.resolve()==path or STATE.resolve() in path.parents:
+    if any(path==p.resolve() or p.resolve() in path.parents for p in PROTECTED+[Path("/proc"), STATE]) or any(p.name.startswith(".env") for p in (path,*path.parents)) or path.suffix in {".key",".pem",".p12"}:
         raise ValueError("Credentials, browser data and internal execution records cannot be shared with the model")
     return path
 
@@ -212,7 +216,7 @@ def unlocked():
 
 
 def command(call, approved=False):
-    if any(call[k] for k in ("writable","network","session","privileged")) and not approved:
+    if not approved:
         raise ValueError("This command needs concrete approval before execution")
     argv=call["argv"]
     executable=shutil.which(argv[0])
