@@ -23,6 +23,7 @@ jobs:
     outputs:
       prerelease: ${{ steps.version.outputs.prerelease }}
       revision: ${{ steps.version.outputs.revision }}
+      artifact-id: ${{ steps.artifact.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -63,11 +64,30 @@ jobs:
             echo 'prerelease=false' >> "$GITHUB_OUTPUT"
           fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        id: artifact
         with:
           name: release-package
           path: ${{ runner.temp }}/release/
+          archive: true
+          # Source archives are already compressed; store the transfer wrapper.
+          compression-level: 0
           if-no-files-found: error
           retention-days: 7
+      - name: Summarize candidate for maintainer review
+        env:
+          SOURCE_REVISION: ${{ steps.version.outputs.revision }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+          ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
+          ARTIFACT_DIGEST: ${{ steps.artifact.outputs.artifact-digest }}
+        run: |
+          [[ "$ARTIFACT_ID" =~ ^[1-9][0-9]*$ && "$ARTIFACT_DIGEST" =~ ^[0-9a-f]{64}$ ]]
+          {
+            printf '### Release candidate\n\n'
+            printf 'Source commit: `%s`\n\n' "$SOURCE_REVISION"
+            printf '[Download candidate](%s)\n\n' "$ARTIFACT_URL"
+            printf 'Transfer artifact SHA-256: `%s`\n\n' "$ARTIFACT_DIGEST"
+            printf 'Inspect archives, release notes and SHA256SUMS before approving the release environment job.\n'
+          } >> "$GITHUB_STEP_SUMMARY"
   draft:
     name: Create reviewed release draft
     needs: package
@@ -80,8 +100,10 @@ jobs:
       # This job downloads data only; it never checks out or executes source.
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: release-package
+          artifact-ids: ${{ needs.package.outputs.artifact-id }}
           path: release-package
+          skip-decompress: false
+          digest-mismatch: error
       - name: Verify downloads and create draft
         env:
           GH_TOKEN: ${{ github.token }}

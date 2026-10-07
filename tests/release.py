@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Release gates and source archives; no commits, tags or publication."""
+import argparse
 import hashlib
 import importlib.util
 from pathlib import Path
 import subprocess
+import shutil
 import tarfile
 import tempfile
 import zipfile
@@ -12,6 +14,12 @@ ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('release', ROOT / 'scripts/release.py')
 release = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(release)
+
+parser = argparse.ArgumentParser(description=__doc__)
+artifact = parser.add_mutually_exclusive_group()
+artifact.add_argument('--artifact-output', type=Path, help='Copy the tiny release fixture to a fresh directory for CI upload')
+artifact.add_argument('--artifact-input', type=Path, help='Verify a downloaded fixture against independently rebuilt archives')
+args = parser.parse_args()
 
 
 def refused(call):
@@ -78,4 +86,13 @@ with tempfile.TemporaryDirectory(prefix='modesty-release-test-') as temporary:
         assert archive.getinfo(prefix + 'install.sh').external_attr >> 16 & 0o111
         assert all(item.date_time == (2000, 1, 1, 0, 0, 0) for item in archive.infolist())
     assert tree in (base / 'first/release-notes.md').read_text()
+    if args.artifact_output:
+        shutil.copytree(base / 'first', args.artifact_output)
+    if args.artifact_input:
+        assert {path.name for path in args.artifact_input.iterdir()} == set(names), 'Downloaded artifact has missing or unexpected files'
+        for name in names:
+            downloaded = args.artifact_input / name
+            assert downloaded.is_file() and not downloaded.is_symlink(), name
+            assert downloaded.read_bytes() == (base / 'first' / name).read_bytes(), f'Downloaded artifact differs: {name}'
+        print('PASS downloaded release artifact matches rebuilt archives, checksums and notes')
 print('PASS release metadata, exact CI gates, deterministic archives, checksums and private-file exclusion')
