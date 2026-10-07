@@ -29,7 +29,7 @@ Item {
                     id:paragraph;width:parent.width;visible:block.model.kind==="prose"
                     // Use the palette target so a color animation cannot reparse
                     // the entire document on every frame.
-                    text:Format.prose(block.model.body,String(Theme.pal.accent),Math.round(Tokens.readingLeading*100))
+                    text:block.model.kind==="prose"?Format.prose(block.model.body,String(Theme.pal.accent),Math.round(Tokens.readingLeading*100)):""
                     readOnly:true;selectByMouse:root.interactive;wrapMode:TextEdit.Wrap;textFormat:TextEdit.RichText
                     color:root.color;selectionColor:Theme.accent;selectedTextColor:Theme.accentText
                     font:root.font
@@ -47,7 +47,7 @@ Item {
                         clip:true;contentWidth:Math.max(width,code.contentWidth);contentHeight:code.implicitHeight
                         boundsBehavior:Flickable.StopAtBounds;flickableDirection:Flickable.AutoFlickIfNeeded
                         TextEdit {
-                            id:code;width:codeView.width;text:block.model.body
+                            id:code;width:codeView.width;text:block.model.kind==="code"?block.model.body:""
                             textFormat:TextEdit.PlainText;wrapMode:TextEdit.NoWrap;readOnly:true;selectByMouse:root.interactive
                             color:Theme.text;selectionColor:Theme.accent;selectedTextColor:Theme.accentText
                             font.family:"monospace";font.pixelSize:12;renderType:Tokens.textRenderType
