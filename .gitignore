@@ -1,0 +1,38 @@
+__pycache__/
+*.pyc
+.ruff_cache/
+
+# Local UI inspection artifacts
+.playwright-cli/
+output/playwright/
+output/
+WORK_IN_PROGRESS.md
+.env
+.env.*
+*.log
+
+# Private development notes and research stay local.
+/docs/
+/tools/voice/
+/CONTRIBUTING.md
+/assets/companion/swordsman/*.md
+
+# Assistant credentials and personal state must never enter desktop snapshots.
+*.key
+setup/state/modesty/luma-conversation.json
+setup/state/modesty/luma-memory.txt
+setup/state/modesty/luma-usage.json
+setup/state/modesty/luma-usage.lock
+setup/state/modesty/luma-system/
+
+# Only reviewed installation defaults belong in the public snapshot.
+setup/state/modesty/*
+!setup/state/modesty/appearance.json
+!setup/state/modesty/bindings.json
+!setup/state/modesty/control-layout.json
+!setup/state/modesty/preferences.json
+!setup/state/modesty/sequences.txt
+!setup/state/modesty/theme.json
+!setup/state/modesty/wallpaper.json
+!setup/state/modesty/wallpaper-data.json
+!setup/state/modesty/wallpaper-palette.json
