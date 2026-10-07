@@ -1,0 +1,17 @@
+name: Feature proposal
+description: Suggest a feature or discuss a larger change before starting a PR.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would this help you do?
+      description: Describe a concrete use case and what gets in your way today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the result and any simpler alternatives you considered.
+    validations:
+      required: true

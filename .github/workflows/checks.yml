@@ -1,0 +1,31 @@
+name: Checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  offline:
+    name: Offline checks on Arch
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Run regression checks in an ephemeral Arch container
+        # Namespace tests need bubblewrap. Fork code runs only on hosted runners.
+        run: |
+          docker run --rm --privileged -v "$PWD:/work" -w /work archlinux:base bash -lc '
+            pacman -Syu --noconfirm --needed git nodejs python python-dbus python-gobject python-pillow dbus quickshell hyprland qt6-multimedia qt6-imageformats networkmanager network-manager-applet bluez bluez-utils upower pipewire wireplumber brightnessctl playerctl matugen foot bubblewrap
+            export XDG_RUNTIME_DIR=$(mktemp -d)
+            mkdir -p /run/dbus
+            dbus-daemon --system --fork
+            printf "[keyfile]\nunmanaged-devices=interface-name:*\n" > /tmp/modesty-ci-nm.conf
+            NetworkManager --no-daemon --config /tmp/modesty-ci-nm.conf >/tmp/modesty-ci-nm.log 2>&1 &
+            dbus-run-session -- bash -lc "pipewire >/tmp/modesty-ci-pipewire.log 2>&1 & python3 tests/check.py"
+          '

@@ -1,148 +1,209 @@
 # Modesty
 
-A Quickshell desktop island and dotfiles for Arch Linux and Hyprland. Three pills
-show media, clock, and system status, with animated panels, a launcher, Luma
-search and assistant, notifications, lock screen, themes, and an optional window
-companion.
+A Quickshell desktop for Arch Linux and Hyprland. Three small pills expand into
+media controls, a calendar and a control center. Modesty also includes a launcher,
+Luma search and assistant, notifications, a lock screen and a window companion.
 
-## Install on Arch Linux
+![Modesty control center on the maintainer's desktop](assets/showcase/controls.png)
 
-Start with an installed **x86_64 Arch Linux** system, working graphics drivers,
-a normal user account, internet access, and sudo. This installs desktop configs;
-it does not install Arch itself, GPU drivers, a bootloader, or a login manager.
+**[Install](#install) · [Screenshots and video](#screenshots-and-video) ·
+[Contribute](.github/CONTRIBUTING.md) ·
+[Report a bug](https://github.com/sandeepbist/Modesty/issues/new/choose)**
+
+## Install
+
+Start with **x86_64 Arch Linux**, working graphics drivers, a normal user account,
+internet access and sudo. The installer sets up desktop configs and dependencies.
+It does not install Arch, graphics drivers, a bootloader or a login manager.
 
 ```sh
 sudo pacman -Syu --needed git
 git clone https://github.com/sandeepbist/Modesty.git ~/App/Modesty
 cd ~/App/Modesty
-./install.sh --dry-run
 ./install.sh
 ```
 
-Run as your desktop user, not root. Keep the checkout in place: startup and
-shortcuts refer to its absolute path. Home and checkout paths must not contain
-whitespace. This Hyprland profile uses the default `~/.config`; unset
-`XDG_CONFIG_HOME` before installing.
+Run as your desktop user, not root. The installer walks you through:
 
-The guided installer checks official Arch packages, Python D-Bus/GObject modules,
-and NetworkManager/Bluetooth services before copying files. Package installation
-uses a full Arch update. Optional AUR apps, fonts, Spotify tools, and local voice
-are separate choices. You can choose Hyprland, shell preferences, app configs,
-wallpapers, Spotify theme, and fonts. `--non-interactive` copies all groups only
-when required packages and services are already ready; it never installs packages.
+1. Required Arch packages and NetworkManager/Bluetooth services.
+2. Which configs to install: desktop, shell, apps, fonts and Spotify theme.
+3. Whether to install the supplied wallpapers or keep your existing selection.
+4. Optional cursor effects and the Super + Tab window overview.
+5. Optional local speech recognition for Luma.
 
-Installation copies the reviewed templates in `setup/`, replacing `@HOME@` and
-`@MODESTY_ROOT@` for your machine. It does not export the maintainer's current
-home directory. Existing files and symlinks are backed up under
-`~/.local/state/modesty-install-backups/<timestamp>/`; identical files are skipped.
-Restore individual files from that directory to undo installation. Declining bundled
-wallpapers also preserves your existing wallpaper selection and matching palettes.
+Existing files are backed up before replacement. Package installation uses a full
+Arch update. AUR apps and local voice are separate choices. Review planned file
+changes without writing anything with `./install.sh --dry-run`.
 
-Log out, then select **Hyprland** in your login manager, or run `start-hyprland`
-from a TTY. Current Arch Hyprland supports the bundled Lua config. Monitor
-arrangements, scale, brightness access, and suspend/hibernate support depend on
-your hardware. Configure these for your machine as needed.
+After installation, **log out and select Hyprland** in your login manager, or run
+`start-hyprland` from a TTY. Keep the checkout at the same path: startup and
+shortcuts use it. Home and checkout paths must not contain whitespace. This
+profile uses `~/.config`; unset `XDG_CONFIG_HOME` before installing.
 
-Firefox and Pavucontrol are working defaults; installed Zen and Pwvucontrol take
-priority. The cursor default is Adwaita. Change apps and shortcuts in
-`~/.config/modesty/desktop/hypr-vars.lua`. Optional Zen, Spotify and other AUR apps
-need their own installation and sign-in. After Spotify has created its preferences,
-run `spicetify backup apply` to activate the bundled theme.
+The profile uses Hyprland's Lua configuration. Monitor arrangement, scale,
+brightness permissions and suspend/hibernate support depend on your hardware.
+Set those for your machine. Firefox, Pavucontrol and Adwaita cursors are defaults;
+installed Zen and Pwvucontrol take priority.
 
-The installer includes no API keys, passwords, keyrings, saved network credentials,
-Bluetooth pairings, conversations, personal notes, or model caches. Luma AI needs
-an optional provider key configured in Settings. Keys stay outside this repo.
-Desktop actions default to review; personal knowledge folders start empty.
-Preferences persist in `$XDG_STATE_HOME/modesty`, normally `~/.local/state/modesty`.
+### Optional plugins
 
-### Optional Hyprland plugins
+The installer asks separately about
+[dynamic cursor effects](https://github.com/VirtCode/hypr-dynamic-cursors) and
+[window overview](https://github.com/yayuuu/hyprland-scroll-overview).
+It builds and enables selected plugins through `hyprpm`, with Modesty's settings.
 
-The installer asks separately whether to install **dynamic cursor effects** and
-**Super+Tab window overview**. Both are optional. Choosing them builds and enables
-the plugins with `hyprpm` and uses the bundled stretch/shake cursor settings and
-overview layout. Existing plugin repositories are reused.
-
-On a fresh TTY install, `hyprpm` needs the first running Hyprland session. The
-installer saves your selection, then opens a setup terminal automatically on your
-next Hyprland login. Enter your sudo password there if requested. Successful setup
-removes the pending selection. If a build fails, the desktop stays usable; retry:
+On a fresh TTY install, plugin setup finishes after your first Hyprland login.
+A terminal opens automatically; enter your sudo password if requested. If an
+upstream build fails, the desktop stays usable. Retry from the checkout:
 
 ```sh
 python3 install.py --finish-plugins
 ```
 
-Plugin settings are guarded when plugins are absent. Rebuild with `hyprpm update`
-after compositor updates. Plugin versions and build compatibility depend on
-upstream; see the [Hyprland plugin guide](https://wiki.hypr.land/Plugins/Using-Plugins/).
+Run `hyprpm update` after compositor updates. Plugin compatibility depends on
+upstream. Both plugins are optional.
 
 ### Optional local voice
 
-Hold **Ctrl + backtick** to speak to Luma; release to submit. The installer offers
-an isolated Moonshine Small English CPU runtime. If you skip it, open
-**Settings → Luma → Voice → Install local voice**. Setup opens a terminal with
-download progress, installs any missing dependency, and verifies the model.
-Enter your password if a system package is needed, then close setup when finished.
-No API key or manual configuration is required. The same panel shows installation
-status and offers repair/retry. Manual setup:
+Choose voice during installation, or open **Settings → Luma → Voice → Install
+local voice** later. Setup downloads and verifies Moonshine Small English and
+installs an isolated CPU runtime. The panel also offers repair/retry. Terminal
+setup uses the same installer:
 
 ```sh
-sudo pacman -Syu --needed uv
-python3 scripts/luma-voice.py --install
+python3 install.py --install-voice
 ```
 
-Model downloads and the Python environment stay in local user storage. Voice is
-loaded on demand; Settings can keep it ready. Text search does not start voice.
+Hold **Ctrl + backtick** to speak to Luma; release to submit. Transcription runs
+locally and needs no API key. Voice loads on demand; Settings can keep it ready.
+Models and the Python environment stay outside the checkout.
+
+**Luma's AI answers use your configured cloud provider.** Submitted speech becomes
+text sent to that provider, together with enabled context and tool results.
+Local speech recognition does not make the assistant itself local. Application
+launching, calculations and local search work without an AI key.
 
 ## Use
 
-| Input | Result |
+| Input | Opens |
 | --- | --- |
-| Click album art | Media player |
-| Click clock | Calendar |
-| Click status circle | Control center |
+| Album-art pill | Media controls |
+| Clock pill | Clock; calendar available from the clock panel |
+| Status pill | Control center |
 | Tap Super | Application launcher |
 | Super + Space | Luma search and assistant |
 | Super + comma | Settings |
-| Super + L | Lock |
-| Escape / outside click | Dismiss panel |
+| Super + L | Lock screen |
+| Escape / outside click | Dismiss the current panel |
 
-Volume and brightness events widen the clock pill. Hover moves pills slightly.
-Panels support reduced motion. Settings controls geometry, motion, appearance,
-control-center layout, notifications, and the optional window companion.
-Luma supports files, file contents, clipboard, calculations, web search and
-conversation. NetworkManager, BlueZ, PipeWire, MPRIS, Matugen and Hyprsunset provide
-system integrations. External-monitor DDC brightness is not implemented.
+Volume and brightness changes temporarily widen the clock pill. Settings controls
+spacing, motion, colors, control-center layout, notifications and the companion.
+Reduced motion is supported. Microphone/camera activity appears while capture is
+active; the privacy panel provides microphone mute controls.
+
+Luma searches applications, files, file contents and clipboard entries, handles
+calculations and web search, and can perform desktop actions. Configure an
+optional provider key in Settings. Desktop access defaults to **Review**, and
+knowledge folders start empty. Every generic command asks for confirmation in
+Review mode. Full access allows broader automatic actions; enable it deliberately.
+See [security and privacy](.github/SECURITY.md) before enabling AI context/tools.
+
+**Agent activity tracking currently works with T3 Code only.** Modesty reads task
+status metadata to show working, waiting and completion feedback; it does not
+read T3 prompts or credentials. Standalone Codex, Claude Code and OpenCode CLI
+integration is planned and is not implemented yet.
+
+## Screenshots and video
+
+Captured from the maintainer's live Hyprland desktop, using the installed shell
+and personal wallpaper. The installer supplies a separate, credited wallpaper
+collection. Colors, panel layout and apps can differ on your machine.
+
+| Calendar | Themes |
+| --- | --- |
+| ![Live calendar panel](assets/showcase/calendar.png) | ![Live theme picker](assets/showcase/themes.png) |
+
+| Launcher | Local voice setup |
+| --- | --- |
+| ![Live application launcher](assets/showcase/launcher.png) | ![Local voice settings on the live desktop](assets/showcase/voice.png) |
+
+[![Watch island transitions](assets/showcase/island.gif)](assets/showcase/island.mp4)
+
+[Watch the full-resolution clip](assets/showcase/island.mp4) ·
+[Watch volume and brightness transitions](assets/showcase/sliders.mp4)
+
+## Customize, update and restore
+
+User preferences live in `$XDG_STATE_HOME/modesty`, normally
+`~/.local/state/modesty`. Change apps and shortcuts in
+`~/.config/modesty/desktop/hypr-vars.lua`. Public installation templates live in
+`setup/`; the installer does not copy the maintainer's live home directory.
+Keys, saved network credentials, Bluetooth pairings, conversations, personal
+notes and model caches are not part of the install.
+
+To update, pull changes and run the installer again. It skips identical files
+and backs up files it replaces. Review any custom config changes before applying.
+Restart an existing Modesty session after code changes:
 
 ```sh
+git pull --ff-only
+./install.sh
 python3 scripts/session-control.py restart
-quickshell ipc -p "$PWD/shell.qml" call island health
 ```
 
+Backups live under `~/.local/state/modesty-install-backups/<timestamp>/`
+(or your custom state directory). Restore relevant files from that backup to
+undo installation, then log in again. Declining wallpapers preserves your
+existing wallpaper and palette. Spotify needs a separate installation and first
+launch before `spicetify backup apply` can apply its theme.
+
 For an existing Caelestia Lua setup, `./launch.sh --switch` performs a reversible
-shell handoff. `./launch.sh --restore` restores that handoff only when its backup
-exists. Fresh installation does not require Caelestia. The internal compatibility
-shortcut names are handled by Modesty itself.
+shell handoff; `./launch.sh --restore` restores that handoff when its backup exists.
+A fresh installation does not require Caelestia.
 
-Environment overrides: `MODESTY_SCREEN`, `MODESTY_WALLPAPERS`, and
-`MODESTY_REDUCED_MOTION=1`.
+## Troubleshooting
 
-## Development
+- **The shell did not start:** from the checkout, run
+  `quickshell ipc -p "$PWD/shell.qml" call island health`. If no instance exists,
+  run `python3 scripts/session-control.py restart` and keep its error output.
+- **A plugin failed to build:** retry `python3 install.py --finish-plugins` after
+  checking compatibility with your Hyprland version.
+- **Voice is missing:** use Install/Repair under Settings → Luma → Voice.
+- **An external monitor has no brightness slider:** DDC brightness is not
+  implemented. The built-in slider uses supported backlight devices.
+
+The installer has been exercised on a clean Arch container; UI and audio have
+also been checked on the maintainer's desktop. Containers cannot verify physical
+GPU drivers, login behavior or every hardware setup. If installation fails,
+[open an issue](https://github.com/sandeepbist/Modesty/issues/new/choose) with the
+command, error and package versions. Remove keys and personal data from logs.
+
+## Contribute
+
+Bug reports, small fixes, accessibility improvements and feature proposals are
+welcome. Read [the contribution guide](.github/CONTRIBUTING.md), fork the repo and
+open a pull request. Discuss larger changes in an issue first. **The maintainer
+reviews and merges contributions.** Opening a PR does not grant write access.
+
+Run offline checks before submitting code:
 
 ```sh
 python3 tests/check.py
 ```
 
-The runner checks installer backups and template isolation, offline backends,
-interaction state, isolated D-Bus behavior, and QML loading. It needs the desktop
-dependencies and Node.js. Live input and hardware checks require explicit
-`--live` and are excluded. QML loading checks require a completion marker and no
-errors; they do not prove visual quality or every hardware configuration.
+Checks need desktop dependencies and Node.js. They cover installer backups,
+template isolation, backend behavior, isolated D-Bus services, security boundaries
+and QML loading. Live input/hardware checks require explicit `--live` and are not
+part of this command. QML loading checks do not replace visual review.
 
-`services/` owns shared state, `modules/` owns UI, `components/` and `theme/` provide
-shared visuals, `scripts/` handles system integration, and `setup/` contains public
-installation templates. Research and private development notes stay ignored.
+`services/` owns shared state; `modules/` owns UI; `components/` and `theme/` contain
+shared visuals; `scripts/` handles system integration; `setup/` contains portable
+installation defaults. Research, private notes and disposable outputs stay out
+of the public source tree.
 
-Inter and Sacramento include their SIL OFL licenses under `assets/fonts/`.
-Lucide icons retain their license under `assets/icons/lucide/`. Vendored fuzzysort
-retains its MIT license in its source. Companion artwork is generated illustration
-with native QML animation.
+## License and credits
+
+Modesty code and adapted configs use [GPL-3.0](LICENSE). Hyprland configs are
+adapted from [Caelestia](https://github.com/caelestia-dots/caelestia). Fonts,
+icons, vendored code and third-party images retain their own terms; see
+[third-party notices](THIRD_PARTY.md).

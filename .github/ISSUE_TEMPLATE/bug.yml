@@ -1,0 +1,34 @@
+name: Bug report
+description: Report a reproducible desktop or installation problem.
+body:
+  - type: markdown
+    attributes:
+      value: Remove keys, passwords and private data from logs and captures. Use the security policy for vulnerability reports.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the command or keys used. Attach a short clip for visual problems.
+    validations:
+      required: true
+  - type: textarea
+    id: versions
+    attributes:
+      label: Environment
+      description: Arch version, Hyprland and Quickshell versions, Modesty revision, GPU/driver and display scale.
+      placeholder: Paste relevant output from pacman -Q hyprland quickshell and git rev-parse --short HEAD.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Include the smallest useful error output, with private data removed.
+      render: text
