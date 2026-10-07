@@ -36,6 +36,9 @@ with tempfile.TemporaryDirectory(prefix="modesty-install-check-") as directory:
         # A saved wallpaper must exist in the installed wallpaper set.
         wallpaper = json.loads((state / "modesty/wallpaper.json").read_text())
         assert Path(wallpaper["path"]).is_file()
+        wallpaper_data = json.loads((state / "modesty/wallpaper-data.json").read_text())
+        assert wallpaper_data["image"] == wallpaper["path"]
+        assert Path(wallpaper_data["image"]).is_file()
         assert (state / "modesty/main-shell").read_text().strip() == str(ROOT)
         # Regular files and symlinks are backed up; symlink destinations are untouched.
         fish = home / ".config/fish/config.fish"
