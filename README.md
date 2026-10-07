@@ -39,6 +39,8 @@ After installation, **log out and select Hyprland** in your login manager, or ru
 `start-hyprland` from a TTY. Keep the checkout at the same path: startup and
 shortcuts use it. Home and checkout paths must not contain whitespace. This
 profile uses `~/.config`; unset `XDG_CONFIG_HOME` before installing.
+Destination parent directories must be real directories, not symlinks. The
+installer refuses redirected paths before replacing files.
 
 The profile uses Hyprland's Lua configuration. Monitor arrangement, scale,
 brightness permissions and suspend/hibernate support depend on your hardware.
@@ -141,9 +143,40 @@ User preferences live in `$XDG_STATE_HOME/modesty`, normally
 Keys, saved network credentials, Bluetooth pairings, conversations, personal
 notes and model caches are not part of the install.
 
-To update, pull changes and run the installer again. It skips identical files
-and backs up files it replaces. Review any custom config changes before applying.
-Restart an existing Modesty session after code changes:
+### Update from Settings
+
+Open **Settings → System → Updates**. Choose **Check for updates**, **Download**,
+then **Install and reload**. Checks and downloads run only when requested. The
+updater selects the latest `main` revision only after its GitHub checks pass,
+loads the download in a separate checkout, then switches and reloads the shell.
+If startup fails, it attempts to restore the previous revision and restart it.
+**Roll back** restores the revision saved before the last update.
+
+Automatic updates require a clean checkout on `main` with the official origin.
+Local edits, untracked files, diverged history and forks need manual updates;
+ignored files that conflict with incoming files also block installation. Finish
+voice input, assistant work and recording before reloading. Reload is refused
+while the desktop is locked. Keep at least 256 MiB free on both the checkout and
+state filesystems; larger downloads can require more.
+
+Updates preserve installed configs, packages, plugins, keys and model files.
+They do not apply new `setup/` defaults or install dependencies. If a release needs
+new configs or packages, review those changes and rerun the installer separately.
+It skips identical files and backs up replacements, including customized configs.
+
+Compatibility checks accept stable and `-git` packages by their actual runtime
+versions, without changing package variants. This revision supports **Hyprland
+0.56.x** and **Quickshell 0.3.1 or newer within 0.3.x**. Requirements live in
+[`runtime-requirements.json`](runtime-requirements.json). Missing dependencies,
+mixed Qt major/minor versions, Quickshell Qt warnings and a compositor that differs
+from the installed binary block installation. New minor releases need a reviewed
+compatibility range; these checks do not guarantee every driver or plugin works.
+
+Update Arch separately with a full system upgrade. Rebuild your installed AUR
+Quickshell variant when Qt changes, and run `hyprpm update` after compositor
+updates. Do not remove a pacman lock to bypass an active package transaction.
+
+For a manual update, review upstream changes and your custom configs first:
 
 ```sh
 git pull --ff-only
@@ -151,11 +184,45 @@ git pull --ff-only
 python3 scripts/session-control.py restart
 ```
 
-Backups live under `~/.local/state/modesty-install-backups/<timestamp>/`
-(or your custom state directory). Restore relevant files from that backup to
-undo installation, then log in again. Declining wallpapers preserves your
-existing wallpaper and palette. Spotify needs a separate installation and first
-launch before `spicetify backup apply` can apply its theme.
+If an update is interrupted and the panel is unavailable, run from the checkout:
+
+```sh
+python3 scripts/updates.py status
+python3 scripts/updates.py rollback
+```
+
+Rollback requires the saved revision, a clean checkout and a compatible runtime.
+It does not undo a separate system upgrade or installer run.
+
+### Uninstall and restore
+
+Preview removal, then confirm it interactively:
+
+```sh
+./install.sh --uninstall --dry-run
+./install.sh --uninstall
+```
+
+The installer records files it replaces in
+`~/.local/state/modesty-install/receipt.json`. Uninstall backs up their current
+contents, including later edits, restores the first recorded originals and removes
+files that it originally created. It stops the running Modesty shell after safety
+checks. Log out before using the restored desktop. Unrelated files, packages,
+accounts, keys, conversations, model caches and the checkout remain in place.
+
+Backups remain under `~/.local/state/modesty-install-backups/<timestamp>/`, or
+your custom state directory. Keep them until you have checked the restored files.
+An interrupted file transaction blocks further changes. Recover it with
+`./install.sh --recover-install`; recovery backs up surviving files first.
+
+Older installations have no receipt. Review `./install.sh --adopt-existing --dry-run`,
+then use `./install.sh --adopt-existing` to record exact template
+matches. Customized files are excluded. Their original contents are unknown,
+so uninstall backs up and removes adopted files; restore pre-Modesty configs
+from older backups manually. Adoption cannot reconstruct missing originals.
+
+Declining wallpapers preserves your existing wallpaper and palette. Spotify
+needs a separate installation and first launch before `spicetify backup apply`.
 
 For an existing Caelestia Lua setup, `./launch.sh --switch` performs a reversible
 shell handoff; `./launch.sh --restore` restores that handoff when its backup exists.
@@ -172,9 +239,13 @@ A fresh installation does not require Caelestia.
 - **An external monitor has no brightness slider:** DDC brightness is not
   implemented. The built-in slider uses supported backlight devices.
 
-The installer has been exercised on a clean Arch container; UI and audio have
-also been checked on the maintainer's desktop. Containers cannot verify physical
-GPU drivers, login behavior or every hardware setup. If installation fails,
+Offline checks have passed in an Arch container. The current installer and
+uninstaller have also passed as a normal user in a disposable home on the
+maintainer's installed Arch system. UI, audio and reload have been checked on the
+live desktop. The current full package-install path has not completed a fresh
+container verification: the test environment hit disk and loader failures.
+Physical GPU drivers, login behavior and every hardware setup remain outside
+container coverage. If installation fails,
 [open an issue](https://github.com/sandeepbist/Modesty/issues/new/choose) with the
 command, error and package versions. Remove keys and personal data from logs.
 
@@ -191,10 +262,22 @@ Run offline checks before submitting code:
 python3 tests/check.py
 ```
 
-Checks need desktop dependencies and Node.js. They cover installer backups,
-template isolation, backend behavior, isolated D-Bus services, security boundaries
-and QML loading. Live input/hardware checks require explicit `--live` and are not
-part of this command. QML loading checks do not replace visual review.
+Checks need desktop dependencies and Node.js. They cover real Git update and
+rollback transactions, installer backups and recovery, template isolation,
+backend behavior, isolated D-Bus services, security boundaries and QML loading.
+Live input/hardware checks require explicit `--live` and are not part of this
+command. QML loading checks do not replace visual review.
+
+With the required packages and services already installed, run the real CLI in
+a disposable home and source copy:
+
+```sh
+python3 tests/installer-cli.py --isolated-home
+```
+
+Run as a normal user. This check does not install packages, start a desktop or
+change your real home. It checks dry-run, install, repeat install and uninstall,
+including preservation of original files, edits, keys and model data.
 
 `services/` owns shared state; `modules/` owns UI; `components/` and `theme/` contain
 shared visuals; `scripts/` handles system integration; `setup/` contains portable

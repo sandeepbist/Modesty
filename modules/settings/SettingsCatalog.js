@@ -72,7 +72,8 @@ var pages=[
   block("profile","Profile picture",[],"profile","avatar account image picture"),
   block("lock","Lock screen",[slider("lockDuration","Transition duration",250,900,10," ms"),slider("lockBlur","Wallpaper blur",0,1,.05,""),slider("lockDim","Wallpaper dimming",0,.7,.05,""),choice("lockClockStyle","Clock style",[{value:"soft",label:"Soft"},{value:"sculpted",label:"Sculpted"},{value:"classic",label:"Classic"}]),slider("lockClockSize","Clock size",80,160,2," px")]),
   block("security","Authentication",[action("unlockcheck","Verify unlock password","pam authentication"),action("locknow","Lock now")])]},
- {id:"recording",group:"system",title:"Screen recording",icon:"videocam",blocks:[block("recording","Recording",[slider("recordCountdown","Countdown",0,5,1," s"),choice("recordFps","Frame rate",[30,60].map(n=>({value:n,label:n+" fps"}))),toggle("recordCursor","Include pointer"),action("recorder","Open recorder")])]}];
+ {id:"recording",group:"system",title:"Screen recording",icon:"videocam",blocks:[block("recording","Recording",[slider("recordCountdown","Countdown",0,5,1," s"),choice("recordFps","Frame rate",[30,60].map(n=>({value:n,label:n+" fps"}))),toggle("recordCursor","Include pointer"),action("recorder","Open recorder")])]},
+ {id:"updates",group:"system",title:"Updates",icon:"download",blocks:[block("updates","Modesty updates",[],"updates","ota download install reload restart rollback version dependencies compatibility qt hyprland quickshell")]}];
 var legacy=["layout","clock","appearance","motion","launcher","notifications","controls","lock","connections","shortcuts"];
 function page(id) { return pages.find(p=>p.id===id)||pages[0]; }
 function search(query) {

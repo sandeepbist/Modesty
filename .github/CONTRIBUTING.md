@@ -21,6 +21,9 @@ details in a public issue.
    Reuse existing components. Update `setup/` when changing installation defaults.
 3. Run `python3 tests/check.py` with the desktop dependencies and Node.js installed.
    Add a regression check for a behavior change where it can catch a real failure.
+   For installer changes, also run `python3 tests/installer-cli.py --isolated-home`
+   as a normal user with the required packages and services already available.
+   This uses a disposable home and source copy; it does not install packages.
 4. Check UI changes in a native Hyprland session, including reduced motion. Include
    a screenshot or short clip and say what you tested.
 5. Open a PR against `main`. Describe the trigger, resulting behavior and checks.
@@ -30,6 +33,11 @@ avoid unrelated formatting. Do not include generated logs, caches, model files,
 personal config exports, credentials or research notes. CI runs on hosted runners
 with read-only repository permissions. GitHub may ask the maintainer to approve
 workflow runs from new contributors.
+
+Settings updates select `main` revisions with passing push checks. Dependency
+changes must update `runtime-requirements.json`, the installer and relevant tests.
+Do not widen compatibility ranges without testing the affected runtime. Source
+updates do not migrate installed configs or change system packages.
 
 Code contributions use GPL-3.0. Preserve third-party notices. New fonts, icons,
 images or other bundled assets need a source and documented redistribution terms.

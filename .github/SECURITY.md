@@ -45,3 +45,21 @@ Installation templates exclude conversations, personal knowledge, keys and model
 caches. Review local changes before publishing your own fork. Research notes and
 temporary outputs are ignored. Fork CI receives no project secrets and uses
 read-only repository permissions.
+
+## Updates and removal
+
+Settings updates download source from the official repository and require passing
+GitHub checks for that revision. Validation runs the downloaded QML with your user
+permissions; it is not a sandbox for untrusted source. These checks depend on the
+repository, workflow and GitHub remaining trustworthy. Review changes before
+using a fork or manually updating a customized checkout.
+
+Updates do not run package upgrades, rebuild plugins or replace installed configs.
+Dirty checkouts and conflicting ignored files block installation. Compatibility
+and startup checks reduce common failures but cannot prove every desktop setup
+works. Rollback restores source, not a separate system upgrade or installer run.
+
+Installation receipts and backups remain in your local state directory. Uninstall
+backs up current owned files before restoring originals; it preserves packages,
+personal data, keys and models. Backups can contain private configuration. Keep
+them private and review logs before sharing them.

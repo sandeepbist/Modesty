@@ -6,10 +6,11 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT/'scripts'))
 commands = [
     ['node', 'tests/layout.cjs'], ['node', 'tests/search.cjs'],
     *[[sys.executable, f'tests/{name}.py'] for name in
-      ('install', 'structure', 'backend', 'appearance', 'session-control', 'night-light',
+      ('install', 'installation', 'updates', 'structure', 'backend', 'appearance', 'session-control', 'night-light',
        'launcher', 'voice', 'luma', 'luma-system', 't3-status', 'levels', 'companion')],
     *[['dbus-run-session', '--', sys.executable, f'tests/{name}.py'] for name in
       ('bluetooth', 'notifications', 'session-events')],
