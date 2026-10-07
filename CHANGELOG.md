@@ -5,7 +5,16 @@ Entries are prepared before publishing. GitHub Releases records which versions h
 
 ## [Unreleased]
 
-Changes after the first release go here.
+### Fixed
+
+- Calculator queries now wait for their scope bindings to settle before starting work. Closing search cancels queued and running calculations.
+- Notification bursts retain the newest 50 history records after exit animations.
+
+### Changed
+
+- Conversation updates preserve unchanged model rows and create only the message view each role needs.
+- Control tiles create level sliders and media artwork only when their tile kind needs them.
+- Inactive island panels skip resize callbacks; lyric lookup reuses its position index and visualizer bars skip identical frames.
 
 ## [0.1.0]
 

@@ -148,7 +148,7 @@ PanelWindow {
         return null;
     }
     function search(value: string): void { Qt.callLater(()=>{window.acquireFocus=true;input.text=value;input.forceActiveFocus();}); }
-    function diagnostics(): var { return {open:CanvasState.opened,query,scope,prefix:prefix?.scope??"",selected,listIndex:list.currentIndex,actionBar,actionIndex,previewPath,count:results.length,results:results.slice(0,12).map(r=>({kind:r.kind,title:r.title})),answer:answerHasText?quickAnswer.title:"",answerKind:answerHasText?quickAnswer.label??"Source":"",answerPending,answerQuery,answerEligible,answerRunning:answerWorker.running,aiRunning:Luma.busy,indexed,attachmentPicker:conversation.pickerOpen,inputFocused:input.activeFocus,windowFocused:input.Window.active,keyboardAcquired:window.acquireFocus,x:card.x,y:card.y,width:card.width,height:card.height,originX,originY,travelPhase,travelProgress}; }
+    function diagnostics(): var { return {open:CanvasState.opened,query,scope,calculating,calculation,calculationError,calculatorRunning:calculatorWorker.running,calculatorPending:calcDelay.running,prefix:prefix?.scope??"",selected,listIndex:list.currentIndex,actionBar,actionIndex,previewPath,count:results.length,results:results.slice(0,12).map(r=>({kind:r.kind,title:r.title})),answer:answerHasText?quickAnswer.title:"",answerKind:answerHasText?quickAnswer.label??"Source":"",answerPending,answerQuery,answerEligible,answerRunning:answerWorker.running,aiRunning:Luma.busy,indexed,attachmentPicker:conversation.pickerOpen,inputFocused:input.activeFocus,windowFocused:input.Window.active,keyboardAcquired:window.acquireFocus,x:card.x,y:card.y,width:card.width,height:card.height,originX,originY,travelPhase,travelProgress}; }
     function capture(path: string): void { if(CanvasState.opened) card.grabToImage(result => result.saveToFile(path)); }
     function moveDrop(opening: bool): void {
         travel.stop();
@@ -357,6 +357,10 @@ PanelWindow {
         else CanvasState.close();
     }
     ListModel {id:resultModel}
+    function scheduleCalculation(): void {
+        // Scope and expression bindings can settle after query change handlers.
+        if(CanvasState.opened&&!Voice.active&&calculating)calcDelay.restart();else calcDelay.stop();
+    }
     function syncResults(): void {
         // Coalesce synchronous query changes before touching visible delegates.
         const rows=results.map(row=>({key:row.key,kind:row.kind,id:String(row.id??""),title:row.title??"",subtitle:row.subtitle??"",icon:row.icon??"",path:row.path??"",url:row.url??"",sourceQuery:row.sourceQuery??""}));
@@ -387,7 +391,7 @@ PanelWindow {
         if(Voice.active)return;
         if ((scope==="all"||scope==="files") && query.trim().length>=2) fileDelay.restart();
         else fileDelay.stop();
-        if (calculating) calcDelay.restart(); else calcDelay.stop();
+        Qt.callLater(scheduleCalculation);
         if (scope==="content" && query.trim().length>=3) contentDelay.restart(); else contentDelay.stop();
         if ((scope==="all"||scope==="web")&&query.trim().length>=2) webDelay.restart(); else webDelay.stop();
         if (onlineEligible&&query.trim().length>=3) onlineDelay.restart(); else onlineDelay.stop();
@@ -398,7 +402,7 @@ PanelWindow {
     onScopeChanged: {
         if(!CanvasState.opened||Voice.active)return;
         if(scope==="clipboard")refreshClipboard();
-        if(calculating)calcDelay.restart();else calcDelay.stop();
+        Qt.callLater(scheduleCalculation);
         if((scope==="all"||scope==="files")&&query.trim().length>=2)fileDelay.restart();else fileDelay.stop();
         if(scope==="content"&&query.trim().length>=3)contentDelay.restart();else contentDelay.stop();
         if((scope==="all"||scope==="web")&&query.trim().length>=2)webDelay.restart();else webDelay.stop();
@@ -422,6 +426,7 @@ PanelWindow {
         } else {
             window.acquireFocus=false;
             indexDelay.stop();
+            calcDelay.stop();calculatorWorker.running=false;
             answerDelay.stop();answerRevealDelay.stop();if(!Luma.previewActive)answerWorker.running=false;
             closeCleanup.restart();
             scopeMenu.close();window.moveDrop(false);

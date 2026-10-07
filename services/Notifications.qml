@@ -31,7 +31,13 @@ Singleton {
         n.destroy(Tokens.animMedium+50);
     }
     function clearAll(): void { list.slice().forEach((n,i)=>close(n,Tokens.reducedMotion?0:Math.min(i*24,144))); }
-    function add(record): void { historyModel.insert(0,{record}); list=[record,...list]; }
+    function add(record): void {
+        historyModel.insert(0,{record}); list=[record,...list];
+        // Closing records remain until their exit animation finishes. Count
+        // retained records so a burst does not keep closing the same oldest one.
+        const retained = list.filter(n => !n.closing);
+        if (retained.length > 50) close(retained[retained.length - 1]);
+    }
     onDndChanged: if (dnd) for (const n of list) dismiss(n)
     function previewNotify(timeout: int): void {
         if (Quickshell.env("MODESTY_PREVIEW") !== "1") return;
@@ -42,14 +48,13 @@ Singleton {
         for(const old of list.filter(n=>n.reminderId===id))close(old);
         const n=recordComponent.createObject(root,{serial:++root.nextSerial,reminderId:id,appName:"Reminder",summary:title,body,popup:!dnd,timeout:Preferences.notificationDuration});
         n.localActions=[{identifier:"default",text:"Open",invoke:()=>{open();root.dismiss(n);}},{identifier:"complete",text:"Done",invoke:()=>complete()}];
-        add(n);if(list.length>50)close(list[list.length-1]);
+        add(n);
     }
     // The installed 0.3.1 service exposes expireTimeout in milliseconds (verified via D-Bus).
     function track(notification): void {
         notification.tracked = true;
         const record = recordComponent.createObject(root, { serial:++root.nextSerial, notification, appName: notification.appName, appIcon:notification.appIcon, summary: notification.summary, body: notification.body, popup: !dnd, timeout: notification.expireTimeout === 0 ? 0 : notification.expireTimeout > 0 ? Math.round(notification.expireTimeout) : Preferences.notificationDuration });
         add(record);
-        if (list.length > 50) close(list[list.length - 1]);
     }
     Loader {
         active: Quickshell.env("MODESTY_PREVIEW") !== "1"
