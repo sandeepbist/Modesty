@@ -12,7 +12,7 @@ jobs:
   offline:
     name: Offline checks on Arch
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -20,12 +20,29 @@ jobs:
       - name: Run regression checks in an ephemeral Arch container
         # Namespace tests need bubblewrap. Fork code runs only on hosted runners.
         run: |
-          docker run --rm --privileged -v "$PWD:/work" -w /work archlinux:base bash -lc '
+          cat > "$RUNNER_TEMP/modesty-arch-check.sh" <<'CHECK'
+            set -euo pipefail
             pacman -Syu --noconfirm --needed git nodejs python python-dbus python-gobject python-pillow dbus quickshell hyprland qt6-wayland qt6-multimedia qt6-imageformats networkmanager network-manager-applet bluez bluez-utils upower pipewire wireplumber brightnessctl playerctl matugen foot bubblewrap
             export XDG_RUNTIME_DIR=$(mktemp -d)
+            # A Qt upgrade can precede the repository's Quickshell rebuild.
+            # Check a minimal config, then rebuild the same stable package only
+            # in this disposable runner. Never suppress the mismatch warning.
+            printf 'import QtQuick\nimport Quickshell\nShellRoot { Timer { interval: 50; running: true; onTriggered: Qt.quit() } }\n' > /tmp/modesty-qt-probe.qml
+            QT_QPA_PLATFORM=offscreen quickshell --no-color -p /tmp/modesty-qt-probe.qml > /tmp/modesty-qt-probe.log 2>&1
+            if PYTHONPATH=scripts python3 -c 'import compatibility, pathlib, sys; sys.exit(0 if compatibility.qt_mismatch(pathlib.Path("/tmp/modesty-qt-probe.log").read_text()) else 1)'; then
+              cat /tmp/modesty-qt-probe.log
+              pacman -S --noconfirm --needed base-devel sudo cmake ninja
+              useradd -m builder
+              printf 'builder ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/modesty-builder
+              chmod 440 /etc/sudoers.d/modesty-builder
+              runuser -u builder -- env HOME=/home/builder CMAKE_BUILD_PARALLEL_LEVEL=2 MAKEFLAGS=-j2 python3 -c 'import install; install.rebuild_quickshell({"quickshell"}, unattended=True)'
+              QT_QPA_PLATFORM=offscreen quickshell --no-color -p /tmp/modesty-qt-probe.qml > /tmp/modesty-qt-probe.log 2>&1
+              PYTHONPATH=scripts python3 -c 'import compatibility, pathlib; assert not compatibility.qt_mismatch(pathlib.Path("/tmp/modesty-qt-probe.log").read_text())'
+            fi
             mkdir -p /run/dbus
             dbus-daemon --system --fork
             printf "[keyfile]\nunmanaged-devices=interface-name:*\n" > /tmp/modesty-ci-nm.conf
             NetworkManager --no-daemon --config /tmp/modesty-ci-nm.conf >/tmp/modesty-ci-nm.log 2>&1 &
             dbus-run-session -- bash -lc "pipewire >/tmp/modesty-ci-pipewire.log 2>&1 & python3 tests/check.py"
-          '
+          CHECK
+          docker run --rm --privileged -v "$PWD:/work" -v "$RUNNER_TEMP/modesty-arch-check.sh:/check.sh:ro" -w /work archlinux:base bash /check.sh
