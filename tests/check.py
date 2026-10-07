@@ -11,7 +11,7 @@ commands = [
     ['node', 'tests/layout.cjs'], ['node', 'tests/search.cjs'],
     *[[sys.executable, f'tests/{name}.py'] for name in
       ('release', 'install', 'installation', 'updates', 'structure', 'backend', 'appearance', 'session-control', 'night-light',
-       'launcher', 'voice', 'luma', 'luma-system', 't3-status', 'levels', 'conversation', 'calculator', 'companion')],
+       'launcher', 'voice', 'luma', 'luma-system', 't3-status', 'levels', 'conversation', 'calculator', 'control-tiles', 'companion')],
     *[['dbus-run-session', '--', sys.executable, f'tests/{name}.py'] for name in
       ('bluetooth', 'notifications', 'session-events')],
 ]

@@ -12,6 +12,7 @@ Item {
     property string panel: "idle"
     property real targetWidth: 33
     property real targetHeight: Preferences.barHeight
+    readonly property var panelSources: ({dropcue:"DropCue.qml",files:"FileDropMenu.qml",activities:"ActivityStatus.qml",clock:"WeekCard.qml", context:"ContextPanel.qml",toast:"ToastStack.qml",calendar:"CalendarMenu.qml",media:"MediaCard.qml",privacy:"PrivacyMenu.qml",quicksettings:"ControlCenter.qml",themes:"ThemesMenu.qml",wallpapers:"WallpaperMenu.qml",power:"PowerMenu.qml",launcher:"LauncherMenu.qml",authentication:"AuthenticationMenu.qml",unlockcheck:"UnlockCheckMenu.qml"})
     property bool expanded: panel !== "idle"
     property bool inlineContext: false
     property bool continuousWidth: false
@@ -89,10 +90,9 @@ Item {
                 property bool presented:false
                 property real heldWidth: IslandState.sizes[modelData]?.[0] ?? 33
                 property real heldHeight: IslandState.sizes[modelData]?.[1] ?? 33
-                readonly property var sources: ({dropcue:"DropCue.qml",files:"FileDropMenu.qml",activities:"ActivityStatus.qml",clock:"WeekCard.qml", context:"ContextPanel.qml",toast:"ToastStack.qml",calendar:"CalendarMenu.qml",media:"MediaCard.qml",privacy:"PrivacyMenu.qml",quicksettings:"ControlCenter.qml",themes:"ThemesMenu.qml",wallpapers:"WallpaperMenu.qml",power:"PowerMenu.qml",launcher:"LauncherMenu.qml",authentication:"AuthenticationMenu.qml",unlockcheck:"UnlockCheckMenu.qml"})
                 function resizeContent() { if (selected) { heldWidth = root.targetWidth; heldHeight = root.targetHeight; if(presentationScale>=.995)presented=true; } }
                 onSelectedChanged: { if(!selected){outgoingScale=visibleScale;outgoingReveal=revealAmount;presented=false;}else if (modelData === "launcher" && item) item.beginSearch(); Qt.callLater(resizeContent); Qt.callLater(focusContent); }
-                Connections { target: root; function onTargetWidthChanged() { Qt.callLater(content.resizeContent); } function onTargetHeightChanged() { Qt.callLater(content.resizeContent); } }
+                Connections { target: root; enabled: content.selected; function onTargetWidthChanged() { Qt.callLater(content.resizeContent); } function onTargetHeightChanged() { Qt.callLater(content.resizeContent); } }
                 Component.onCompleted: Qt.callLater(resizeContent)
                 readonly property real inset: ["context","activities","dropcue"].includes(modelData) ? 0 : Preferences.innerPadding
                 width: Math.max(0, heldWidth - inset * 2); height: Math.max(0, heldHeight - inset * 2)
@@ -111,7 +111,7 @@ Item {
                     xScale:content.selected?content.visibleScale:content.outgoingScale
                     yScale:xScale
                 }
-                source: sources[modelData]
+                source: root.panelSources[modelData]
                 active: selected || opacity > 0 || (root.stage === "clock" && ["clock","launcher"].includes(modelData)) || (root.stage === "controls" && modelData === "quicksettings")
                 asynchronous: !["launcher", "wallpapers", "dropcue", "files"].includes(modelData)
                 visible: opacity > 0 || (selected && modelData === "launcher")
