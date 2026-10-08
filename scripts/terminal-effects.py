@@ -30,9 +30,9 @@ def validate_profile(profile, expected=None):
     code = (
         'import json; from kitty.config import load_config; bad=[]; '
         f'p=load_config({str(profile)!r},accumulate_bad_lines=bad); '
-        'assert not bad,bad; '
-        'assert hasattr(p,"cursor_trail"),"Native cursor trail is unavailable"; '
-        'assert p.cursor_trail in (0,1),"Unsupported cursor trail value"; '
+        '\nif bad: raise ValueError(bad)\n'
+        'if not hasattr(p,"cursor_trail"): raise ValueError("Native cursor trail is unavailable")\n'
+        'if p.cursor_trail not in (0,1): raise ValueError("Unsupported cursor trail value")\n'
         'print("MODESTY_TRAIL="+json.dumps(p.cursor_trail))'
     )
     result = subprocess.run([executable, '+runpy', code], capture_output=True, text=True,

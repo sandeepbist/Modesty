@@ -45,11 +45,10 @@ with tempfile.TemporaryDirectory(prefix='modesty-terminal-check-') as temporary:
         assert original.read_text()=='font_size 17\n'
         assert len([line for line in profile.read_text().splitlines() if line.startswith('include ') and 'modesty-generated.conf' in line])==1 and 'include modesty-effects.conf' in profile.read_text()
         if shutil.which('kitty'):
-            code=('from kitty.config import load_config; bad=[]; p=load_config('+repr(str(profile))+',accumulate_bad_lines=bad); '
-                'assert not bad,bad; assert p.cursor_trail==1 and p.cursor_trail_decay==(0.06,0.14); '
-                'assert p.cursor_trail_start_threshold==(2,2) and p.cursor_blink_interval[0]==0; '
-                'assert p.custom_shaders==()')
-            subprocess.run(['kitty','+runpy',code],check=True,timeout=10)
+            code=('import json; from kitty.config import load_config; bad=[]; p=load_config('+repr(str(profile))+',accumulate_bad_lines=bad); '
+                'print(json.dumps([len(bad),p.cursor_trail,p.cursor_trail_decay,p.cursor_trail_start_threshold,p.cursor_blink_interval[0],p.custom_shaders]))')
+            result=subprocess.run(['kitty','+runpy',code],check=True,timeout=10,capture_output=True,text=True)
+            assert json.loads(result.stdout)==[0,1,[0.06,0.14],[2,2],0,[]]
         with patch.dict(os.environ,XDG_CONFIG_HOME=str(config)),patch.object(appearance.subprocess,'run',side_effect=isolated_run),patch.object(Path,'iterdir',isolated_iterdir):
             appearance.apply(dict(paletteName='midnight',mode=mode,colors=colors,targets={'foot':False}),state)
         assert 'modesty-generated.conf' not in profile.read_text() and 'include modesty-effects.conf' in profile.read_text() and original.read_text()=='font_size 17\n'
@@ -125,6 +124,23 @@ with tempfile.TemporaryDirectory(prefix='modesty-effects-check-') as temporary:
         assert json.loads(receipt_path.read_text())['files']==first['files']
         if shutil.which('kitty'):
             assert effects.status()['availability']=='ready' and effects.status()['enabled']
+            original_effects=optional[1].read_bytes()
+            for malformed in ('cursor_trail unsupported\n','cursor_trail 1\ncursor_trail_decay invalid\n'):
+                optional[1].write_text(malformed)
+                receipt_before=receipt_path.read_bytes();backups_before=set((state/'modesty-install-backups').iterdir())
+                assert effects.status()['availability']=='unsupported'
+                real_popen=subprocess.Popen
+                def native_only(args,*positional,**keywords):
+                    if args[1:2]!=['+runpy']:raise AssertionError('Malformed profile reached native window launch')
+                    return real_popen(args,*positional,**keywords)
+                with patch.object(effects.subprocess,'Popen',side_effect=native_only):
+                    for action in (lambda:effects.set_trail(False),effects.launch):
+                        try:action()
+                        except RuntimeError:pass
+                        else:raise AssertionError('Malformed native configuration was accepted')
+                assert optional[1].read_text()==malformed and receipt_path.read_bytes()==receipt_before
+                assert set((state/'modesty-install-backups').iterdir())==backups_before
+            optional[1].write_bytes(original_effects)
             before=optional[0].read_bytes();palette=optional[2].read_bytes()
             assert effects.set_trail(False)['enabled'] is False
             assert optional[1].read_text().startswith('cursor_trail 0\n')
