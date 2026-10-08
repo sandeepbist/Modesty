@@ -358,7 +358,7 @@ def quick_answer(query):
         if abstract and urlsplit(source).scheme == "https":
             title = data.get("Heading", "")
             hostname = (urlsplit(source).hostname or "Web").removeprefix("www.")
-            answer = {"title": title or "Quick answer", "text": abstract, "source": source, "sourceName": "Wikipedia" if hostname.endswith("wikipedia.org") else hostname, "label": "Overview"}
+            answer = {"title": title or "Quick answer", "text": abstract, "source": source, "sourceName": "Wikipedia" if hostname == "wikipedia.org" or hostname.endswith(".wikipedia.org") else hostname, "label": "Overview"}
         else:
             answer = None
         emit(ok=True, query=query, answer=answer)

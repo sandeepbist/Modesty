@@ -141,3 +141,14 @@ with tempfile.TemporaryDirectory(prefix='modesty-update-check-') as directory, c
         data=json.loads(updates.RECORD.read_text()); data['pid']=99999999; updates.RECORD.write_text(json.dumps(data))
         assert updates.status()['phase']=='recovery'
 print('PASS real Git fetch/apply/rollback, locks, dirty/fork/branch/divergence guards, staged tampering, CI gate, locked session, failed validation/startup and partial-write recovery')
+
+# A reload validates the current runtime; report those versions, not an older
+# saved update check, so Qt repair diagnostics agree with the actual gate.
+report = {'ok':True,'versions':{'qt6-base':'6.12.0'},'errors':[],'warnings':[]}
+control = MagicMock(unsafe=True)
+with patch.object(updates.compatibility, 'require', return_value=report), patch.object(updates, 'installed_session', return_value=control), patch.object(updates, 'busy_work'), patch.object(updates, 'save') as saved:
+    updates.reload_shell()
+    control.assert_unlocked.assert_called_once()
+    control.restart.assert_called_once()
+    assert saved.call_args_list[0].kwargs['compatibility'] == report
+print('PASS reload diagnostics refresh actual validated runtime versions')
