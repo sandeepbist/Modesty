@@ -46,6 +46,8 @@ with tempfile.TemporaryDirectory(prefix="modesty-install-check-") as directory:
         assert expected > 0
         assert not list(home.iterdir()) and not state.exists()
         assert installer.install_files(GROUPS, False) == expected
+        assert not (home/".config/kitty/modesty.conf").exists()
+        assert not (home/".config/fish/functions/modesty-terminal.fish").exists()
         for group in GROUPS:
             for source in installer.files_for(group):
                 if source.is_file():
@@ -281,3 +283,94 @@ for missing_package in (True, False):
             command.assert_not_called()
             assert not list(home.iterdir())
 print('PASS default-no required package/service repairs run no commands and create no files')
+
+optional_sources = installer.files_for('terminal-effects')
+assert {path.name for path in optional_sources} == {'modesty.conf', 'modesty-effects.conf', 'modesty-generated.conf', 'modesty-terminal.fish'}
+assert not set(optional_sources) & set(installer.files_for('apps'))
+assert ROOT/'setup/config/fish/conf.d/modesty-terminal.fish' in installer.files_for('apps')
+for answer in ('n', ''):
+    with patch('builtins.input', return_value=answer), patch.object(installer, 'run') as command, contextlib.redirect_stdout(io.StringIO()):
+        assert installer.choose_terminal_effects() is False
+        command.assert_not_called()
+
+fake_effects = SimpleNamespace(require_mutation=Mock(), validate_profile=Mock())
+fake_spec = SimpleNamespace(loader=SimpleNamespace(exec_module=lambda module: None))
+for package_result in ('decline', 'failure', 'missing', 'success', 'unsupported'):
+    commands = Mock(side_effect=subprocess.CalledProcessError(1, ['sudo']) if package_result == 'failure' else None)
+    fake_effects.validate_profile.reset_mock()
+    fake_effects.validate_profile.side_effect = RuntimeError('unsupported native option') if package_result == 'unsupported' else None
+    answers = ['y', 'n' if package_result == 'decline' else 'y']
+    executable = iter([None, '/usr/bin/kitty' if package_result in ('success', 'unsupported') else None])
+    with (
+        patch.object(installer.importlib.util, 'spec_from_file_location', return_value=fake_spec),
+        patch.object(installer.importlib.util, 'module_from_spec', return_value=fake_effects),
+        patch.object(installer.shutil, 'which', side_effect=lambda name: '/usr/bin/fish' if name == 'fish' else None if name == 'quickshell' else next(executable)),
+        patch.object(installer, 'run', commands), patch('builtins.input', side_effect=answers),
+        contextlib.redirect_stdout(io.StringIO()),
+    ):
+        assert installer.choose_terminal_effects() is (package_result == 'success')
+    if package_result == 'decline': commands.assert_not_called()
+    else: commands.assert_called_once_with('sudo', 'pacman', '-Syu', '--needed', 'kitty')
+
+for final in ('n', '', 'y'):
+    with tempfile.TemporaryDirectory(prefix='modesty-optional-install-') as directory, contextlib.redirect_stdout(io.StringIO()):
+        home = Path(directory); state = home/'.local/state'
+        with (
+            patch.object(installer, 'HOME', home), patch.object(installer, 'CONFIG', home/'.config'), patch.object(installer, 'STATE', state),
+            patch.object(installer.os, 'geteuid', return_value=1000), patch.object(installer.shutil, 'which', return_value='/usr/bin/tool'),
+            patch.object(sys, 'argv', ['install.py', '--install-terminal-effects']), patch.object(installer, 'choose_terminal_effects', return_value=True),
+            patch('builtins.input', return_value=final), patch.object(installer, 'installed_packages') as packages,
+            patch.object(installer, 'missing_services') as services, patch.object(installer, 'install_voice') as voice,
+        ):
+            installer.main()
+        packages.assert_not_called(); services.assert_not_called(); voice.assert_not_called()
+        assert (state/'modesty-install/receipt.json').exists() is (final == 'y')
+        if final == 'y':
+            assert len(json.loads((state/'modesty-install/receipt.json').read_text())['files']) == 4
+        else: assert not list(home.iterdir())
+
+for flags in (['--non-interactive'], ['--install-voice'], ['--finish-plugins'], ['--uninstall'], ['--adopt-existing'], ['--recover-install']):
+    with patch.object(installer.os, 'geteuid', return_value=1000), patch.object(installer.shutil, 'which', return_value='/usr/bin/tool'), patch.object(sys, 'argv', ['install.py', '--install-terminal-effects', *flags]), patch.object(installer, 'choose_terminal_effects') as choice, contextlib.redirect_stderr(io.StringIO()):
+        try: installer.main()
+        except SystemExit as error: assert error.code == 2
+        else: raise AssertionError('Conflicting optional setup flags accepted')
+        choice.assert_not_called()
+
+for interactive in (False, True):
+    with tempfile.TemporaryDirectory(prefix='modesty-optional-base-') as directory, contextlib.redirect_stdout(io.StringIO()):
+        home=Path(directory);state=home/'.local/state'
+        with (
+            patch.object(installer,'HOME',home),patch.object(installer,'CONFIG',home/'.config'),patch.object(installer,'STATE',state),
+            patch.object(installer.os,'geteuid',return_value=1000),patch.object(installer.shutil,'which',return_value='/usr/bin/tool'),
+            patch.object(sys,'argv',['install.py']+([] if interactive else ['--non-interactive'])),
+            patch.object(installer,'installed_packages',return_value=set(installer.CORE+installer.EXTRAS)),
+            patch.object(installer.importlib.util,'find_spec',return_value=True),patch.object(installer,'missing_services',return_value=[]),
+            patch.object(installer,'choose_groups',return_value=['apps']),patch.object(installer,'choose_terminal_effects',return_value=False) as choice,
+            patch.object(installer,'install_voice'),patch.object(installer.compatibility,'require'),
+            patch.object(installer.importlib.util,'spec_from_file_location',return_value=fake_spec),
+            patch.object(installer.importlib.util,'module_from_spec',return_value=SimpleNamespace(validate_shell=Mock())),
+            patch('builtins.input',return_value='y'),patch.object(installer,'run') as command,
+        ):
+            installer.main()
+        assert not (home/'.config/kitty/modesty.conf').exists()
+        assert not (home/'.config/fish/functions/modesty-terminal.fish').exists()
+        assert (home/'.config/fish/conf.d/modesty-terminal.fish').exists()
+        if not interactive: choice.assert_not_called()
+        assert not any(call.args[0] == 'sudo' for call in command.call_args_list)
+print('PASS optional effects default-no/decline, separate package approval/failure/unsupported, final file approval, setup-only and noninteractive exclusion')
+
+with patch('builtins.input',return_value='y'),patch.object(installer.shutil,'which',side_effect=lambda name:None if name=='fish' else '/usr/bin/tool'),patch.object(installer,'run') as command,patch.object(installer.importlib.util,'spec_from_file_location',return_value=fake_spec),patch.object(installer.importlib.util,'module_from_spec',return_value=fake_effects),contextlib.redirect_stdout(io.StringIO()):
+    assert installer.choose_terminal_effects() is False
+    command.assert_not_called()
+
+with (
+    patch('builtins.input',side_effect=['y','y']),
+    patch.object(installer.shutil,'which',side_effect=lambda name:'/usr/bin/fish' if name=='fish' else '/usr/bin/quickshell' if name=='quickshell' else None),
+    patch.object(installer,'run') as command,patch.object(installer.compatibility,'capture',return_value='COMPATIBILITY WARNING: built against Qt'),
+    patch.object(installer.importlib.util,'spec_from_file_location',return_value=fake_spec),patch.object(installer.importlib.util,'module_from_spec',return_value=fake_effects),
+    contextlib.redirect_stdout(io.StringIO()) as output,
+):
+    assert installer.choose_terminal_effects() is False
+    assert 'rebuilding the installed stable/git' in output.getvalue()
+    command.assert_called_once_with('sudo','pacman','-Syu','--needed','kitty')
+print('PASS standalone profile refuses missing Fish and surfaces Qt rebuild guidance after an approved package upgrade')

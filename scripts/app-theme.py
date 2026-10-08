@@ -38,8 +38,7 @@ def terminal_colors(raw,mode):
     for i,value in enumerate(values):raw['colors']['term'+str(i)]={'default':{'color':'#'+value}}
 
 
-def apply_live_foot(raw,state):
-    """Write color OSCs only to this user's Foot PTYs, never shell commands."""
+def apply_live_terminals(raw,state):
     def color(role):
         value=raw['colors'][role]['default']['color']
         if not re.fullmatch(r'#[0-9a-fA-F]{6}',value):raise ValueError('Invalid terminal color')
@@ -64,7 +63,11 @@ def apply_live_foot(raw,state):
         ancestor=pid; seen=set()
         while ancestor in processes and ancestor not in seen:
             seen.add(ancestor);parent,comm=processes[ancestor]
-            if comm=='foot':
+            managed=comm=='foot'
+            if comm=='kitty':
+                try:managed=str(CONFIG/'kitty/modesty.conf').encode() in Path(f'/proc/{ancestor}/cmdline').read_bytes().split(b'\0')
+                except OSError:pass
+            if managed:
                 try:
                     tty=os.readlink(f'/proc/{pid}/fd/0')
                     if re.fullmatch(r'/dev/pts/\d+',tty):terminals.add(tty)
@@ -108,9 +111,14 @@ def apply(raw,mode,state,targets):
         for key,role in {'background':'surface','foreground':'on_surface','selection-background':'primary','selection-foreground':'on_primary','urls':'primary'}.items():foot+=key+'={{colors.'+role+'.default.hex_stripped}}\n'
         for prefix in ('regular','bright'):
             for i in range(8):foot+=prefix+str(i)+'={{colors.term'+str(i+(8 if prefix=='bright' else 0))+'.default.hex_stripped}}\n'
+    kitty='\n'.join(key+' '+color(role) for key,role in {
+        'background':'surface','foreground':'on_surface','cursor':'primary',
+        'cursor_text_color':'on_primary','selection_background':'primary',
+        'selection_foreground':'on_primary','url_color':'primary'}.items())+'\n'
+    kitty+='\n'.join('color'+str(i)+' '+color('term'+str(i)) for i in range(16))+'\n'
     roles=['on_surface','surface_container','surface_container_highest','surface_container_high','outline','outline_variant','on_surface','on_surface','on_surface','surface_container_lowest','surface','shadow','primary','on_primary','primary','tertiary','surface_container','shadow','surface_container','on_surface','outline','primary']
     qt='[ColorScheme]\n'+'\n'.join(group+'='+', '.join(color(r if group!='disabled_colors' or r!='on_surface' else 'outline') for r in roles) for group in ['active_colors','inactive_colors','disabled_colors'])+'\n'
-    files={'gtk':('gtk.css',gtk),'foot':('foot.ini',foot),'qt':('qt.conf',qt)}
+    files={'gtk':('gtk.css',gtk),'foot':('foot.ini',foot),'kitty':('kitty.conf',kitty),'qt':('qt.conf',qt)}
     config='[config]\n'
     for key,(filename,template) in files.items():
         template_path=generated/(filename+'.template');write(template_path,template)
@@ -144,8 +152,14 @@ def apply(raw,mode,state,targets):
         target=foot_config.parent/'modesty-generated.ini'
         if targets.get('foot'):
             write(target,(generated/'foot.ini').read_text())
-            apply_live_foot(raw,state)
         integrate(foot_config,'include='+str(target),state,targets.get('foot',False))
+    kitty_config=CONFIG/'kitty'/'modesty.conf'
+    if kitty_config.exists():
+        target=kitty_config.parent/'modesty-generated.conf'
+        if targets.get('foot'):write(target,(generated/'kitty.conf').read_text())
+        integrate(kitty_config,'include '+str(target),state,targets.get('foot',False))
+    if targets.get('foot') and (foot_config.exists() or kitty_config.exists()):
+        apply_live_terminals(raw,state)
     qt_config=CONFIG/'qt6ct'/'qt6ct.conf'
     if qt_config.exists():
         old=qt_config.read_text();backup(qt_config,state)

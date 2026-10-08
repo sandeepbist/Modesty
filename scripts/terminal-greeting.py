@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""A local, non-repeating Dragon Ball greeting for interactive Foot windows."""
 import colorsys
 import fcntl
 import hashlib
@@ -78,7 +77,9 @@ def main():
     config=Path(os.environ.get('XDG_CONFIG_HOME') or Path.home()/'.config')
     images=eligible(catalogue(),preferences)
     image_mode=preferences.get('terminalArtFormat','image')=='image'
-    if not images or (not image_mode and not shutil.which('chafa')) or not os.environ.get('TERM','').startswith('foot'):
+    terminal=os.environ.get('TERM','')
+    kitty=terminal=='xterm-kitty'
+    if not images or (not image_mode and not shutil.which('chafa')) or not (terminal.startswith('foot') or kitty):
         if preferences.get('terminalArtMinimal',False):return
         subprocess.run(['fastfetch','--config',str(config/'fastfetch/config.jsonc'),'--logo','none'],timeout=5)
         return
@@ -114,7 +115,7 @@ def main():
     image_height=max(1,round(image_width*ratio))
     if not image_mode:art=ascii_art(art,image_width,preferences.get('terminalArtMode','original'),state)
     args=['fastfetch','--config',str(config/'fastfetch/config.jsonc'),
-          '--pipe','false','--logo-type','sixel' if image_mode else 'file-raw','--logo',str(art),
+          '--pipe','false','--logo-type',('kitty-direct' if kitty else 'sixel') if image_mode else 'file-raw','--logo',str(art),
           '--color-keys','blue','--color-title','blue','--logo-padding-right','4','--logo-position','left' if side else 'top']
     if image_mode:args+=['--logo-width',str(image_width),'--logo-height',str(image_height)]
     if minimal:args+=['--structure','break']
