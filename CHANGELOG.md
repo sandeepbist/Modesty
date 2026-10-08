@@ -7,11 +7,25 @@ Entries are prepared before publishing. GitHub Releases records which versions h
 
 ### Fixed
 
+- Image previews and lock/wallpaper images encode local paths, including filenames containing `#`, `?` and `%`.
+- Stopping a hung recorder has a ten-second deadline and reports an incomplete video instead of remaining stuck while saving. Exited recorder processes no longer block restarting.
+- Direct camera monitoring restarts after an unexpected helper exit; disabling capture activity cancels retries.
+- Fish reads desktop color sequences from the configured XDG state directory.
+- File drops keep a stable native target while the cue expands, so quick edge drops land on the first attempt. Drag ownership survives transitions between the surface and native target.
+- Desktop startup no longer empties the user's trash automatically.
+- Installer rejects clone/home paths containing shell or Lua metacharacters before any package or config changes, while keeping uninstall and recovery available.
+- Installing Python through the bootstrap requires an explicit yes.
+- Web results label Wikipedia only for wikipedia.org and its subdomains.
+- Reload diagnostics show the runtime versions just validated, replacing stale details from an earlier update check.
 - Calculator queries now wait for their scope bindings to settle before starting work. Closing search cancels queued and running calculations.
 - Notification bursts retain the newest 50 history records after exit animations.
 
 ### Changed
 
+- Required Arch CI installs the actual required package set and runs the real installer/uninstaller as a normal user in a disposable home.
+- Removed unused portal-restart and legacy workspace/config helper scripts from installation templates.
+- Qt6ct uses the Adwaita icon theme supplied by the installer.
+- Artwork notices distinguish generated Atelier illustrations from downloaded Dragon Ball Legends artwork.
 - Conversation updates preserve unchanged model rows and create only the message view each role needs.
 - Control tiles create level sliders and media artwork only when their tile kind needs them.
 - Inactive island panels skip resize callbacks; lyric lookup reuses its position index and visualizer bars skip identical frames.

@@ -11,7 +11,8 @@ assets, application artwork or material visible in desktop screenshots.
 | Sacramento | Brian J. Bonislawsky / Astigmatic, SIL Open Font License 1.1; retained in `assets/fonts/LICENSE-Sacramento.txt`. |
 | Lucide icons | Lucide contributors, ISC; see the retained `assets/icons/lucide/LICENSE`. |
 | fuzzysort | Farzher, MIT; full notice retained at the beginning of `services/vendor/fuzzysort.js`. |
-| Companion and terminal illustrations | Generated illustrations with native QML animation. They are not represented as human-drawn artwork. Character names, designs and trademarks remain associated with their respective rights holders; the project license does not grant rights in those underlying characters or brands. |
+| Companion and Atelier terminal illustrations | Generated illustrations with native QML animation. They are not represented as human-drawn artwork. Character names, designs and trademarks remain associated with their respective rights holders; the project license does not grant rights in those underlying characters or brands. |
+| Dragon Ball terminal artwork | Downloaded character artwork from the official Dragon Ball Legends site. Original URLs are recorded in `setup/config/modesty/terminal/dragon-ball/sources.json`; portrait derivatives are recorded in `portrait-sources.json`. This is not generated artwork. Rights remain with the respective creators and rights holders; Modesty's GPL license does not relicense these assets. |
 
 ## Supplied wallpapers
 

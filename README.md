@@ -50,7 +50,7 @@ shortcuts use it.
   model changes are retained; file rollback only restores configs.
 - `--non-interactive` explicitly approves all saved configs, but refuses missing
   dependencies, disabled services and Qt repairs instead of fixing them silently.
-- Home and checkout paths must not contain whitespace. This profile uses
+- Home and checkout paths may use letters, numbers, `/`, `_`, `.`, `@`, `+` and `-`; whitespace and shell/Lua metacharacters are refused before installation. This profile uses
   `~/.config`; unset `XDG_CONFIG_HOME` before installing.
 - Destination parent directories must be real directories, not symlinks. The
   installer refuses redirected paths before replacing files.
@@ -340,12 +340,14 @@ versions. Remove keys and personal data from logs or screenshots before sharing.
 <details>
 <summary>What has been tested</summary>
 
-- Offline checks passed on the maintainer's Arch desktop and in an Arch container.
+- Offline checks passed with Qt 6.11.2 and 6.12.0, each using a matching Quickshell build, and in an Arch container.
 - Fresh-container tests covered package provisioning, stable Quickshell Qt 6.12
   repair, interactive installation as a normal user and uninstall.
 - Disposable-home checks covered repeat installs, original config restoration,
   edited-file backups and preservation of personal files, keys and model caches.
 - UI, audio and reload were checked on the live desktop.
+- File drops passed centre/edge, quick-release, cancellation and rejected-offer
+  checks with Qt 6.11.2 and 6.12.0, each using a matching Quickshell build.
 - Physical GPU drivers, login behavior and optional plugin builds remain outside
   container coverage.
 
@@ -368,7 +370,7 @@ Run offline checks before submitting code:
 python3 tests/check.py
 ```
 
-- Checks need desktop dependencies and Node.js. They cover real Git update and
+- Checks need desktop dependencies, Node.js and Lua. They cover real Git update and
   rollback transactions, installer backups and recovery, template isolation,
   backend behavior, isolated D-Bus services, security boundaries and QML loading.
 - Live input/hardware checks require explicit `--live` and are not part of this
