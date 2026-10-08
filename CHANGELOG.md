@@ -7,6 +7,7 @@ Entries are prepared before publishing. GitHub Releases records which versions h
 
 ### Fixed
 
+- Palette refinement chooses the stronger contrast direction for mid-tone accents and keeps labels readable on translucent selections.
 - Thunar backgrounds and selection colors follow the active palette in both modes. Selected file labels use the matching foreground, and keyboard focus outlines remain visible. Named application palettes use the shell's selection foreground.
 - Voice ribbons fade in when activated, including after panel travel and when reopening, instead of appearing at full brightness.
 - Shift+Tab moves backwards through launcher results on platforms that send Tab with a Shift modifier.
@@ -25,6 +26,7 @@ Entries are prepared before publishing. GitHub Releases records which versions h
 
 ### Changed
 
+- Thunar uses translucent selection highlights with opaque labels. Optional Palette folders recolors installed Adwaita or Papirus folder icons without changing system files; disabling it restores the original icon theme.
 - Luma search opens with a brief palette-colored sweep along its lower border, then stops rendering the effect. Voice and assistant work use soft lights around the rounded perimeter; hidden or disabled effects stop animating.
 - Fluid motion uses native Qt springs for island morphs, launcher and power selection, button presses, switches and Settings page entrances. Gentle motion damps rebound; reduced motion remains instant. Volume/brightness feedback retains its short transition.
 - Launcher uses a filled selection indicator and icon backgrounds. App descriptions are optional under Launcher settings and hidden by default.

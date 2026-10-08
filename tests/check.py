@@ -8,9 +8,9 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'scripts'))
 commands = [
-    ['node', 'tests/layout.cjs'], ['node', 'tests/search.cjs'],
+    ['node', 'tests/layout.cjs'], ['node', 'tests/search.cjs'], ['node', 'tests/palette.cjs'],
     *[[sys.executable, f'tests/{name}.py'] for name in
-      ('release', 'install', 'installation', 'updates', 'structure', 'backend', 'file-urls', 'desktop-configs', 'display', 'privacy-camera', 'recording', 'appearance', 'gtk-theme', 'session-control', 'night-light',
+      ('release', 'install', 'installation', 'updates', 'structure', 'backend', 'file-urls', 'desktop-configs', 'display', 'privacy-camera', 'recording', 'appearance', 'wallpaper-colors', 'gtk-theme', 'folder-theme', 'session-control', 'night-light',
        'launcher', 'launcher-ui', 'motion', 'voice', 'luma', 'luma-light', 'luma-system', 't3-status', 'levels', 'conversation', 'calculator', 'control-tiles', 'live-media', 'file-drop', 'companion')],
     *[['dbus-run-session', '--', sys.executable, f'tests/{name}.py'] for name in
       ('bluetooth', 'notifications', 'session-events')],

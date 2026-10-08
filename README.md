@@ -130,6 +130,11 @@ python3 install.py --install-voice
 | Luma | Applications, files, file contents, clipboard entries, calculations, web search and desktop actions; AI answers use your configured cloud provider |
 | Agent activity | T3 Code task status: working, waiting and completion feedback |
 
+For palette-matched folder icons, enable **Settings → Colors & typography → Palette folders**.
+Adwaita and Papirus are supported; other icons keep your existing theme. This option starts off.
+Disabling it restores the original icon theme; uninstall also restores it.
+Thunar uses a translucent selection tint with opaque text; this is not a blur effect.
+
 <details>
 <summary>Luma permissions and supported agent integrations</summary>
 
