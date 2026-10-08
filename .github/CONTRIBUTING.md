@@ -19,7 +19,7 @@ details in a public issue.
 1. Fork the repository and create a branch for one change.
 2. Keep UI in `modules/`, shared state in `services/`, and system work in `scripts/`.
    Reuse existing components. Update `setup/` when changing installation defaults.
-3. Run `python3 tests/check.py` with the desktop dependencies and Node.js installed.
+3. Run `python3 tests/check.py` with the desktop dependencies, Node.js and Lua installed.
    Add a regression check for a behavior change where it can catch a real failure.
    For installer changes, also run `python3 tests/installer-cli.py --isolated-home`
    as a normal user with the required packages and services already available.

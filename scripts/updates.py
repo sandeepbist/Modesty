@@ -275,11 +275,11 @@ def switch(target, rollback=False):
 
 
 def reload_shell():
-    compatibility.require(ROOT)
+    report = compatibility.require(ROOT)
     control = installed_session()
     control.assert_unlocked()
     busy_work()
-    save(phase='applying', pid=os.getpid(), message='Validating and reloading the shell…')
+    save(phase='applying', pid=os.getpid(), compatibility=report, message='Validating and reloading the shell…')
     control.restart()
     return save(phase='complete', message='Shell reloaded.', error='')
 

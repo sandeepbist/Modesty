@@ -1,4 +1,5 @@
 import QtQuick
+import "../../services/FileUrls.js" as FileUrls
 import Quickshell
 import Quickshell.Wayland
 import qs.components
@@ -22,7 +23,7 @@ PanelWindow {
 
     CrossfadeImage {
         anchors.fill: parent
-        source: SystemInfo.displayedWallpaper || (SystemInfo.wallpaper ? "file://" + SystemInfo.wallpaper : "")
+        source: SystemInfo.displayedWallpaper || FileUrls.fromPath(SystemInfo.wallpaper)
         decodeWidth: Math.round(root.screen.width * root.screen.devicePixelRatio)
         decodeHeight: Math.round(root.screen.height * root.screen.devicePixelRatio)
         transitionDuration: Preferences.wallpaperTransition === "none" ? 0 : SystemInfo.previewWallpaperPath ? 130 : Math.round(Preferences.wallpaperDuration * 1000)

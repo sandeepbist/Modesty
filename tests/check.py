@@ -10,8 +10,8 @@ sys.path.insert(0, str(ROOT/'scripts'))
 commands = [
     ['node', 'tests/layout.cjs'], ['node', 'tests/search.cjs'],
     *[[sys.executable, f'tests/{name}.py'] for name in
-      ('release', 'install', 'installation', 'updates', 'structure', 'backend', 'appearance', 'session-control', 'night-light',
-       'launcher', 'voice', 'luma', 'luma-system', 't3-status', 'levels', 'conversation', 'calculator', 'control-tiles', 'live-media', 'companion')],
+      ('release', 'install', 'installation', 'updates', 'structure', 'backend', 'file-urls', 'desktop-configs', 'display', 'privacy-camera', 'recording', 'appearance', 'session-control', 'night-light',
+       'launcher', 'voice', 'luma', 'luma-system', 't3-status', 'levels', 'conversation', 'calculator', 'control-tiles', 'live-media', 'file-drop', 'companion')],
     *[['dbus-run-session', '--', sys.executable, f'tests/{name}.py'] for name in
       ('bluetooth', 'notifications', 'session-events')],
 ]

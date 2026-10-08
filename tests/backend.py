@@ -46,3 +46,17 @@ with tempfile.TemporaryDirectory() as tmp:
         assert snapshot['brightness']==751/1003
         assert snapshot['brightnessAvailable']
 print('PASS snapshot preserves exact backlight value without percentage rounding')
+
+# An unrelated host ending in the same text must retain its own attribution.
+import io
+canvas = module('command-canvas')
+for hostname in ('wikipedia.org', 'en.wikipedia.org', 'www.wikipedia.org',
+                 'evilwikipedia.org', 'wikipedia.org.example.com', 'example.com'):
+    source = f'https://{hostname}/wiki/Test'
+    response = io.BytesIO(json.dumps({'AbstractText': 'Test overview', 'AbstractURL': source}).encode())
+    with patch.object(canvas, 'urlopen', return_value=response), patch.object(canvas, 'emit') as emit:
+        canvas.quick_answer('What is testing?')
+    answer = emit.call_args.kwargs['answer']
+    assert answer['source'] == source
+    assert answer['sourceName'] == ('Wikipedia' if hostname in ('wikipedia.org', 'en.wikipedia.org', 'www.wikipedia.org') else hostname)
+print('PASS instant-answer attribution uses actual Wikipedia domains and preserves unrelated hostnames')

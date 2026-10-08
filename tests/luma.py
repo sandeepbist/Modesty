@@ -3,6 +3,8 @@
 import importlib.util
 import json
 import math
+import os
+import tempfile
 from pathlib import Path
 import subprocess
 import sys
@@ -50,3 +52,22 @@ assistant = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(assistant)
 assert assistant.validated_action is validated_action
 print('PASS Luma action boundaries, streamed text, conversation, sensors, clock and CLI imports')
+
+# API keys partition caches and quota state; neither document authenticates users.
+with tempfile.TemporaryDirectory(prefix='modesty-provider-key-') as temporary:
+    folder = Path(temporary)
+    with patch.object(assistant, 'MEMORY', folder/'memory'), patch.object(assistant, 'ANSWER_CACHE', folder/'answers'), patch.object(assistant, 'COOLDOWN', folder/'provider.json'):
+        first = assistant.answer_cache_path({'query':'hello'}, 'fixture-key-one')
+        assert first != assistant.answer_cache_path({'query':'hello'}, 'fixture-key-two')
+        assert 'fixture-key' not in str(first)
+        response = __import__('io').BytesIO(b'{"error":{"details":[{"retryDelay":"2s"}]}}')
+        try:assistant.pause_provider(response, 'fixture-key-one')
+        except assistant.ProviderPause:pass
+        else:raise AssertionError('Quota did not pause')
+        assistant.check_cooldown('fixture-key-two')
+        try:assistant.check_cooldown('fixture-key-one')
+        except assistant.ProviderPause:pass
+        else:raise AssertionError('Same provider key bypassed cooldown')
+        assert 'fixture-key-one' not in (folder/'provider.json').read_text()
+        assert (folder/'provider.json').stat().st_mode&0o777==0o600
+print('PASS API key cache separation, quota isolation and private fingerprint storage')

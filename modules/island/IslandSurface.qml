@@ -72,10 +72,10 @@ Item {
         x:center.x-6;y:center.hoverLift;width:center.width+12;height:center.height+7
         enabled:root.visible&&!Session.secure&&!Session.locked&&!IslandDrop.busy
         // Validate actual URI offers before accepting a Copy drop.
-        onEntered:drag=>{offer={hasUrls:drag.hasUrls,actions:drag.supportedActions,formats:drag.formats};drag.accepted=drag.hasUrls&&!!(drag.supportedActions&Qt.CopyAction);IslandDrop.dragging=drag.accepted;}
-        onEnabledChanged:if(!enabled)IslandDrop.dragging=false
-        onExited:IslandDrop.dragging=false
-        onDropped:drop=>{if(IslandDrop.accept(drop.urls))drop.accept(Qt.CopyAction);else drop.accepted=false;IslandDrop.dragging=false;}
+        onEntered:drag=>{offer={hasUrls:drag.hasUrls,actions:drag.supportedActions,formats:drag.formats};drag.accepted=drag.hasUrls&&!!(drag.supportedActions&Qt.CopyAction);if(drag.accepted){IslandDrop.beginDrag(fileDrop);drag.accept(Qt.CopyAction);}else IslandDrop.endDrag(fileDrop);}
+        onEnabledChanged:if(!enabled)IslandDrop.endDrag(fileDrop)
+        onExited:IslandDrop.endDrag(fileDrop)
+        onDropped:drop=>{if(IslandDrop.accept(drop.urls))drop.accept(Qt.CopyAction);else drop.accepted=false;IslandDrop.endDrag(fileDrop);}
     }
     Stage {
         id: left

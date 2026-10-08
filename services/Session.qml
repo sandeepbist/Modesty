@@ -1,4 +1,5 @@
 pragma Singleton
+import "FileUrls.js" as FileUrls
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -12,7 +13,7 @@ Singleton {
     property string error: ""
     property string pendingResponse: ""
     property bool unlocking: false
-    readonly property string wallpaperSource: (SystemInfo.wallpaper || SystemInfo.lockWallpaper) ? "file://"+(SystemInfo.wallpaper || SystemInfo.lockWallpaper) : SystemInfo.wallpapers[0]?.url ?? ""
+    readonly property string wallpaperSource: (SystemInfo.wallpaper || SystemInfo.lockWallpaper) ? FileUrls.fromPath(SystemInfo.wallpaper || SystemInfo.lockWallpaper) : SystemInfo.wallpapers[0]?.url ?? ""
     readonly property int wallpaperDecodeWidth: Math.min(2560,Math.max(1920,...Quickshell.screens.map(s=>Math.round(s.width*s.devicePixelRatio))))
     // Keep one decoded image warm; lock surfaces reuse the same Qt image-cache key.
     readonly property Image wallpaperPreload: Image {
