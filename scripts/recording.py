@@ -12,9 +12,11 @@ def read():
     try:return json.loads(STATUS.read_text())
     except (OSError,ValueError):return {}
 def ticks(pid):
-    try:return Path(f'/proc/{pid}/stat').read_text().rsplit(')',1)[1].split()[19]
+    try:
+        fields=Path(f'/proc/{pid}/stat').read_text().rsplit(')',1)[1].split()
+        return fields[19] if fields[0] not in ('Z','X') else ''
     except (OSError,IndexError):return ''
-def alive(data):return bool(data.get('pid') and ticks(data['pid'])==data.get('token'))
+def alive(data):return bool(data.get('pid') and data.get('token') and ticks(data['pid'])==data['token'])
 def control(action):
     data=read()
     if alive(data):
@@ -28,9 +30,10 @@ def run(region,sound):
     try:prefs=json.loads((STATE/'preferences.json').read_text())
     except (OSError,ValueError):prefs={}
     data={'pid':os.getpid(),'token':ticks(os.getpid()),'phase':'preparing','sound':sound,'region':region,'started':0,'elapsed':0,'path':'','error':''}
-    child=None;selector=None;cancelled=False;paused=False;paused_at=0;paused_total=0
+    child=None;selector=None;cancelled=False;stopped_at=0;paused=False;paused_at=0;paused_total=0
     def stop(*_):
-        nonlocal cancelled
+        nonlocal cancelled,stopped_at
+        if not cancelled:stopped_at=time.monotonic()
         cancelled=True
         if child and child.poll() is None:child.send_signal(signal.SIGINT)
         if selector and selector.poll() is None:selector.terminate()
@@ -76,10 +79,14 @@ def run(region,sound):
         while child.poll() is None:
             now=paused_at if paused else time.monotonic()
             data['elapsed']=int(now-start-paused_total)
-            if cancelled:data['phase']='saving'
+            if cancelled:
+                data['phase']='saving'
+                if time.monotonic()-stopped_at>=10:
+                    child.kill();child.wait()
+                    raise RuntimeError('The recorder did not finish saving within 10 seconds. The video may be incomplete.')
             write(data);time.sleep(.5)
         log.close()
-        if child.returncode not in (0,130,-signal.SIGINT):raise RuntimeError('Recording failed. See ~/.local/state/modesty/recording.log')
+        if child.returncode not in (0,130,-signal.SIGINT):raise RuntimeError(f"Recording failed. See {STATE/'recording.log'}")
         if not path.exists() or path.stat().st_size==0:raise RuntimeError('The recorder did not produce a video.')
         data['phase']='saved'
     except Exception as error:
@@ -90,7 +97,10 @@ def run(region,sound):
             except subprocess.TimeoutExpired:
                 child.kill();child.wait()
     finally:
-        if selector and selector.poll() is None:selector.terminate()
+        if selector and selector.poll() is None:
+            selector.terminate()
+            try:selector.wait(timeout=3)
+            except subprocess.TimeoutExpired:selector.kill();selector.wait()
         if data['phase'] in ('preparing','selecting','countdown'):data['phase']='cancelled'
         write(data)
 

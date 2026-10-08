@@ -48,14 +48,22 @@ Singleton {
     PwObjectTracker {
         objects: Array.from(new Set((IslandState.state === "sound" ? Pipewire.nodes.values.filter(n=>n.audio) : [root.sink,root.source]).concat(root.microphoneStreams, root.videoCaptureStreams, root.captureSources).filter(Boolean)))
     }
+    readonly property bool cameraObserverEnabled: Preferences.privacyRadar && Quickshell.env("MODESTY_PREVIEW") !== "1"
+    onCameraObserverEnabledChanged: if (!cameraObserverEnabled) { cameraRetry.stop(); directCameras = []; }
+    Timer { id: cameraRetry; interval: 5000 }
     Process {
         id: cameraObserver
-        running: Preferences.privacyRadar && Quickshell.env("MODESTY_PREVIEW") !== "1"
+        running: root.cameraObserverEnabled && !cameraRetry.running
         command: ["python3", Qt.resolvedUrl("../scripts/privacy-camera.py").toString().replace("file://", "")]
-        stdout: SplitParser {onRead: line => {try {root.directCameras = JSON.parse(line);} catch (e) {}}}
-        onExited: root.directCameras = []
+        stdout: SplitParser {onRead: line => {if (!root.cameraObserverEnabled) return; try {root.directCameras = JSON.parse(line);} catch (e) {}}}
+        onExited: {
+            root.directCameras = [];
+            if (root.cameraObserverEnabled) {
+                console.warn("Camera observer stopped; retrying in five seconds.");
+                cameraRetry.restart();
+            }
+        }
     }
-    Connections {target: Preferences;function onPrivacyRadarChanged() {if (!Preferences.privacyRadar) root.directCameras = [];}}
 
     function setVolume(v: real): void {
         if (Quickshell.env("MODESTY_PREVIEW") === "1") return;
