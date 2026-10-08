@@ -79,6 +79,7 @@ Item {
     }
     Stage {
         id: left
+        maximumWidth: root.bounded(Infinity)
         x: center.x - (visible ? root.gap : 0) - width
         stage: "media"
         readonly property bool mediaAvailable: Preferences.showAlbum && (!Preferences.mediaAutoHide || Media.hasSession || sessionGrace.running)
@@ -140,6 +141,7 @@ Item {
     }
     Stage {
         id: center
+        maximumWidth: root.bounded(Infinity)
         readonly property bool privacySpace: Preferences.privacyRadar && !!Audio.indicatorKind && panel === "idle"
         readonly property real clockRestingWidth: Math.max(Preferences.collapsedWidth+(Preferences.showSeconds?20:0),clockViewport.clockTextWidth+clockViewport.privacyPadding*2)
         readonly property real agentRestingWidth: Math.max(AgentWork.width,clockViewport.agentLabelWidth+clockViewport.privacyPadding*2)
@@ -172,6 +174,7 @@ Item {
     }
     Stage {
         id: right
+        maximumWidth: root.bounded(Infinity)
         x: center.x + center.width + (visible ? root.gap : 0)
         stage: "controls"; visible: Preferences.showStatus || IslandState.owner === "controls" || Recorder.active || FocusTimer.active
         panel: IslandState.owner === "controls" ? (["recording","focusstatus"].includes(root.panel)?"activities":root.panel==="context"?"context":"quicksettings") : (Recorder.active&&!Recorder.selecting)||FocusTimer.active ? "activities" : "idle"

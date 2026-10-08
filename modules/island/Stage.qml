@@ -12,11 +12,12 @@ Item {
     property string panel: "idle"
     property real targetWidth: 33
     property real targetHeight: Preferences.barHeight
+    property real maximumWidth: Infinity
     readonly property var panelSources: ({dropcue:"DropCue.qml",files:"FileDropMenu.qml",activities:"ActivityStatus.qml",clock:"WeekCard.qml", context:"ContextPanel.qml",toast:"ToastStack.qml",calendar:"CalendarMenu.qml",media:"MediaCard.qml",privacy:"PrivacyMenu.qml",quicksettings:"ControlCenter.qml",themes:"ThemesMenu.qml",wallpapers:"WallpaperMenu.qml",power:"PowerMenu.qml",launcher:"LauncherMenu.qml",authentication:"AuthenticationMenu.qml",unlockcheck:"UnlockCheckMenu.qml"})
     property bool expanded: panel !== "idle"
     property bool inlineContext: false
     property bool continuousWidth: false
-    readonly property bool resizing: widthMotion.running || heightMotion.running
+    readonly property bool resizing: widthMotion.running || levelWidthMotion.running || heightMotion.running
     readonly property alias capsule: capsule
     readonly property Item inputRegion: Item {
         parent: root
@@ -38,15 +39,25 @@ Item {
     }
     scale: 1
     property real hoverLift: restingHovered ? Preferences.hoverLift : 0
-    Behavior on hoverLift { NumberAnimation { duration:Tokens.reducedMotion?0:170;easing.type:Easing.OutCubic } }
+    Behavior on hoverLift { enabled:!Tokens.reducedMotion; SpringMotion { epsilon:.01 } }
     function diagnostics(): var {
         const entries=[];for(let i=0;i<contentPanes.count;i++){const p=contentPanes.itemAt(i);entries.push({name:p.modelData,selected:p.selected,opacity:p.opacity,enabled:p.enabled,loaded:!!p.item,status:p.status,width:p.width,height:p.height,input:p.item?.diagnostics?p.item.diagnostics():null});}
         return {name:stage,panel,x,y,width,height,targetWidth,targetHeight,radius:capsule.radius,visible,scale,hoverLift,restingHovered,restWidth:rest.width,restHeight:rest.height,restOpacity:rest.opacity,entries};
     }
-    width: targetWidth; height: targetHeight
-    // Native velocity continuity keeps a new target from restarting the gesture.
-    Behavior on width { enabled:!Tokens.reducedMotion&&!root.continuousWidth; SmoothedAnimation { id:widthMotion; velocity:-1; duration:root.expanded?Tokens.morphDuration:Tokens.collapseDuration; reversingMode:SmoothedAnimation.Immediate } }
-    Behavior on height { enabled:!Tokens.reducedMotion; SmoothedAnimation { id:heightMotion; velocity:-1; duration:root.expanded?Tokens.morphDuration:Tokens.collapseDuration; reversingMode:SmoothedAnimation.Immediate } }
+    property real apertureWidth: targetWidth
+    property real apertureHeight: targetHeight
+    // Rebound must not shrink the resting pill or cross the screen's margin.
+    width: Math.max(0,Math.min(maximumWidth,Math.max(Math.min(restingWidth,targetWidth),apertureWidth)))
+    height: Math.max(Math.min(Preferences.barHeight,targetHeight),apertureHeight)
+    Behavior on apertureWidth { enabled:!Tokens.reducedMotion&&!root.continuousWidth; animation:root.inlineContext?levelWidthMotion:widthMotion }
+    SpringMotion { id:widthMotion }
+    // Held volume/brightness keys keep the original short feedback deadline.
+    SmoothedAnimation { id:levelWidthMotion;velocity:-1;duration:root.expanded?Tokens.morphDuration:Tokens.collapseDuration;reversingMode:SmoothedAnimation.Immediate }
+    Behavior on apertureHeight { enabled:!Tokens.reducedMotion; SpringMotion { id:heightMotion } }
+    Connections {
+        target:Tokens
+        function onReducedMotionChanged(){if(Tokens.reducedMotion){root.apertureWidth=Qt.binding(()=>root.targetWidth);root.apertureHeight=Qt.binding(()=>root.targetHeight);}}
+    }
     RectangularShadow { anchors.fill: outline; radius: outline.radius; blur: root.expanded ? 24 : root.restingHovered ? 16 : 10; offset.y: root.expanded ? 7 : root.restingHovered ? 6 : 3; color: "#65000000"; visible: Preferences.shadows; cached: false
         Behavior on blur { NumberAnimation { duration: Tokens.animMedium } }
         Behavior on offset.y { NumberAnimation { duration: Tokens.animMedium } }

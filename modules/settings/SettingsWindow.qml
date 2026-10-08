@@ -48,7 +48,7 @@ FloatingWindow {
             groupPages=Object.assign({},groupPages,{[current.group]:id});
             highlight=key||"";targetBlock=block||"";
             search.clear();content.forceActiveFocus();
-            Qt.callLater(()=>{scroll.contentY=0;revealTarget();if(!entrance.running){pageLoader.arrival=0;entrance.start();}});
+            Qt.callLater(()=>{scroll.contentY=0;revealTarget();pageLoader.enter();});
             if(highlight)highlightEnd.restart();
         }
         function revealTarget() {
@@ -179,9 +179,11 @@ FloatingWindow {
                     Loader {
                         id:pageLoader;width:scroll.width-10;active:window.visible&&!root.searching
                         property real arrival:1
-                        transform:Translate {y:5*(1-pageLoader.arrival)}
-                        NumberAnimation {id:entrance;target:pageLoader;property:"arrival";to:1;duration:Tokens.reducedMotion?0:180;easing.type:Easing.OutCubic}
-                        onLoaded:Qt.callLater(root.revealTarget)
+                        transform:Translate {y:14*(1-pageLoader.arrival)}
+                        function enter():void {entrance.stop();arrival=Tokens.reducedMotion?1:0;if(!Tokens.reducedMotion)entrance.start();}
+                        SpringMotion {id:entrance;target:pageLoader;property:"arrival";to:1;epsilon:.002}
+                        Connections {target:Tokens;function onReducedMotionChanged(){if(Tokens.reducedMotion){entrance.stop();pageLoader.arrival=1;}}}
+                        onLoaded:Qt.callLater(()=>{root.revealTarget();enter();})
                         sourceComponent:ColumnLayout {
                             spacing:20
                             property alias cards:cards

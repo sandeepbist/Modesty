@@ -70,12 +70,6 @@ Item {
         onClicked: root.clicked()
     }
 
-    Behavior on scale {
-        NumberAnimation {
-            duration: mouse.pressed ? 90 : Tokens.animFast
-            easing.type: Easing.OutCubic
-        }
-
-    }
+    Behavior on scale { enabled:!Tokens.reducedMotion; SpringMotion { epsilon:.002 } }
 
 }

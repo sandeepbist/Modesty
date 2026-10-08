@@ -41,7 +41,7 @@ FocusScope {
                 width:(parent.width-16)/5;height:64;radius:14
                 color:Theme.withAlpha(root.pending?Theme.red:Theme.text,.055)
                 border.width:1;border.color:Theme.withAlpha(root.pending?Theme.red:Theme.accent,root.pending?.35:.25)
-                Behavior on x {enabled:!Tokens.reducedMotion;SmoothedAnimation {velocity:-1;duration:Tokens.animFast;reversingMode:SmoothedAnimation.Immediate}}
+                Behavior on x {enabled:!Tokens.reducedMotion;SpringMotion {}}
                 Behavior on color {ColorAnimation {duration:Tokens.animFast}}
                 Behavior on border.color {ColorAnimation {duration:Tokens.animFast}}
             }

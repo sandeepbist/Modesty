@@ -24,6 +24,8 @@ Rectangle {
         GradientStop {position:1;color:root.color}
     }
     antialiasing:true
+    scale:tileTap.pressed&&usable?.975:1
+    Behavior on scale {enabled:!Tokens.reducedMotion;SpringMotion {epsilon:.002}}
     border.width: 1; border.color: activeFocus ? Theme.accent : Theme.withAlpha(foreground, hover.hovered && usable ? .15 : Tokens.borderAlpha)
     Behavior on foreground { ColorAnimation { duration: Tokens.animFast } }
     Behavior on border.color { ColorAnimation { duration: Tokens.animFast } }

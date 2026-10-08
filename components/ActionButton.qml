@@ -39,12 +39,6 @@ AbstractButton {
         verticalAlignment: Text.AlignVCenter
     }
 
-    Behavior on scale {
-        NumberAnimation {
-            duration: Tokens.animFast
-            easing.type: Easing.OutCubic
-        }
-
-    }
+    Behavior on scale { enabled:!Tokens.reducedMotion; SpringMotion { epsilon:.002 } }
 
 }
