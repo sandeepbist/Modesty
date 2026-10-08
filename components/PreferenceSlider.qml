@@ -4,6 +4,7 @@ import qs.theme
 
 Rectangle {
     id: root
+    readonly property alias control: control
 
     property string label: ""
     property string display: ""

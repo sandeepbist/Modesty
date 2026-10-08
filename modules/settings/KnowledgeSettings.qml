@@ -8,6 +8,7 @@ import qs.components
 import qs.theme
 
 ColumnLayout {
+    function reveal(key){return key==="rebuild"&&Preferences.lumaKnowledgeRoots.length?rebuildIndex:addFolder;}
     spacing:12
     Component.onCompleted:Knowledge.refresh()
     FolderDialog {
@@ -36,8 +37,8 @@ ColumnLayout {
     }
     RowLayout {
         Layout.fillWidth:true;spacing:8
-        ActionButton {text:"Add folder";enabled:!Knowledge.busy;onClicked:picker.open()}
-        IconButton {icon:"refresh";size:16;label:"Refresh local index";visible:Preferences.lumaKnowledgeRoots.length>0;enabled:!Knowledge.busy;onClicked:Knowledge.rebuild()}
+        ActionButton {id:addFolder;objectName:"custom-folders";text:"Add folder";enabled:!Knowledge.busy;onClicked:picker.open()}
+        IconButton {id:rebuildIndex;objectName:"custom-rebuild";icon:"refresh";size:16;label:"Refresh local index";visible:Preferences.lumaKnowledgeRoots.length>0;enabled:!Knowledge.busy;onClicked:Knowledge.rebuild()}
         Item {Layout.fillWidth:true}
         ActivityPulse {running:Knowledge.busy;visible:running}
     }

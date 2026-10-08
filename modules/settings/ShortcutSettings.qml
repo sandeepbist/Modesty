@@ -5,6 +5,7 @@ import qs.components
 import qs.services
 import qs.theme
 ColumnLayout {
+    function reveal(key){return search;}
     id:root
     spacing:12
     property string category:"Applications"
@@ -34,7 +35,7 @@ ColumnLayout {
         return desktop.concat(pill).filter(b=>query?(b.label+" "+b.chord+" "+b.group).toLowerCase().includes(query):b.group===root.category);
     }
     Component.onCompleted:Bindings.refreshDesktop()
-    EntryField {id:search;Layout.fillWidth:true;placeholderText:"Search shortcuts";onTextChanged:root.editing=""}
+    EntryField {id:search;objectName:"custom-search-shortcuts";Layout.fillWidth:true;placeholderText:"Search shortcuts";onTextChanged:root.editing=""}
     Flow {Layout.fillWidth:true;spacing:6
         Repeater {model:root.categories
             ActionButton {required property string modelData;text:modelData;primary:root.category===modelData&&!search.text;onClicked:{search.clear();root.editing="";root.category=modelData;}}

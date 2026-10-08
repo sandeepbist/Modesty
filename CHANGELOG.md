@@ -26,6 +26,7 @@ Entries are prepared before publishing. GitHub Releases records which versions h
 
 ### Changed
 
+- Settings categories expand independently, with keyboard search for controls and custom editors, prerequisite links, one Music & media page, and privacy indicator spacing controls.
 - Optional Kitty cursor trails now require a default-no installer choice, separate package approval and final file approval. Settings can toggle the native effects include or open the exact profile; setup and uninstall use the existing receipt and backups. Foot, Super+T, launcher defaults and normal Kitty configuration are preserved.
 - Thunar uses translucent selection highlights with opaque labels. Optional Palette folders recolors installed Adwaita or Papirus folder icons without changing system files; disabling it restores the original icon theme.
 - Luma search opens with a brief palette-colored sweep along its lower border, then stops rendering the effect. Voice and assistant work use soft lights around the rounded perimeter; hidden or disabled effects stop animating.

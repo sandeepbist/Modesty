@@ -5,6 +5,7 @@ import qs.components
 import qs.theme
 
 ColumnLayout {
+    function reveal(key){return voiceSetup.enabled?voiceSetup:setupStatus;}
     spacing:10
     Component.onCompleted:Voice.checkInstallation()
     PanelText {
@@ -20,6 +21,7 @@ ColumnLayout {
     RowLayout {
         Layout.fillWidth:true;spacing:8
         ActionButton {
+            id:voiceSetup;objectName:"custom-setup"
             text:Voice.installing?"Installing…":Voice.installed?"Repair installation":"Install local voice"
             enabled:!Voice.installing&&!Voice.checking&&!Voice.active&&!Preferences.preview&&!Session.isLocked()
             Accessible.name:text
@@ -32,8 +34,10 @@ ColumnLayout {
         }
     }
     PanelText {
+        id:setupStatus;objectName:"custom-setup-prerequisite";activeFocusOnTab:!voiceSetup.enabled
+        Accessible.name:text
         Layout.fillWidth:true;wrapMode:Text.WordWrap
-        text:Voice.setupMessage||Voice.error||"Setup opens a terminal with download progress. Your password is requested only if a system dependency is missing."
+        text:Preferences.preview?"Voice installation is unavailable in preview.":Session.isLocked()?"Unlock your session to install local voice.":Voice.active?"Finish voice input before repairing installation.":Voice.installing?"Wait for voice installation to finish.":Voice.checking?"Wait for the voice installation check.":Voice.setupMessage||Voice.error||"Setup opens a terminal with download progress. Your password is requested only if a system dependency is missing."
         font.pixelSize:11;color:Theme.subtext
     }
 }

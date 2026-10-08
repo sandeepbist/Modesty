@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import qs.components
 import qs.services
 import qs.theme
+import "SettingsCatalog.js" as Catalog
 
 Item {
     id:root
@@ -12,8 +13,10 @@ Item {
     property bool highlighted:false
     signal action(string name)
     readonly property bool available:!setting.when||setting.values.includes(read(setting.when))
-    enabled:available
-    opacity:available?1:.5
+    objectName:"setting-"+setting.key
+    readonly property var dependency:Catalog.prerequisite(setting)
+    signal prerequisite(var target)
+    function reveal() { return available ? (setting.kind==="toggle"?toggleControl:setting.kind==="slider"?sliderLoader.item:setting.kind==="text"?textLoader.item.field:setting.kind==="choice"?options.itemAt(0):root) : prerequisiteButton; }
     readonly property var value:read(setting.key)
     activeFocusOnTab:setting.kind==="action"
     Accessible.name:setting.label
@@ -28,7 +31,6 @@ Item {
         if(key==="awake")return KeepAwake.active;
         if(key==="nightLight")return Display.nightLight;
         if(key==="temperature")return Display.temperature;
-        if(key==="musicMode")return !Preferences.liveMedia?"art":Preferences.mediaVisualizer&&Preferences.mediaLyrics?"both":Preferences.mediaVisualizer?"visualizer":Preferences.mediaLyrics?"lyrics":"art";
         return Preferences[key];
     }
     function write(value) {
@@ -38,11 +40,6 @@ Item {
         if(key==="awake"){KeepAwake.setActive(value);return;}
         if(key==="nightLight"){Display.setNightLight(value);return;}
         if(key==="temperature"){Display.temperature=value;Display.setNightLight(true);return;}
-        if(key==="musicMode"){
-            Preferences.set("liveMedia",value!=="art");
-            Preferences.set("mediaVisualizer",["both","visualizer"].includes(value));
-            Preferences.set("mediaLyrics",["both","lyrics"].includes(value));return;
-        }
         Preferences.set(key,value);
     }
     Rectangle {anchors.fill:parent;anchors.margins:-7;radius:10;color:"transparent";border.width:root.highlighted||root.activeFocus?1:0;border.color:Theme.withAlpha(Theme.accent,.65)}
@@ -55,14 +52,15 @@ Item {
             PanelText {Layout.fillWidth:true;text:root.setting.label;font.pixelSize:14;font.weight:Font.Medium;wrapMode:Text.Wrap;elide:Text.ElideNone}
             PanelText {Layout.fillWidth:true;visible:!!root.setting.description;text:root.setting.description||"";font.pixelSize:12;lineHeight:1.25;color:Theme.subtext;wrapMode:Text.Wrap;elide:Text.ElideNone}
         }
-        Toggle {visible:root.setting.kind==="toggle";text:root.setting.label;checked:root.value===true;onToggled:root.write(checked)}
+        Toggle {id:toggleControl;objectName:root.setting.kind==="toggle"?"control-"+root.setting.key:"";enabled:root.available;visible:root.setting.kind==="toggle";text:root.setting.label;checked:root.value===true;onToggled:root.write(checked)}
         PanelText {visible:root.setting.kind==="slider";text:(Math.round(Number(root.value)*100)/100)+(root.setting.unit||"");font.pixelSize:12;color:Theme.subtext;font.features:({tnum:1})}
         Icon {visible:root.setting.kind==="action";icon:"chevron_right";size:16;color:Theme.subtext}
     }
     Loader {
+        id:sliderLoader;enabled:root.available
         Layout.fillWidth:true;active:root.setting.kind==="slider";visible:active
         sourceComponent:Slider {
-            id:slider
+            id:slider;objectName:"control-"+root.setting.key
             from:root.setting.min;to:root.setting.max;stepSize:root.setting.step
             implicitHeight:26
             Binding {target:slider;property:"value";value:Number(root.value);when:!slider.pressed;restoreMode:Binding.RestoreNone}
@@ -83,11 +81,13 @@ Item {
         }
     }
     Loader {
+        id:textLoader;enabled:root.available
         Layout.fillWidth:true;active:root.setting.kind==="text";visible:active
         sourceComponent:RowLayout {
+            property alias field:prefixField
             spacing:8
             EntryField {
-                id:prefixField;Layout.preferredWidth:180
+                id:prefixField;objectName:"control-"+root.setting.key;Layout.preferredWidth:180
                 Binding {target:prefixField;property:"text";value:String(root.value||"");when:!prefixField.activeFocus;restoreMode:Binding.RestoreNone}
                 onEditingFinished:root.write(text)
                 Accessible.name:root.setting.label
@@ -97,9 +97,10 @@ Item {
         }
     }
     Flow {
+        enabled:root.available
         visible:root.setting.kind==="choice";Layout.fillWidth:true;spacing:6
         Repeater {
-            model:root.setting.options||[]
+            id:options;model:root.setting.options||[]
             ActionButton {
                 id:option
                 required property var modelData
@@ -114,6 +115,11 @@ Item {
                 }
             }
         }
+    }
+    RowLayout {
+        Layout.fillWidth:true;visible:!root.available;spacing:8
+        PanelText {Layout.fillWidth:true;text:root.dependency?.message||"Unavailable";wrapMode:Text.Wrap;elide:Text.ElideNone;font.pixelSize:12;color:Theme.subtext}
+        ActionButton {id:prerequisiteButton;objectName:"prerequisite-"+root.setting.key;text:root.dependency?"Go to "+root.dependency.label:"";visible:!!root.dependency;onClicked:root.prerequisite(root.dependency)}
     }
 }
 }

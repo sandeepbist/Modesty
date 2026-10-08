@@ -130,6 +130,8 @@ python3 install.py --install-voice
 | Luma | Applications, files, file contents, clipboard entries, calculations, web search and desktop actions; AI answers use your configured cloud provider |
 | Agent activity | T3 Code task status: working, waiting and completion feedback |
 
+Settings categories expand independently. Search individual controls with Ctrl+F, then use Up/Down and Enter. Unavailable controls stay visible and link to their prerequisite. Music and media share one page.
+
 For palette-matched folder icons, enable **Settings → Colors & typography → Palette folders**.
 Adwaita and Papirus are supported; other icons keep your existing theme. This option starts off.
 Disabling it restores the original icon theme; uninstall also restores it.

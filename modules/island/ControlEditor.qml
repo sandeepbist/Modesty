@@ -6,6 +6,8 @@ import qs.services
 import qs.theme
 FocusScope {
     id: root
+    function reveal(key){return columnChoices.itemAt(0);}
+    objectName:"custom-layout"
     property string selected: ""
     property string gesture: ""
     property var gestureStartItems: []
@@ -85,7 +87,7 @@ FocusScope {
     ColumnLayout {
         id: body; width: parent.width; spacing: 14
         RowLayout {Layout.fillWidth:true;spacing:5;enabled:!root.gesture
-            Repeater {model:[5,6,7,8,9];ActionButton {required property int modelData;text:String(modelData);implicitWidth:28;implicitHeight:28;primary:ControlLayout.columns===modelData;onClicked:ControlLayout.tidy(modelData)}}
+            Repeater {id:columnChoices;model:[5,6,7,8,9];ActionButton {required property int modelData;text:String(modelData);implicitWidth:28;implicitHeight:28;primary:ControlLayout.columns===modelData;onClicked:ControlLayout.tidy(modelData)}}
             Item {Layout.fillWidth:true}
             ActionButton {text:"Tidy";onClicked:ControlLayout.tidy(ControlLayout.columns)}
             ActionButton {text:"Undo";enabled:ControlLayout.history.length>0;onClicked:ControlLayout.undo()}
