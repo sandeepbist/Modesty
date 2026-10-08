@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Generate managed application colors through Matugen's template engine."""
 import json, os, re, shutil, subprocess, stat, configparser, io, importlib.util, hashlib
+import folder_theme
 from pathlib import Path
 
 CONFIG=Path(os.environ.get('XDG_CONFIG_HOME',Path.home()/'.config'))
@@ -21,9 +22,9 @@ def integrate(path,line,state,enabled):
     if clean.strip()!=old.strip():backup(path,state);write(path,clean.strip()+'\n')
 
 def migrate_thunar(path,state):
-    # Replace only the unchanged stylesheet shipped before palette-aware colors.
+    # Migrate only unchanged bundled versions; preserve user-edited CSS.
     # OTA preserves application configs, including users' own CSS changes.
-    if path.exists() and hashlib.sha256(path.read_bytes()).hexdigest() == '06f3268dbda4afead19facbbc10bc4276323a49707c9d14fc0e77beeec0452aa':
+    if not path.is_symlink() and path.exists() and hashlib.sha256(path.read_bytes()).hexdigest() in {'06f3268dbda4afead19facbbc10bc4276323a49707c9d14fc0e77beeec0452aa','c54aacc5240c3467a9653fc1f49c83893895592f19a6ec85e85755a3af2bc3e4'}:
         backup(path,state)
         write(path,(Path(__file__).resolve().parents[1]/'setup/config/gtk-3.0/thunar.css').read_text())
 
@@ -95,8 +96,12 @@ def apply(raw,mode,state,targets):
     source=generated/'input.json';write(source,json.dumps(raw))
     def color(name):return '{{colors.'+name+'.default.hex}}'
     gtk='/* Modesty generated palette */\n'
-    names={'accent_color':'primary','accent_bg_color':'primary','accent_fg_color':'on_primary','window_bg_color':'surface','window_fg_color':'on_surface','view_bg_color':'surface_container_lowest','view_fg_color':'on_surface','headerbar_bg_color':'surface_container','headerbar_fg_color':'on_surface','popover_bg_color':'surface_container','popover_fg_color':'on_surface','card_bg_color':'surface_container','card_fg_color':'on_surface','sidebar_bg_color':'surface_container_low','sidebar_fg_color':'on_surface','theme_bg_color':'surface','theme_fg_color':'on_surface','theme_base_color':'surface_container_lowest','theme_text_color':'on_surface','theme_selected_bg_color':'primary','theme_selected_fg_color':'on_primary','primary':'primary','error_color':'error'}
+    names={'accent_color':'primary','accent_bg_color':'primary','accent_fg_color':'on_primary','window_bg_color':'surface','window_fg_color':'on_surface','view_bg_color':'surface_container_lowest','view_fg_color':'on_surface','headerbar_bg_color':'surface_container','headerbar_fg_color':'on_surface','popover_bg_color':'surface_container','popover_fg_color':'on_surface','card_bg_color':'surface_container','card_fg_color':'on_surface','sidebar_bg_color':'surface_container_low','sidebar_fg_color':'on_surface','theme_bg_color':'surface','theme_fg_color':'on_surface','theme_base_color':'surface_container_lowest','theme_text_color':'on_surface','theme_selected_fg_color':'on_surface','primary':'primary','error_color':'error'}
     for name,role in names.items():gtk+='@define-color '+name+' '+color(role)+';\n'
+    # Thunar's highlighted icon cells paint these named colors directly.
+    # Widget background CSS alone cannot change that renderer.
+    for name in ('theme_selected_bg_color','theme_unfocused_selected_bg_color'):
+        gtk+='@define-color '+name+' alpha('+color('primary')+', 0.18);\n'
     foot='initial-color-theme='+mode+'\n'
     for section in ('colors-dark','colors-light'):
         foot+='['+section+']\n'
@@ -122,7 +127,7 @@ def apply(raw,mode,state,targets):
             backup(css,state)
             # Imports precede rules; remove only legacy definitions of our managed roles.
             clean='\n'.join(line for line in old.splitlines() if 'modesty-generated' not in line)
-            for name in names:
+            for name in (*names,'theme_selected_bg_color','theme_unfocused_selected_bg_color'):
                 clean=re.sub(r'@define-color\s+'+re.escape(name)+r'\s+[^;]+;','',clean)
             write(css,'@import "modesty-generated.css";\n'+clean.strip()+'\n')
             settings=css.parent/'settings.ini'
@@ -157,3 +162,4 @@ def apply(raw,mode,state,targets):
                 match=re.search(r'^'+key+r'=.*$',original,re.M)
                 if match:old=re.sub(r'^'+key+r'=.*$',lambda _:match.group(),old,flags=re.M)
             write(qt_config,old)
+    folder_theme.apply(raw,state,bool(targets.get('gtk') and targets.get('folders')))

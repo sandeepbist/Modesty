@@ -303,6 +303,8 @@ def main():
                     busy_work()
                     control.stop_modesty()
                 try:
+                    import folder_theme
+                    folder_theme.restore(STATE/'modesty')
                     installation.uninstall(ROOT, HOME, STATE)
                 except Exception:
                     if running and not (STATE/'modesty-install/transaction.json').exists():

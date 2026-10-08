@@ -6,15 +6,19 @@ function contrast(a,b) {const x=luminance(a),y=luminance(b);return (Math.max(x,y
 function blend(a,b,t) {const x=rgb(a),y=rgb(b);return "#"+x.map((v,i)=>Math.round((v+(y[i]-v)*t)*255).toString(16).padStart(2,"0")).join("");}
 function readable(value,backgrounds,minimum) {
     if(backgrounds.every(b=>contrast(value,b)>=minimum))return value;
-    const target=luminance(backgrounds[0])>.35?"#000000":"#ffffff";
+    const score=c=>Math.min(...backgrounds.map(b=>contrast(c,b)));
+    const target=score("#000000")>=score("#ffffff")?"#000000":"#ffffff";
     let low=0,high=1;
     for(let i=0;i<12;i++){const mid=(low+high)/2;const c=blend(value,target,mid);if(backgrounds.every(b=>contrast(c,b)>=minimum))high=mid;else low=mid;}
     return blend(value,target,high);
 }
 function refine(p) {
     const result=Object.assign({},p), backgrounds=[p.bgSolid,p.surfaceSolid];
-    for(const key of ["text","subtext"])result[key]=readable(p[key],backgrounds,4.5);
     for(const key of ["accent","green","yellow","red"])result[key]=readable(p[key],backgrounds,3);
+    // Selected rows tint both application surfaces; labels stay opaque.
+    const textBackgrounds=backgrounds.concat(backgrounds.map(b=>blend(b,result.accent,.18)));
+    for(const key of ["text","subtext"])result[key]=readable(p[key],textBackgrounds,4.5);
+    result.accentText=readable(p.accentText||p.bgSolid,[result.accent],4.5);
     return result;
 }
 var light={

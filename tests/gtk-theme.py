@@ -45,6 +45,7 @@ profiles = [
 ]
 for mode, colors in profiles:
     for source in ('midnight', 'wallpaper'):
+        fixture = ROOT/'tests/fixtures'/('thunar-solid.css' if source == 'wallpaper' else 'thunar-legacy.css')
         with tempfile.TemporaryDirectory(prefix='modesty-gtk-check-') as temporary:
             directory = Path(temporary)
             config = directory/'config'
@@ -53,7 +54,7 @@ for mode, colors in profiles:
                 gtk.mkdir(parents=True)
                 (gtk/'gtk.css').write_text('@import "thunar.css";\n')
                 # Exercise migration on an existing install, not only fresh CSS.
-                (gtk/'thunar.css').write_text((ROOT/'tests/fixtures/thunar-legacy.css').read_text())
+                (gtk/'thunar.css').write_text(fixture.read_text())
             data = dict(paletteName=source, mode=mode, colors=colors, targets={'gtk': True})
             if source == 'wallpaper':
                 roles = {'primary':'accent', 'on_primary':'accentText', 'surface':'bg',
@@ -69,10 +70,12 @@ for mode, colors in profiles:
             assert generated['colors']['on_primary']['default']['color'] == colors['accentText']
             assert contrast(colors['accent'], colors['accentText']) >= 4.5
             assert contrast(colors['bg'], colors['text']) >= 4.5
+            selected = '#'+''.join(f'{round(int(colors["accent"][i:i+2],16)*.18+int(colors["bg"][i:i+2],16)*.82):02x}' for i in (1,3,5))
+            assert contrast(selected, colors['text']) >= 4.5
             for version in ('3.0', '4.0'):
                 gtk = config/('gtk-'+version)
                 assert (gtk/'thunar.css').read_text() == (ROOT/'setup/config/gtk-3.0/thunar.css').read_text()
-                assert (directory/'state/theme-backups'/('gtk-'+version)/'thunar.css').read_text() == (ROOT/'tests/fixtures/thunar-legacy.css').read_text()
+                assert (directory/'state/theme-backups'/('gtk-'+version)/'thunar.css').read_text() == fixture.read_text()
                 errors = []
                 provider = Gtk.CssProvider()
                 provider.connect('parsing-error', lambda provider, section, error: errors.append(str(error)))
@@ -93,19 +96,30 @@ for mode, colors in profiles:
                 border = rubberband.get_style_context().get_border_color(Gtk.StateFlags.NORMAL)
                 assert border.alpha == 1, 'Drag-selection border became translucent'
                 window.remove(rubberband)
-                frame = Gtk.Frame(); frame.get_style_context().add_class('frame'); frame.get_style_context().add_class('standard-view'); window.add(frame)
+                frame = Gtk.ScrolledWindow(); frame.get_style_context().add_class('standard-view'); window.add(frame)
                 for kind in (Gtk.IconView, Gtk.TreeView):
                     view = kind(); view.get_style_context().add_class('view'); frame.add(view)
+                    # ExoIconView adds the cell class while painting each item.
+                    if kind is Gtk.IconView:view.get_style_context().add_class('cell')
                     context = view.get_style_context()
+                    # Thunar's highlighting renderer looks up these roles directly,
+                    # bypassing the widget's resolved background property.
+                    for role in ('theme_selected_bg_color','theme_unfocused_selected_bg_color'):
+                        found, color = context.lookup_color(role)
+                        assert found and abs(color.alpha-.18)<.001, (mode,kind,role,color.to_string())
+                    found, color = context.lookup_color('theme_selected_fg_color')
+                    assert found and color.alpha == 1
                     for state in (Gtk.StateFlags.SELECTED, Gtk.StateFlags.SELECTED|Gtk.StateFlags.FOCUSED, Gtk.StateFlags.SELECTED|Gtk.StateFlags.BACKDROP):
                         context.set_state(state)
                         text = context.get_color(state)
                         background = context.get_background_color(state)
                         def hex_color(rgba):
                             return '#'+''.join(f'{round(channel*255):02x}' for channel in (rgba.red,rgba.green,rgba.blue))
-                        assert hex_color(text) == colors['accentText'], (mode, kind, state, text.to_string())
-                        assert hex_color(background) == colors['accent'] and background.alpha == 1, (mode, kind, state, background.to_string())
-                        assert contrast(hex_color(text), hex_color(background)) >= 4.5
+                        assert hex_color(text) == colors['text'], (mode, kind, state, text.to_string())
+                        assert hex_color(background) == colors['accent'] and abs(background.alpha-.18)<.001, (mode, kind, state, background.to_string())
+                        rgb = [int(colors['bg'][i:i+2],16) for i in (1,3,5)]
+                        blended = '#'+''.join(f'{round(c*255*background.alpha+b*(1-background.alpha)):02x}' for c,b in zip((background.red,background.green,background.blue),rgb))
+                        assert text.alpha == 1 and contrast(hex_color(text), blended) >= 4.5
                     frame.remove(view)
                 window.remove(frame)
                 sidebar = Gtk.Box(); sidebar.get_style_context().add_class('sidebar'); window.add(sidebar)
@@ -126,4 +140,13 @@ for mode, colors in profiles:
             with patch.dict(os.environ, XDG_CONFIG_HOME=str(config)), patch.object(appearance.subprocess, 'run', side_effect=isolated_run):
                 appearance.apply(data, directory/'state')
             assert custom.read_text() == preserved
+            # Matching bundled bytes behind a user symlink are still custom.
+            custom.unlink()
+            linked = directory/'linked-thunar.css'
+            linked.write_text(fixture.read_text())
+            custom.symlink_to(linked)
+            original = linked.read_bytes()
+            with patch.dict(os.environ, XDG_CONFIG_HOME=str(config)), patch.object(appearance.subprocess, 'run', side_effect=isolated_run):
+                appearance.apply(data, directory/'state')
+            assert custom.is_symlink() and linked.read_bytes() == original
 print('PASS GTK palette generation, named/wallpaper selection foreground, dark/light contrast and Thunar CSS parsing'+('; native icon/list selection states' if '--live' in sys.argv else ''))

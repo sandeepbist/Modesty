@@ -43,15 +43,14 @@
     animation-delay: 250ms;
 }
 
-.thunar .standard-view .view:not(:selected):not(.rubberband),
-.thunar .standard-view .view *:not(:selected):not(.rubberband):not(rubberband) {
+.thunar .frame.standard-view .view:not(:selected):not(.rubberband),
+.thunar .frame.standard-view .view *:not(:selected):not(.rubberband):not(rubberband) {
     background-color: transparent;
 }
 
-/* Keep labels opaque over a subtle palette tint in both icon and list views. */
-.thunar .standard-view iconview cell:selected,
-.thunar .standard-view .view:selected,
-.thunar .standard-view .view *:selected {
+/* Exo icon cells and GTK list rows must use the same selection pair. */
+.thunar .frame.standard-view .view:selected,
+.thunar .frame.standard-view .view *:selected {
     background-color: @theme_selected_bg_color;
     color: @theme_selected_fg_color;
 }
