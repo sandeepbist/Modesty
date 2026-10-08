@@ -71,7 +71,11 @@ jobs:
         run: |
           cat > "$RUNNER_TEMP/modesty-arch-check.sh" <<'CHECK'
             set -euo pipefail
-            pacman -Syu --noconfirm --needed git nodejs python python-dbus python-gobject python-pillow dbus quickshell hyprland qt6-wayland qt6-multimedia qt6-imageformats networkmanager network-manager-applet bluez bluez-utils upower pipewire wireplumber brightnessctl playerctl matugen foot bubblewrap libqalculate
+            pacman -Syu --noconfirm --needed git nodejs python dbus lua
+            # Install the installer's actual required set so packaging omissions
+            # fail here, before a user's first login. Optional AUR apps stay out.
+            mapfile -t desktop_packages < <(python3 -c 'import install; print("\n".join(install.CORE))')
+            pacman -S --noconfirm --needed "${desktop_packages[@]}"
             export XDG_RUNTIME_DIR=$(mktemp -d)
             # A Qt upgrade can precede the repository's Quickshell rebuild.
             # Check a minimal config, then rebuild the same stable package only
@@ -84,7 +88,7 @@ jobs:
               useradd -m builder
               printf 'builder ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/modesty-builder
               chmod 440 /etc/sudoers.d/modesty-builder
-              runuser -u builder -- env HOME=/home/builder CMAKE_BUILD_PARALLEL_LEVEL=2 MAKEFLAGS=-j2 python3 -c 'import install; install.rebuild_quickshell({"quickshell"}, unattended=True)'
+              setpriv --reuid builder --regid builder --init-groups env HOME=/home/builder CMAKE_BUILD_PARALLEL_LEVEL=2 MAKEFLAGS=-j2 python3 -c 'import install; install.rebuild_quickshell({"quickshell"}, unattended=True)'
               QT_QPA_PLATFORM=offscreen quickshell --no-color -p /tmp/modesty-qt-probe.qml > /tmp/modesty-qt-probe.log 2>&1
               PYTHONPATH=scripts python3 -c 'import compatibility, pathlib; assert not compatibility.qt_mismatch(pathlib.Path("/tmp/modesty-qt-probe.log").read_text())'
             fi
@@ -93,5 +97,14 @@ jobs:
             printf "[keyfile]\nunmanaged-devices=interface-name:*\n" > /tmp/modesty-ci-nm.conf
             NetworkManager --no-daemon --config /tmp/modesty-ci-nm.conf >/tmp/modesty-ci-nm.log 2>&1 &
             dbus-run-session -- bash -lc "pipewire >/tmp/modesty-ci-pipewire.log 2>&1 & python3 tests/check.py"
+            # File-based enablement in this disposable container; no host units.
+            systemctl enable NetworkManager bluetooth
+            useradd -m desktopcheck
+            cp -a /work /home/desktopcheck/Modesty
+            chown -R desktopcheck:desktopcheck /home/desktopcheck/Modesty
+            mkdir -p /tmp/modesty-desktop-runtime
+            chown desktopcheck:desktopcheck /tmp/modesty-desktop-runtime
+            chmod 700 /tmp/modesty-desktop-runtime
+            setpriv --reuid desktopcheck --regid desktopcheck --init-groups env HOME=/home/desktopcheck XDG_RUNTIME_DIR=/tmp/modesty-desktop-runtime dbus-run-session -- bash -c 'cd /home/desktopcheck/Modesty; pipewire >/tmp/modesty-desktop-pipewire.log 2>&1 & python3 tests/installer-cli.py --isolated-home'
           CHECK
           docker run --rm --privileged -v "$PWD:/work" -v "$RUNNER_TEMP/modesty-arch-check.sh:/check.sh:ro" -w /work archlinux:base bash /check.sh

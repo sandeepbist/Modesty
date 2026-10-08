@@ -9,7 +9,7 @@ Do not enable automatic merges or grant contributors write access just to accept
 | Check | Purpose |
 | --- | --- |
 | Quick checks | Release metadata, archive and artifact transfer regressions, Python syntax, JavaScript regressions and workflow lint |
-| Offline checks on Arch | Installer, updates, backend services and real QML loading on current Arch packages |
+| Offline checks on Arch | Actual required packages, normal-user install/uninstall, config parsing, updates, backend services and real QML loading |
 | CodeQL (python) | Extended security analysis of Python source |
 | CodeQL (actions) | Extended security analysis of Actions workflows |
 
@@ -18,8 +18,8 @@ Hosted Arch checks run in disposable containers with no desktop credentials. The
 container rebuilds stable Quickshell when Arch's Qt upgrade precedes its package
 rebuild; this does not repair a contributor's machine or certify optional plugins.
 
-For installer, update or runtime changes, also test the real installer as a normal
-user with `python3 tests/installer-cli.py --isolated-home`. It needs the required
+Required Arch CI includes the real installer in a disposable normal-user home.
+For installer, update or runtime changes, also run it locally with `python3 tests/installer-cli.py --isolated-home`. It needs the required
 packages and services already installed. Check fresh install, repeat install,
 cancellation, edited-config backups and uninstall. Check UI changes in Hyprland,
 including reduced motion, rapid input and interruption of animations.
