@@ -1,4 +1,5 @@
 import QtQuick
+import "../../services/FileUrls.js" as FileUrls
 import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -807,7 +808,7 @@ PanelWindow {
                 x:25;y:Preferences.searchBarHeight+18;width:parent.width-50;height:card.bodyHeight-card.baseHeight-30
                 visible:!!window.previewPath;clip:true
                 readonly property bool imageFile:/\.(png|jpe?g|webp|gif|bmp)$/i.test(window.previewPath)
-                Image {anchors.fill:parent;fillMode:Image.PreserveAspectFit;asynchronous:true;sourceSize:Qt.size(parent.width,parent.height);source:parent.imageFile?"file://"+window.previewPath:"";visible:parent.imageFile}
+                Image {anchors.fill:parent;fillMode:Image.PreserveAspectFit;asynchronous:true;sourceSize:Qt.size(parent.width,parent.height);source:parent.imageFile?FileUrls.fromPath(window.previewPath):"";visible:parent.imageFile}
                 Column {anchors.fill:parent;spacing:12;visible:!parent.imageFile
                     PanelText {width:parent.width;text:window.previewPath.split("/").pop();font.pixelSize:14;font.weight:Font.Medium}
                     Flickable {width:parent.width;height:parent.height-32;contentHeight:previewBody.implicitHeight;clip:true;boundsBehavior:Flickable.StopAtBounds

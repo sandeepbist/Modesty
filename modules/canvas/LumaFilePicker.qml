@@ -1,4 +1,5 @@
 import QtQuick
+import "../../services/FileUrls.js" as FileUrls
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtCore
@@ -21,7 +22,7 @@ Item {
     readonly property string path:localPath(folder)
     readonly property string displayPath:path===home?"~":path.startsWith(home+"/")?"~"+path.slice(home.length):path
     function localPath(url):string {return decodeURIComponent(url.toString().replace(/^file:\/\//,""));}
-    function localUrl(path:string):string {return "file://"+path.split("/").map(encodeURIComponent).join("/");}
+    function localUrl(path:string):string {return FileUrls.fromPath(path);}
     function navigate(url):void {root.folder=url;filter.clear();notice="";}
     function toggle(path:string):void {
         notice="";
