@@ -7,6 +7,7 @@ Entries are prepared before publishing. GitHub Releases records which versions h
 
 ### Fixed
 
+- Shift+Tab moves backwards through launcher results on platforms that send Tab with a Shift modifier.
 - Image previews and lock/wallpaper images encode local paths, including filenames containing `#`, `?` and `%`.
 - Stopping a hung recorder has a ten-second deadline and reports an incomplete video instead of remaining stuck while saving. Exited recorder processes no longer block restarting.
 - Direct camera monitoring restarts after an unexpected helper exit; disabling capture activity cancels retries.
@@ -22,6 +23,7 @@ Entries are prepared before publishing. GitHub Releases records which versions h
 
 ### Changed
 
+- Launcher uses a filled selection indicator and icon backgrounds. App descriptions are optional under Launcher settings and hidden by default.
 - Fluid motion uses native Qt springs for island morphs, launcher and power selection, button presses, switches and Settings page entrances. Gentle motion damps rebound; reduced motion remains instant. Volume/brightness feedback retains its short transition.
 - Required Arch CI installs the actual required package set and runs the real installer/uninstaller as a normal user in a disposable home.
 - Removed unused portal-restart and legacy workspace/config helper scripts from installation templates.
