@@ -47,7 +47,7 @@ def apply(data, directory):
     else:
         # Named palettes must reach applications too; never reuse stale wallpaper colors.
         c=data['colors']
-        roles={'primary':'accent','on_primary':'bg','secondary':'yellow','tertiary':'green',
+        roles={'primary':'accent','on_primary':'accentText','secondary':'yellow','tertiary':'green',
                'surface':'bg','surface_container_lowest':'bg','surface_container_low':'surface',
                'surface_container':'surface','surface_container_high':'surface','surface_container_highest':'surface',
                'on_surface':'text','outline':'subtext','outline_variant':'subtext','shadow':'bg','error':'red'}

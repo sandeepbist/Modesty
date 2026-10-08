@@ -7,6 +7,7 @@ Entries are prepared before publishing. GitHub Releases records which versions h
 
 ### Fixed
 
+- Thunar backgrounds and selection colors follow the active palette in both modes. Selected file labels use the matching foreground, and keyboard focus outlines remain visible. Named application palettes use the shell's selection foreground.
 - Voice ribbons fade in when activated, including after panel travel and when reopening, instead of appearing at full brightness.
 - Shift+Tab moves backwards through launcher results on platforms that send Tab with a Shift modifier.
 - Image previews and lock/wallpaper images encode local paths, including filenames containing `#`, `?` and `%`.

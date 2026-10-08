@@ -1,12 +1,20 @@
 /* Thunar theme */
 
 /* =============================================================================
+   Global Resets
+   ============================================================================= */
+
+.thunar * {
+    outline: none;
+    border: none;
+}
+
+/* =============================================================================
    Window & Background
    ============================================================================= */
 
 .thunar.background {
-    background: @window_bg_color;
-    color: @window_fg_color;
+    background: #0b0f11;
 }
 
 .thunar .titlebar {
@@ -37,28 +45,24 @@
     padding: 10px;
     margin: 10px 15px 0 0;
     border-radius: 15px;
-    background-color: @view_bg_color;
+    background-color: #0f1417;
     animation: fading 400ms ease forwards;
     opacity: 0;
     animation-delay: 250ms;
 }
 
-.thunar .frame.standard-view .view:not(:selected):not(.rubberband),
-.thunar .frame.standard-view .view *:not(:selected):not(.rubberband):not(rubberband) {
+.thunar .frame.standard-view .view:not(.rubberband),
+.thunar .frame.standard-view .view *:not(.rubberband) {
     background-color: transparent;
 }
 
-/* Exo icon cells and GTK list rows must use the same selection pair. */
-.thunar .frame.standard-view .view:selected,
 .thunar .frame.standard-view .view *:selected {
-    background-color: @theme_selected_bg_color;
-    color: @theme_selected_fg_color;
+    color: #a3cce4;
 }
 
-.thunar .rubberband,
-.thunar rubberband {
-    background-color: alpha(@accent_color, 0.15);
-    border: 1px solid @accent_color;
+.thunar .rubberband {
+    background-color: alpha(#a3cce4, 0.15);
+    border: 1px solid alpha(#a3cce4, 0.15);
 }
 
 
@@ -78,12 +82,12 @@
 }
 
 .thunar header.top tabs .reorderable-page:hover {
-    background-color: alpha(@accent_color, 0.08);
+    background-color: alpha(#a3cce4, 0.08);
 
 }
 .thunar header.top tabs .reorderable-page:checked {
-    color: @window_fg_color;
-    background-color: alpha(@accent_color, 0.15);
+    color: #a3cce4;
+    background-color: alpha(#a3cce4, 0.15);
 
 }
 
@@ -107,12 +111,12 @@
 }
 
 .thunar .sidebar .view:hover {
-    background: alpha(@window_fg_color, 0.1);
+    background: alpha(#dfe6ed, 0.1);
 }
 
 .thunar .sidebar .view:selected {
-    background: alpha(@accent_color, 0.15);
-    color: @window_fg_color;
+    background: alpha(#a3cce4, 0.15);
+    color: #a3cce4;
 }
 
 /* =============================================================================
@@ -128,18 +132,18 @@
 .thunar .location-button.toggle:checked,
 .thunar .path-bar-button.toggle:checked {
     padding: 8px 25px;
-    background: alpha(@accent_color, 0.15);
-    color: @window_fg_color;
+    background: alpha(#a3cce4, 0.15);
+    color: #a3cce4;
     box-shadow: none;
 }
 
 .thunar .location-button.path-bar-button:not(:checked) {
-    background-color: @view_bg_color;
+    background-color: #0f1417;
 }
 
 .thunar .location-button.path-bar-button:not(:checked):hover {
-    background: alpha(@accent_color, 0.08);
-    color: @window_fg_color;
+    background: alpha(#a3cce4, 0.08);
+    color: alpha(#a3cce4, 0.8);
 }
 
 .thunar .location-button.toggle+.location-button.toggle:checked {
@@ -156,7 +160,7 @@
    ============================================================================= */
 
 .thunar button.toggle:checked {
-    color: @window_fg_color;
+    color: #a3cce4;
 }
 
 .thunar .image-button {
@@ -170,11 +174,11 @@
    ============================================================================= */
 
 .thunar statusbar {
-    background-color: @view_bg_color;
+    background-color: #0f1417;
     border-radius: 15px;
     padding: 10px 10px;
     margin: 15px 5px 15px -10px;
-    color: @window_fg_color;
+    color: #dfe6ed;
 }
 
 

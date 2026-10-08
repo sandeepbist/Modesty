@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate managed application colors through Matugen's template engine."""
-import json, os, re, shutil, subprocess, stat, configparser, io, importlib.util
+import json, os, re, shutil, subprocess, stat, configparser, io, importlib.util, hashlib
 from pathlib import Path
 
 CONFIG=Path(os.environ.get('XDG_CONFIG_HOME',Path.home()/'.config'))
@@ -19,6 +19,13 @@ def integrate(path,line,state,enabled):
     clean='\n'.join(x for x in old.splitlines() if 'modesty-generated' not in x)
     if enabled:clean=(line+'\n'+clean) if line.startswith('include=') else clean+'\n'+line
     if clean.strip()!=old.strip():backup(path,state);write(path,clean.strip()+'\n')
+
+def migrate_thunar(path,state):
+    # Replace only the unchanged stylesheet shipped before palette-aware colors.
+    # OTA preserves application configs, including users' own CSS changes.
+    if path.exists() and hashlib.sha256(path.read_bytes()).hexdigest() == '06f3268dbda4afead19facbbc10bc4276323a49707c9d14fc0e77beeec0452aa':
+        backup(path,state)
+        write(path,(Path(__file__).resolve().parents[1]/'setup/config/gtk-3.0/thunar.css').read_text())
 
 def terminal_colors(raw,mode):
     # Preserve ANSI semantics: magenta and cyan must not reuse green/yellow.
@@ -110,6 +117,7 @@ def apply(raw,mode,state,targets):
         target=css.parent/'modesty-generated.css'
         if targets.get('gtk'):write(target,(generated/'gtk.css').read_text())
         if targets.get('gtk'):
+            migrate_thunar(css.parent/'thunar.css',state)
             old=css.read_text() if css.exists() else ''
             backup(css,state)
             # Imports precede rules; remove only legacy definitions of our managed roles.
