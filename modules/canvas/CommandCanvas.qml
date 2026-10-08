@@ -149,7 +149,7 @@ PanelWindow {
         return null;
     }
     function search(value: string): void { Qt.callLater(()=>{window.acquireFocus=true;input.text=value;input.forceActiveFocus();}); }
-    function diagnostics(): var { return {open:CanvasState.opened,query,scope,calculating,calculation,calculationError,calculatorRunning:calculatorWorker.running,calculatorPending:calcDelay.running,prefix:prefix?.scope??"",selected,listIndex:list.currentIndex,actionBar,actionIndex,previewPath,count:results.length,results:results.slice(0,12).map(r=>({kind:r.kind,title:r.title})),answer:answerHasText?quickAnswer.title:"",answerKind:answerHasText?quickAnswer.label??"Source":"",answerPending,answerQuery,answerEligible,answerRunning:answerWorker.running,aiRunning:Luma.busy,indexed,attachmentPicker:conversation.pickerOpen,inputFocused:input.activeFocus,windowFocused:input.Window.active,keyboardAcquired:window.acquireFocus,x:card.x,y:card.y,width:card.width,height:card.height,originX,originY,travelPhase,travelProgress}; }
+    function diagnostics(): var { return {open:CanvasState.opened,query,scope,calculating,calculation,calculationError,calculatorRunning:calculatorWorker.running,calculatorPending:calcDelay.running,prefix:prefix?.scope??"",selected,listIndex:list.currentIndex,actionBar,actionIndex,previewPath,count:results.length,results:results.slice(0,12).map(r=>({kind:r.kind,title:r.title})),answer:answerHasText?quickAnswer.title:"",answerKind:answerHasText?quickAnswer.label??"Source":"",answerPending,answerQuery,answerEligible,answerRunning:answerWorker.running,aiRunning:Luma.busy,indexed,attachmentPicker:conversation.pickerOpen,inputFocused:input.activeFocus,windowFocused:input.Window.active,keyboardAcquired:window.acquireFocus,x:card.x,y:card.y,width:card.width,height:card.height,originX,originY,travelPhase,travelProgress,border:borderLight.diagnostics()}; }
     function capture(path: string): void { if(CanvasState.opened) card.grabToImage(result => result.saveToFile(path)); }
     function moveDrop(opening: bool): void {
         travel.stop();
@@ -600,24 +600,13 @@ PanelWindow {
             color:window.searchSurface;border.width:1;border.color:Theme.withAlpha(Theme.text,.055*(window.travelling?window.segment(window.travelProgress,.12,.22):1))
             Behavior on color { ColorAnimation {duration:Tokens.animSlow} }
             LumaVoiceLight {
-                anchors.fill:parent;edge:true;radius:surface.radius
+                id:borderLight;anchors.fill:parent;edge:true;radius:surface.radius;revealOnActivate:true
                 activity:Voice.error?"error":Voice.active?Voice.phase:Luma.busy?(Luma.phase==="acting"?"acting":"thinking"):answerWorker.running?"thinking":"idle";level:Voice.level
-                active:Preferences.lumaEffects&&CanvasState.opened&&!window.travelling&&(Voice.active||!!Voice.error||Luma.busy||answerWorker.running)
-                opacity:active?window.headerAmount*(Voice.active||Voice.error||Luma.busy||answerWorker.running?1:input.activeFocus?.24:.10):0;visible:opacity>.001
+                active:Preferences.lumaEffects&&CanvasState.opened&&!window.travelling
+                opacity:active?window.headerAmount:0;visible:opacity>.001
                 Behavior on opacity {NumberAnimation {duration:Tokens.animSlow;easing.type:Easing.OutCubic}}
             }
-            Rectangle {
-                x:Preferences.searchRadius;y:0;width:Math.max(0,parent.width-x*2);height:1
-                opacity:window.travelling?window.widthAmount:1
-                gradient:Gradient {
-                    orientation:Gradient.Horizontal
-                    GradientStop {position:0;color:"transparent"}
-                    GradientStop {position:.5;color:Theme.withAlpha(Theme.accent,.26)}
-                    GradientStop {position:1;color:"transparent"}
-                }
-            }
             MouseArea {anchors.fill:parent}
-            SurfaceLighting {id:assistantLight;anchors.fill:parent;radius:surface.radius;active:CanvasState.opened&&!window.travelling&&!Voice.active;focused:input.activeFocus;working:answerWorker.running||Luma.busy;opacity:strength*window.headerAmount}
             Item {
                 id:content;width:card.panelWidth;height:card.bodyHeight;x:(parent.width-width)/2
             Item {
