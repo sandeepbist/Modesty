@@ -82,6 +82,10 @@ with tempfile.TemporaryDirectory(prefix='modesty-cli-check-') as directory:
     fish.write_text('edit after installation\n')
     assert 'Would' in cli('--uninstall','--dry-run') and fish.read_text()=='edit after installation\n'
     packages=subprocess.check_output(['pacman','-Qq'],text=True)
+    # Moving a checkout to a path unsuitable for new keybinds must not prevent
+    # restoring the installation's recorded originals.
+    moved=repo.with_name('repo with "quotes"')
+    repo.rename(moved);repo=moved
     cli('--uninstall','--non-interactive')
     assert fish.read_text()=='original fish config\n' and fish.stat().st_mode&0o777==0o640
     assert untouched.read_text()=='keep personal files\n' and key.read_text()=='dummy-local-key' and model.read_text()=='dummy-existing-model'

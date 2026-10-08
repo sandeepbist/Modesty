@@ -19,6 +19,23 @@ spec.loader.exec_module(installer)
 GROUPS = ["desktop", "shell", "apps", "spotify", "wallpapers", "fonts"]
 assert not installer.missing_core(set(installer.CORE)-{'hyprland','quickshell','hyprpm','firefox'}|{'hyprland-git','quickshell-git','hyprpm-git','zen-browser-bin'})
 
+# These paths enter both Lua strings and shell commands. Refuse before package
+# inspection or file writes, rather than installing commands with altered meaning.
+for unsafe in ('quote"path', "quote'path", 'dollar$path', 'semicolon;path', 'backslash\\path', 'tick`path', 'space path'):
+    with patch.object(installer.os, 'geteuid', return_value=1000), patch.object(installer, 'ROOT', Path('/tmp') / unsafe), patch.object(sys, 'argv', ['install.py', '--dry-run']), patch.object(installer, 'installed_packages') as packages, contextlib.redirect_stderr(io.StringIO()):
+        try:
+            installer.main()
+        except SystemExit as error:
+            assert error.code == 2
+        else:
+            raise AssertionError('Unsafe command path accepted: ' + unsafe)
+        packages.assert_not_called()
+    # Recovery reads receipts and passes paths as arguments; do not strand an
+    # existing installation merely because its checkout has since been moved.
+    with patch.object(installer.os, 'geteuid', return_value=1000), patch.object(installer, 'ROOT', Path('/tmp') / unsafe), patch.object(sys, 'argv', ['install.py', '--uninstall', '--dry-run']), patch.object(installer.installation, 'uninstall') as uninstall:
+        installer.main()
+        uninstall.assert_called_once()
+
 with tempfile.TemporaryDirectory(prefix="modesty-install-check-") as directory:
     home = Path(directory) / "home"
     home.mkdir()

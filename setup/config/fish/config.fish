@@ -34,7 +34,11 @@ abbr la 'ls -a'
 abbr lla 'ls -la'
 
 # Custom colours
-cat ~/.local/state/modesty/sequences.txt 2> /dev/null
+set -l modesty_state $HOME/.local/state
+if set -q XDG_STATE_HOME; and test -n "$XDG_STATE_HOME"
+    set modesty_state $XDG_STATE_HOME
+end
+cat "$modesty_state/modesty/sequences.txt" 2> /dev/null
 
 # For jumping between prompts in foot terminal
 function mark_prompt_start --on-event fish_prompt

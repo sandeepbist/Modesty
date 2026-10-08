@@ -274,8 +274,10 @@ def main():
     maintenance = args.uninstall or args.adopt_existing or args.recover_install
     if not maintenance and not shutil.which("pacman"):
         parser.error("This installer needs Arch Linux and pacman.")
-    if any(c.isspace() for c in str(ROOT) + str(HOME)):
+    if not (args.uninstall or args.recover_install) and any(c.isspace() for c in str(ROOT) + str(HOME)):
         parser.error("Clone path and home directory must not contain whitespace because Hyprland keybind commands use them.")
+    if not (args.uninstall or args.recover_install) and re.search(r"[^\w/.@+-]", str(ROOT) + str(HOME)):
+        parser.error("Clone path and home directory contain characters unsafe for the saved shell/Lua commands. Use letters, numbers, /, _, ., @, + or -; no files were changed.")
     if CONFIG != HOME / ".config":
         parser.error("This saved Hyprland config requires the default ~/.config directory; unset XDG_CONFIG_HOME before installing.")
     if maintenance:
