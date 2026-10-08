@@ -24,7 +24,7 @@ def integrate(path,line,state,enabled):
 def migrate_thunar(path,state):
     # Migrate only unchanged bundled versions; preserve user-edited CSS.
     # OTA preserves application configs, including users' own CSS changes.
-    if path.exists() and hashlib.sha256(path.read_bytes()).hexdigest() in {'06f3268dbda4afead19facbbc10bc4276323a49707c9d14fc0e77beeec0452aa','c54aacc5240c3467a9653fc1f49c83893895592f19a6ec85e85755a3af2bc3e4'}:
+    if not path.is_symlink() and path.exists() and hashlib.sha256(path.read_bytes()).hexdigest() in {'06f3268dbda4afead19facbbc10bc4276323a49707c9d14fc0e77beeec0452aa','c54aacc5240c3467a9653fc1f49c83895592f19a6ec85e85755a3af2bc3e4'}:
         backup(path,state)
         write(path,(Path(__file__).resolve().parents[1]/'setup/config/gtk-3.0/thunar.css').read_text())
 

@@ -95,4 +95,32 @@ with tempfile.TemporaryDirectory(prefix='modesty-folder-check-') as temporary:
         try:folders.recolor('<svg/>','Papirus','#ff0000;bad','#ffffff')
         except ValueError:pass
         else:raise AssertionError('Invalid color accepted')
+        for case in ('unowned-slot','linked-directory','linked-parent','invalid-marker'):
+            case_data = directory/case
+            with patch.dict(os.environ, XDG_DATA_HOME=str(case_data)):
+                current[0] = 'Adwaita'
+                custom = case_data/'icons'/folders.THEMES[1]
+                custom.mkdir(parents=True)
+                (custom/'custom.txt').write_text('keep me')
+                folders.apply(raw('#bdc7dd','#172033'),state,True)
+                overlay = case_data/'icons'/current[0]
+                if case in ('linked-directory','linked-parent'):
+                    path = overlay if case == 'linked-directory' else overlay/'48x48'
+                    target = case_data/'user-icons'
+                    path.rename(target)
+                    path.symlink_to(target,target_is_directory=True)
+                    preserved = {str(p.relative_to(target)):p.read_bytes() for p in target.rglob('*') if p.is_file()}
+                elif case == 'invalid-marker':
+                    (overlay/'.modesty-generated.json').write_text('[]')
+                folders.restore(state)
+                assert current[0] == 'Adwaita' and not (state/'folder-theme.json').exists(), case
+                assert (custom/'custom.txt').read_text() == 'keep me', case
+                if case in ('linked-directory','linked-parent'):
+                    assert path.is_symlink()
+                    assert preserved == {str(p.relative_to(target)):p.read_bytes() for p in target.rglob('*') if p.is_file()}, case
+                elif case == 'invalid-marker':
+                    assert (overlay/'.modesty-generated.json').read_text() == '[]'
+                else:
+                    assert not overlay.exists(), 'Owned slot was not cleaned'
+                folders.restore(state)
 print('PASS palette folder SVGs, native GTK lookup/rendering, inherited icons, bounded refresh, defaults, restoration and custom-theme/edit preservation')

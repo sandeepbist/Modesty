@@ -139,4 +139,13 @@ for mode, colors in profiles:
             with patch.dict(os.environ, XDG_CONFIG_HOME=str(config)), patch.object(appearance.subprocess, 'run', side_effect=isolated_run):
                 appearance.apply(data, directory/'state')
             assert custom.read_text() == preserved
+            # Matching bundled bytes behind a user symlink are still custom.
+            custom.unlink()
+            linked = directory/'linked-thunar.css'
+            linked.write_text((ROOT/'tests/fixtures/thunar-legacy.css').read_text())
+            custom.symlink_to(linked)
+            original = linked.read_bytes()
+            with patch.dict(os.environ, XDG_CONFIG_HOME=str(config)), patch.object(appearance.subprocess, 'run', side_effect=isolated_run):
+                appearance.apply(data, directory/'state')
+            assert custom.is_symlink() and linked.read_bytes() == original
 print('PASS GTK palette generation, named/wallpaper selection foreground, dark/light contrast and Thunar CSS parsing'+('; native icon/list selection states' if '--live' in sys.argv else ''))
