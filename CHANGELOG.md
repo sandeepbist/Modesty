@@ -22,6 +22,7 @@ Entries are prepared before publishing. GitHub Releases records which versions h
 
 ### Changed
 
+- Fluid motion uses native Qt springs for island morphs, launcher and power selection, button presses, switches and Settings page entrances. Gentle motion damps rebound; reduced motion remains instant. Volume/brightness feedback retains its short transition.
 - Required Arch CI installs the actual required package set and runs the real installer/uninstaller as a normal user in a disposable home.
 - Removed unused portal-restart and legacy workspace/config helper scripts from installation templates.
 - Qt6ct uses the Adwaita icon theme supplied by the installer.

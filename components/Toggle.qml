@@ -18,7 +18,7 @@ AbstractButton {
         Rectangle {
             x:root.checked?parent.width-width-3:3;y:3;width:12;height:12;radius:6
             color:root.checked?Theme.bgSolid:Theme.subtext
-            Behavior on x {NumberAnimation {duration:Tokens.reducedMotion?0:170;easing.type:Easing.OutCubic}}
+            Behavior on x {enabled:!Tokens.reducedMotion;SpringMotion {}}
             Behavior on color {ColorAnimation {duration:Tokens.animFast}}
         }
     }
