@@ -45,6 +45,7 @@ profiles = [
 ]
 for mode, colors in profiles:
     for source in ('midnight', 'wallpaper'):
+        fixture = ROOT/'tests/fixtures'/('thunar-solid.css' if source == 'wallpaper' else 'thunar-legacy.css')
         with tempfile.TemporaryDirectory(prefix='modesty-gtk-check-') as temporary:
             directory = Path(temporary)
             config = directory/'config'
@@ -53,7 +54,7 @@ for mode, colors in profiles:
                 gtk.mkdir(parents=True)
                 (gtk/'gtk.css').write_text('@import "thunar.css";\n')
                 # Exercise migration on an existing install, not only fresh CSS.
-                (gtk/'thunar.css').write_text((ROOT/'tests/fixtures/thunar-legacy.css').read_text())
+                (gtk/'thunar.css').write_text(fixture.read_text())
             data = dict(paletteName=source, mode=mode, colors=colors, targets={'gtk': True})
             if source == 'wallpaper':
                 roles = {'primary':'accent', 'on_primary':'accentText', 'surface':'bg',
@@ -74,7 +75,7 @@ for mode, colors in profiles:
             for version in ('3.0', '4.0'):
                 gtk = config/('gtk-'+version)
                 assert (gtk/'thunar.css').read_text() == (ROOT/'setup/config/gtk-3.0/thunar.css').read_text()
-                assert (directory/'state/theme-backups'/('gtk-'+version)/'thunar.css').read_text() == (ROOT/'tests/fixtures/thunar-legacy.css').read_text()
+                assert (directory/'state/theme-backups'/('gtk-'+version)/'thunar.css').read_text() == fixture.read_text()
                 errors = []
                 provider = Gtk.CssProvider()
                 provider.connect('parsing-error', lambda provider, section, error: errors.append(str(error)))
@@ -142,7 +143,7 @@ for mode, colors in profiles:
             # Matching bundled bytes behind a user symlink are still custom.
             custom.unlink()
             linked = directory/'linked-thunar.css'
-            linked.write_text((ROOT/'tests/fixtures/thunar-legacy.css').read_text())
+            linked.write_text(fixture.read_text())
             custom.symlink_to(linked)
             original = linked.read_bytes()
             with patch.dict(os.environ, XDG_CONFIG_HOME=str(config)), patch.object(appearance.subprocess, 'run', side_effect=isolated_run):

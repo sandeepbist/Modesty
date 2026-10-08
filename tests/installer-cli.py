@@ -4,6 +4,7 @@ Needs existing desktop dependencies and enabled NetworkManager/Bluetooth service
 Never installs packages, alters the real home, or starts a desktop session.
 """
 import argparse
+import hashlib
 import importlib.util
 import json
 import os
@@ -34,12 +35,24 @@ with tempfile.TemporaryDirectory(prefix='modesty-cli-check-') as directory:
     untouched=home/'personal.txt';untouched.write_text('keep personal files\n')
     key=home/'.config/modesty/gemini.key';key.parent.mkdir(parents=True);key.write_text('dummy-local-key');key.chmod(0o600)
     model=home/'.cache/modesty/voice-moonshine/keep';model.parent.mkdir(parents=True);model.write_text('dummy-existing-model')
-    env=dict(os.environ,HOME=str(home),XDG_CONFIG_HOME=str(home/'.config'),XDG_STATE_HOME=str(home/'.local/state'),XDG_CACHE_HOME=str(home/'.cache'))
+    env=dict(os.environ,HOME=str(home),XDG_CONFIG_HOME=str(home/'.config'),XDG_STATE_HOME=str(home/'.local/state'),XDG_CACHE_HOME=str(home/'.cache'),XDG_DATA_HOME=str(home/'.local/share'),GSETTINGS_BACKEND='memory')
     env.pop('WAYLAND_DISPLAY',None);env.pop('HYPRLAND_INSTANCE_SIGNATURE',None)
     def cli(*flags,answers=None,expected=0):
         result=subprocess.run(['python3',str(repo/'install.py'),*flags],env=env,input=answers,capture_output=True,text=True,timeout=90)
         if result.returncode!=expected:raise RuntimeError(result.stdout+'\n'+result.stderr)
         return result.stdout
+    def restricted_icons(case):
+        from folder_theme import OWNER, THEMES
+        overlay=home/'.local/share/icons'/THEMES[0]
+        icon=overlay/'48x48/places/folder.svg';icon.parent.mkdir(parents=True,exist_ok=True)
+        content=b'<svg xmlns="http://www.w3.org/2000/svg"/>'
+        icon.write_bytes(content)
+        (overlay/'.modesty-generated.json').write_text(json.dumps(dict(owner=OWNER,files={'48x48/places/folder.svg':hashlib.sha256(content).hexdigest()})))
+        recovery=home/'.local/state/modesty/folder-theme.json'
+        recovery.write_text(json.dumps(dict(owner=OWNER,original='Adwaita')))
+        restricted=icon if case=='file' else icon.parent
+        restricted.chmod(0 if case=='file' else 0o500)
+        return icon,restricted,recovery,content
     packages=subprocess.check_output(['pacman','-Qq'],text=True)
     cli('--install-voice',answers='n\n',expected=130)
     assert not (home/'.local/share/modesty/stt-moonshine-venv').exists()
@@ -58,7 +71,10 @@ with tempfile.TemporaryDirectory(prefix='modesty-cli-check-') as directory:
     for approval in ('n',''):
         cli('--uninstall',answers=approval+'\n')
         assert json.loads(receipt.read_text())['files'] and fish.read_text()!='original fish config\n'
-    cli('--uninstall',answers='y\n')
+    icon,restricted,recovery,content=restricted_icons('file')
+    try:cli('--uninstall',answers='y\n')
+    finally:restricted.chmod(0o600)
+    assert not recovery.exists() and icon.read_bytes()==content
     assert fish.read_text()=='original fish config\n' and fish.stat().st_mode&0o777==0o640
     assert subprocess.check_output(['pacman','-Qq'],text=True)==packages
     # Even an interrupted zero-file transaction needs explicit recovery approval.
@@ -86,7 +102,10 @@ with tempfile.TemporaryDirectory(prefix='modesty-cli-check-') as directory:
     # restoring the installation's recorded originals.
     moved=repo.with_name('repo with "quotes"')
     repo.rename(moved);repo=moved
-    cli('--uninstall','--non-interactive')
+    icon,restricted,recovery,content=restricted_icons('directory')
+    try:cli('--uninstall','--non-interactive')
+    finally:restricted.chmod(0o700)
+    assert not recovery.exists() and icon.read_bytes()==content
     assert fish.read_text()=='original fish config\n' and fish.stat().st_mode&0o777==0o640
     assert untouched.read_text()=='keep personal files\n' and key.read_text()=='dummy-local-key' and model.read_text()=='dummy-existing-model'
     assert not (home/'.local/state/modesty/main-shell').exists()

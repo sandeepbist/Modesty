@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check real folder overlays, GTK lookup/rendering, refresh and restoration."""
 import json
+from contextlib import nullcontext
 import os
 from pathlib import Path
 import sys
@@ -123,4 +124,28 @@ with tempfile.TemporaryDirectory(prefix='modesty-folder-check-') as temporary:
                 else:
                     assert not overlay.exists(), 'Owned slot was not cleaned'
                 folders.restore(state)
+        for case in ('unreadable-file','read-only-directory'):
+            case_data = directory/case
+            with patch.dict(os.environ, XDG_DATA_HOME=str(case_data)):
+                current[0] = 'Adwaita'
+                folders.apply(raw('#bdc7dd','#172033'),state,True)
+                overlay = case_data/'icons'/current[0]
+                generated = overlay/'48x48/places/folder.svg'
+                original = generated.read_bytes()
+                restricted = generated if case == 'unreadable-file' else generated.parent
+                restricted.chmod(0 if case == 'unreadable-file' else 0o500)
+                # Root bypasses Unix permissions in CI; inject the same failure.
+                operation = folders.digest if case == 'unreadable-file' else Path.unlink
+                def denied(path,*args,**kwargs):
+                    if path == generated:raise PermissionError('Restricted generated icon')
+                    return operation(path,*args,**kwargs)
+                mocked = patch.object(folders,'digest',side_effect=denied) if case == 'unreadable-file' else patch.object(Path,'unlink',autospec=True,side_effect=denied)
+                try:
+                    with mocked if os.geteuid() == 0 else nullcontext():
+                        folders.restore(state)
+                    assert current[0] == 'Adwaita' and not (state/'folder-theme.json').exists(), case
+                    assert generated.exists(), 'Inaccessible icon was deleted'
+                finally:
+                    restricted.chmod(0o600 if case == 'unreadable-file' else 0o700)
+                assert generated.read_bytes() == original
 print('PASS palette folder SVGs, native GTK lookup/rendering, inherited icons, bounded refresh, defaults, restoration and custom-theme/edit preservation')
