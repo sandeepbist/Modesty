@@ -5,7 +5,8 @@ import Quickshell.Io
 
 Singleton {
     id: root
-    property bool dragging: false
+    property var dragOwner: null
+    readonly property bool dragging: dragOwner !== null
     property var files: []
     property string error: ""
     property string status: ""
@@ -26,6 +27,8 @@ Singleton {
     readonly property bool pdfs: files.length>1&&files.every(f=>f.kind==="pdf")
     readonly property bool readable: files.length > 0 && files.every(f => f.readable)
     readonly property int panelHeight: Math.ceil(Math.min(600, Math.max(176, contentHeight)))
+    function beginDrag(owner: var): void { if (owner && !busy && !Session.isLocked() && !Session.secure) dragOwner = owner; }
+    function endDrag(owner: var): void { if (dragOwner === owner) dragOwner = null; }
     function run(name: string, args: var): bool {
         if (busy || Preferences.preview || Session.isLocked() || Session.secure) return false;
         error = ""; status = ""; operation = name; received = false;
@@ -36,7 +39,7 @@ Singleton {
         if (busy || Preferences.preview || Session.isLocked() || Session.secure) return false;
         const paths = Array.from(urls, u => u.toString());
         files = []; lastOutput = ""; exportOpen = false; toolsOpen = false; renameOpen = false; renamePlan = []; question = "";
-        CanvasState.close(); IslandState.openMenu("files"); dragging = false;
+        CanvasState.close(); IslandState.openMenu("files"); dragOwner = null;
         return run("inspect", {paths});
     }
     function perform(paths:var,name:string,args:var):bool {
@@ -73,5 +76,5 @@ Singleton {
         }}
         onExited: if (!root.received && !root.error) root.error = "File processing stopped. Try again."
     }
-    Connections { target: Session; function onLockedChanged() { if (Session.locked) root.dragging = false; } }
+    Connections { target: Session; function onLockedChanged() { if (Session.locked) root.dragOwner = null; } }
 }
