@@ -36,7 +36,8 @@ with tempfile.TemporaryDirectory(prefix='modesty-cli-check-') as directory:
     key=home/'.config/modesty/gemini.key';key.parent.mkdir(parents=True);key.write_text('dummy-local-key');key.chmod(0o600)
     model=home/'.cache/modesty/voice-moonshine/keep';model.parent.mkdir(parents=True);model.write_text('dummy-existing-model')
     env=dict(os.environ,HOME=str(home),XDG_CONFIG_HOME=str(home/'.config'),XDG_STATE_HOME=str(home/'.local/state'),XDG_CACHE_HOME=str(home/'.cache'),XDG_DATA_HOME=str(home/'.local/share'),GSETTINGS_BACKEND='memory')
-    env.pop('WAYLAND_DISPLAY',None);env.pop('HYPRLAND_INSTANCE_SIGNATURE',None)
+    for name in ('WAYLAND_DISPLAY','HYPRLAND_INSTANCE_SIGNATURE','XDG_SESSION_ID','DISPLAY','DBUS_SESSION_BUS_ADDRESS','MODESTY_PREVIEW'):
+        env.pop(name,None)
     def cli(*flags,answers=None,expected=0):
         result=subprocess.run(['python3',str(repo/'install.py'),*flags],env=env,input=answers,capture_output=True,text=True,timeout=90)
         if result.returncode!=expected:raise RuntimeError(result.stdout+'\n'+result.stderr)
@@ -53,11 +54,13 @@ with tempfile.TemporaryDirectory(prefix='modesty-cli-check-') as directory:
         restricted=icon if case=='file' else icon.parent
         restricted.chmod(0 if case=='file' else 0o500)
         return icon,restricted,recovery,content
+    ordinary=home/'.config/kitty/kitty.conf';ordinary.parent.mkdir(parents=True);ordinary.write_text('font_size 19\n')
+    optional=[home/'.config/kitty'/name for name in ('modesty.conf','modesty-effects.conf','modesty-generated.conf')]+[home/'.config/fish/functions/modesty-terminal.fish']
     packages=subprocess.check_output(['pacman','-Qq'],text=True)
     cli('--install-voice',answers='n\n',expected=130)
     assert not (home/'.local/share/modesty/stt-moonshine-venv').exists()
     prefix=['n']+(['n'] if any(p not in installer.installed_packages() for p in installer.EXTRAS) else [])
-    selected=prefix+['y','y','y','n','n','y','n','n']
+    selected=prefix+['y','y','y','n','n','y','n','n','n']
     for approval in ('n',''):
         output=cli(answers='\n'.join(selected+[approval])+'\n')
         assert output.index('Would replace '+str(fish))<output.index('Apply these files with backups')
@@ -68,6 +71,7 @@ with tempfile.TemporaryDirectory(prefix='modesty-cli-check-') as directory:
     cli(answers='\n'.join(selected+['y'])+'\n')
     receipt=home/'.local/state/modesty-install/receipt.json'
     assert len(json.loads(receipt.read_text())['files'])>50 and not (home/'Pictures/Wallpapers').exists()
+    assert not any(path.exists() for path in optional) and ordinary.read_text()=='font_size 19\n'
     for approval in ('n',''):
         cli('--uninstall',answers=approval+'\n')
         assert json.loads(receipt.read_text())['files'] and fish.read_text()!='original fish config\n'
@@ -95,6 +99,20 @@ with tempfile.TemporaryDirectory(prefix='modesty-cli-check-') as directory:
     assert str(home/'.local/state/modesty/main-shell') in data['files']
     assert fish.read_text()!='original fish config\n'
     assert 'Installed 0 files' in cli('--non-interactive')
+    assert not any(path.exists() for path in optional) and ordinary.read_text()=='font_size 19\n'
+    if shutil.which('kitty'):
+        for path in optional:
+            path.parent.mkdir(parents=True,exist_ok=True);path.write_text('original optional file\n')
+        for approval in ('n',''):
+            cli('--install-terminal-effects',answers=approval+'\n')
+            assert all(path.read_text()=='original optional file\n' for path in optional)
+        cli('--install-terminal-effects',answers='y\nn\n')
+        assert all(path.read_text()=='original optional file\n' for path in optional)
+        cli('--install-terminal-effects',answers='y\ny\n')
+        assert all(str(path) in json.loads(receipt.read_text())['files'] for path in optional)
+        assert ordinary.read_text()=='font_size 19\n'
+        assert 'Installed 0 files' in cli('--non-interactive')
+        optional[1].write_text('edit optional after installation\n')
     fish.write_text('edit after installation\n')
     assert 'Would' in cli('--uninstall','--dry-run') and fish.read_text()=='edit after installation\n'
     packages=subprocess.check_output(['pacman','-Qq'],text=True)
@@ -110,6 +128,10 @@ with tempfile.TemporaryDirectory(prefix='modesty-cli-check-') as directory:
     assert untouched.read_text()=='keep personal files\n' and key.read_text()=='dummy-local-key' and model.read_text()=='dummy-existing-model'
     assert not (home/'.local/state/modesty/main-shell').exists()
     assert not json.loads(receipt.read_text())['files']
+    assert ordinary.read_text()=='font_size 19\n'
+    if shutil.which('kitty'):
+        assert all(path.read_text()=='original optional file\n' for path in optional)
+        assert any(path.read_text()=='edit optional after installation\n' for path in (home/'.local/state/modesty-install-backups').rglob('modesty-effects.conf'))
     assert any(p.read_text()=='edit after installation\n' for p in (home/'.local/state/modesty-install-backups').rglob('config.fish'))
     assert subprocess.check_output(['pacman','-Qq'],text=True)==packages
 print('PASS actual non-root CLI: previews before approval; declined/default-no/EOF preserve files; approved install/uninstall, repeat, backups, original modes, personal/key/model preservation and unchanged packages')

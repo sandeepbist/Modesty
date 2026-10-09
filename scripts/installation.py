@@ -200,23 +200,28 @@ def transaction(files, root, home, state, removing=False):
     return folder, sum(v is not None for v in before.values())
 
 
-def install(files, rendered, root, home, state, dry_run):
+def install(files, rendered, root, home, state, dry_run, record_identical=()):
     for _, target in files:
         safe_target(target, home, state)
-    changes = [(target, rendered(source), source.stat().st_mode & 0o777) for source, target in files
-               if target.is_symlink() or not target.is_file() or target.read_bytes() != rendered(source)]
+    approved = set(record_identical)
+    def changes():
+        owned = receipt(root, home, state)['files']
+        return [(target, rendered(source), source.stat().st_mode & 0o777) for source, target in files
+                if target.is_symlink() or not target.is_file() or target.read_bytes() != rendered(source)
+                or target in approved and str(target) not in owned]
     if dry_run:
         if (state/'modesty-install/transaction.json').exists():
             raise RuntimeError('An interrupted installation needs recovery. Run ./install.sh --recover-install first.')
-        receipt(root, home, state)
-        require_space(changes, state)
-        for target, _, _ in changes:
+        pending = changes()
+        require_space(pending, state)
+        for target, _, _ in pending:
             print('Would replace' if target.exists() or target.is_symlink() else 'Would install', target)
-        print('Planned', len(changes), 'files.'); return len(changes)
+        print('Planned', len(pending), 'files.'); return len(pending)
     with locked(state):
-        folder, count = transaction(changes, root, home, state)
-    print(f'Installed {len(changes)} files; backed up {count} existing files'+(f' to {folder}' if count else '')+'.')
-    return len(changes)
+        pending = changes()
+        folder, count = transaction(pending, root, home, state)
+    print(f'Installed {len(pending)} files; backed up {count} existing files'+(f' to {folder}' if count else '')+'.')
+    return len(pending)
 
 
 def uninstall_plan(root, home, state):

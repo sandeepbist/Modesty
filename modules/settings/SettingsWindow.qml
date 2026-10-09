@@ -214,7 +214,7 @@ FloatingWindow {
                                             }
                                             Loader {
                                                 Layout.fillWidth:true;active:!!card.modelData.custom;visible:active
-                                                sourceComponent:card.modelData.custom==="updates"?updatesComponent:card.modelData.custom==="controls"?controlComponent:card.modelData.custom==="shortcuts"?shortcutsComponent:card.modelData.custom==="terminal"?terminalComponent:card.modelData.custom==="profile"?profileComponent:card.modelData.custom==="searchAi"?searchAiComponent:card.modelData.custom==="knowledge"?knowledgeComponent:card.modelData.custom==="voice"?voiceComponent:null
+                                                sourceComponent:card.modelData.custom==="updates"?updatesComponent:card.modelData.custom==="controls"?controlComponent:card.modelData.custom==="shortcuts"?shortcutsComponent:card.modelData.custom==="terminalEffects"?terminalEffectsComponent:card.modelData.custom==="terminal"?terminalComponent:card.modelData.custom==="profile"?profileComponent:card.modelData.custom==="searchAi"?searchAiComponent:card.modelData.custom==="knowledge"?knowledgeComponent:card.modelData.custom==="voice"?voiceComponent:null
                                             }
                                         }
                                     }
@@ -233,6 +233,7 @@ FloatingWindow {
         Component {id:voiceComponent;VoiceSettings {}}
         Component {id:updatesComponent;UpdateSettings {}}
         Component {id:controlComponent;Island.ControlEditor {}}
+        Component {id:terminalEffectsComponent;TerminalEffectsSettings {}}
         Component {id:terminalComponent;TerminalArtSettings {Component.onCompleted:{if(root.artworkRequested){galleryOpen=true;root.artworkRequested=false;}}}}
         Component {id:profileComponent;RowLayout {spacing:16
             ProfileAvatar {Layout.preferredWidth:56;Layout.preferredHeight:56}

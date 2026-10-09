@@ -75,7 +75,7 @@ jobs:
             # Install the installer's actual required set so packaging omissions
             # fail here, before a user's first login. Optional AUR apps stay out.
             mapfile -t desktop_packages < <(python3 -c 'import install; print("\n".join(install.CORE))')
-            pacman -S --noconfirm --needed "${desktop_packages[@]}"
+            pacman -S --noconfirm --needed "${desktop_packages[@]}" kitty
             export XDG_RUNTIME_DIR=$(mktemp -d)
             # A Qt upgrade can precede the repository's Quickshell rebuild.
             # Check a minimal config, then rebuild the same stable package only

@@ -213,7 +213,9 @@ def files_for(group):
         for name in ("foot", "fish", "gtk-3.0", "qt6ct", "flameshot", "fastfetch"):
             paths += sorted((SETUP / "config" / name).rglob("*"))
         paths.append(SETUP / "config/starship.toml")
-        return paths
+        return [path for path in paths if path != SETUP / "config/fish/functions/modesty-terminal.fish"]
+    if group == "terminal-effects":
+        return [SETUP / "config/kitty" / name for name in ("modesty.conf", "modesty-effects.conf", "modesty-generated.conf")] + [SETUP / "config/fish/functions/modesty-terminal.fish"]
     if group == "spotify":
         return sorted((SETUP / "config/spicetify").rglob("*"))
     if group == "wallpapers":
@@ -256,7 +258,52 @@ def planned_files(groups):
 
 
 def install_files(groups, dry_run):
-    return installation.install(planned_files(groups), rendered, ROOT, HOME, STATE, dry_run)
+    files = planned_files(groups)
+    approved = {target for source, target in planned_files(["terminal-effects"])} if "terminal-effects" in groups else set()
+    return installation.install(files, rendered, ROOT, HOME, STATE, dry_run, record_identical=approved)
+
+
+def choose_terminal_effects():
+    spec = importlib.util.spec_from_file_location("terminal_effects", ROOT / "scripts/terminal-effects.py")
+    effects = importlib.util.module_from_spec(spec); spec.loader.exec_module(effects)
+    print("Foot cannot animate cursor movement. This optional Kitty profile opens separately with modesty-terminal or Settings.")
+    print("Foot, Super+T, launcher defaults and normal Kitty configuration stay unchanged.")
+    if not ask("Install optional animated Kitty profile?", False):
+        print("Terminal effects skipped.")
+        return False
+    effects.require_mutation()
+    if not shutil.which("fish"):
+        print("Fish is required by this profile. Run the desktop installer to review required package setup. Terminal effects skipped.")
+        return False
+    if not shutil.which("kitty"):
+        print("Missing Kitty. Proposed command: sudo pacman -Syu --needed kitty.")
+        print("This performs a full Arch upgrade and may change Qt/Quickshell compatibility. Uninstall does not undo package changes.")
+        if not ask("Update Arch and install Kitty?", False):
+            print("Terminal effects skipped; Kitty was not approved.")
+            return False
+        try:
+            run("sudo", "pacman", "-Syu", "--needed", "kitty")
+        except (subprocess.CalledProcessError, OSError) as error:
+            print(f"Optional Kitty package setup failed: {error}. Terminal effects skipped.")
+            return False
+        if shutil.which("quickshell"):
+            try:
+                output = compatibility.capture(["quickshell", "--version"])
+                if compatibility.qt_mismatch(output):
+                    raise compatibility.QtMismatch("Quickshell reports a Qt mismatch after the Arch upgrade.")
+            except (RuntimeError, OSError, subprocess.SubprocessError) as error:
+                print(f"{error} Optional profile setup skipped; approved packages are retained.")
+                print("Run the desktop installer to review validation and rebuilding the installed stable/git Quickshell package for current Qt.")
+                return False
+        if not shutil.which("kitty"):
+            print("Kitty is still unavailable. Terminal effects skipped.")
+            return False
+    try:
+        effects.validate_profile(SETUP / "config/kitty/modesty.conf", expected=1)
+    except (RuntimeError, OSError, subprocess.SubprocessError) as error:
+        print(f"Kitty does not support this native profile: {error}. Terminal effects skipped.")
+        return False
+    return True
 
 
 def main():
@@ -264,6 +311,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="show changes without installing")
     parser.add_argument("--non-interactive", action="store_true", help="install all saved files only when dependencies are ready")
     parser.add_argument("--finish-plugins", action="store_true", help="build the plugins selected during installation after Hyprland starts")
+    parser.add_argument("--install-terminal-effects", action="store_true", help="interactively install only the optional animated Kitty profile")
     parser.add_argument("--install-voice", action="store_true", help="install only optional local voice and its dependencies")
     parser.add_argument("--uninstall", action="store_true", help="back up current installed files and restore recorded originals")
     parser.add_argument("--adopt-existing", action="store_true", help="record exact template matches from an older installation; originals remain unknown")
@@ -281,10 +329,10 @@ def main():
     if CONFIG != HOME / ".config":
         parser.error("This saved Hyprland config requires the default ~/.config directory; unset XDG_CONFIG_HOME before installing.")
     if maintenance:
-        if sum((args.uninstall, args.adopt_existing, args.recover_install)) != 1 or args.finish_plugins or args.install_voice:
+        if sum((args.uninstall, args.adopt_existing, args.recover_install)) != 1 or args.finish_plugins or args.install_voice or args.install_terminal_effects:
             parser.error('Choose only one uninstall, adoption or recovery operation.')
         if args.adopt_existing:
-            files = planned_files(["desktop", "shell", "apps", "spotify", "wallpapers", "fonts"])
+            files = planned_files(["desktop", "shell", "apps", "spotify", "wallpapers", "fonts", "terminal-effects"])
             installation.adopt(files, rendered, ROOT, HOME, STATE, True)
             if not args.dry_run and (args.non_interactive or ask('Adopt exact matches? Originals are unknown; uninstall will back up these files before removal.', False)):
                 installation.adopt(files, rendered, ROOT, HOME, STATE)
@@ -316,6 +364,22 @@ def main():
             if pending and not args.dry_run and (args.non_interactive or ask('Back up surviving files and recover the interrupted transaction?', False)):
                 with installation.locked(STATE):
                     installation.recover(ROOT, HOME, STATE)
+        return
+    if args.install_terminal_effects:
+        if args.non_interactive or args.install_voice or args.finish_plugins:
+            parser.error("--install-terminal-effects requires a separate interactive setup")
+        if args.dry_run:
+            install_files(["terminal-effects"], True)
+            return
+        if not choose_terminal_effects():
+            return
+        install_files(["terminal-effects"], True)
+        print("Existing files will be backed up before replacement. Backup location:", STATE / "modesty-install-backups")
+        if not ask("Apply these files with backups for existing files?", False):
+            print("No dotfiles changed. Earlier approved Kitty package changes are retained.")
+            return
+        install_files(["terminal-effects"], False)
+        print("Terminal effects installed. Run modesty-terminal in Fish or open the animated terminal from Settings.")
         return
     if args.install_voice:
         if args.dry_run or args.non_interactive or args.finish_plugins:
@@ -359,6 +423,7 @@ def main():
     print("Required packages:", ", ".join(core) if core else "all installed")
     print("Optional extras:", ", ".join(extras) if extras else "all installed")
     if args.dry_run:
+        print("Optional terminal effects: excluded; use --install-terminal-effects for interactive setup")
         print("Optional local voice: isolated Moonshine Small CPU runtime and model (installed on request)")
         print("Hyprland plugins:", ", ".join(missing_plugins()) or "both present")
         print("System services:", ", ".join(missing_services()) or "both enabled")
@@ -406,6 +471,8 @@ def main():
         if not groups:
             print("No dotfiles changed.")
             return
+    if not args.non_interactive and "apps" in groups and choose_terminal_effects():
+        groups.append("terminal-effects")
     plugins = choose_plugins() if not args.non_interactive and "desktop" in groups else []
     if any(group in groups for group in ('desktop', 'shell')):
         compatibility.require(ROOT, live=False)

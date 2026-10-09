@@ -135,6 +135,23 @@ Adwaita and Papirus are supported; other icons keep your existing theme. This op
 Disabling it restores the original icon theme; uninstall also restores it.
 Thunar uses a translucent selection tint with opaque text; this is not a blur effect.
 
+**Optional animated terminal:** the interactive installer offers a separate Kitty profile,
+with the choice off by default. Foot cannot animate cursor movement. Accepting this
+option leaves Foot, Super+T, launcher defaults and your normal Kitty configuration unchanged.
+Missing Kitty requires a separate approval for a full Arch upgrade. The upgrade can
+change Qt/Quickshell compatibility; file rollback and uninstall do not undo packages.
+Final file approval covers the profile, native effects include, palette include and Fish wrapper.
+Default noninteractive installs and ordinary dry runs omit these files.
+
+After installation, run `modesty-terminal` from Fish or use **Settings → Terminal →
+Open animated terminal**. **Native cursor trail** enables or disables the installed profile.
+New Modesty Kitty windows pick up changes; existing windows keep their current setting.
+Settings offers approved setup or repair when Kitty or the owned profile is unavailable.
+To install only this option later, run `python3 install.py --install-terminal-effects`.
+This interactive branch does not reapply desktop files. Uninstall backs up later edits
+and restores recorded originals for all four optional files. Declining the option on
+reinstall preserves a previous opt-in.
+
 <details>
 <summary>Luma permissions and supported agent integrations</summary>
 
