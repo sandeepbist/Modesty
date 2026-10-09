@@ -37,13 +37,30 @@ if len(sys.argv)>1 and sys.argv[1].endswith('/preferences.py'):
     runpy.run_path(sys.argv[0], run_name='__main__')
 elif len(sys.argv)>1 and sys.argv[1].endswith('/terminal_art.py'):
     print(json.dumps([dict(id='portraits/test', title='Test artwork', collection='portraits', preview='')]))
+elif os.environ.get('MODESTY_TEST_EDITOR_CALLS') and len(sys.argv)>2 and sys.argv[1].endswith(('/command-canvas.py', '/luma-assistant.py')):
+    from pathlib import Path
+    audit=Path(os.environ['MODESTY_TEST_EDITOR_CALLS'])
+    keys=audit.with_suffix('.keys')
+    configured=set(json.loads(keys.read_text())) if keys.exists() else {'gemini', 'jev'}
+    command=sys.argv[2:]
+    payload=sys.stdin.readline().rstrip('\\n') if command[0] in ('key-set', 'memory') else None
+    if command[0] in ('key-set', 'key-clear'):
+        if command[0]=='key-set': configured.add(command[1])
+        else: configured.discard(command[1])
+        keys.write_text(json.dumps(sorted(configured)))
+    with audit.open('a') as file:
+        file.write(json.dumps(dict(command=command, payload=payload))+'\\n')
+    print(json.dumps(dict(ok=True, configured=len(command)>1 and command[1] in configured,
+                          memory='initial-saved-memory-sentinel' if command[0]=='state' else '')))
 else:
-    print(json.dumps(dict(ok=True, configured=False, desktopBindings=[], installed=False)))
+    print(json.dumps(dict(ok=True, configured=False, desktopBindings=[], installed=False, items=[])))
 ''')
     python.chmod(0o755)
     environment.update(PATH=str(commands), MODESTY_PREVIEW='1' if preview else '0',
                        QT_QPA_PLATFORM='offscreen', QT_QUICK_BACKEND='software',
                        QS_NO_RELOAD_POPUP='1')
+    environment.setdefault('QT_QUICK_CONTROLS_STYLE', 'Basic')
+    environment['QT_QPA_PLATFORMTHEME'] = 'generic'
     return environment
 
 
@@ -58,7 +75,7 @@ def run(directory, environment, source, marker):
     if result.returncode or marker not in output or any(error in output for error in (
             'ReferenceError', 'TypeError', 'Error: ', 'is not a function', 'FAIL!')):
         raise AssertionError(output)
-    print(marker)
+    print(marker + output.split(marker, 1)[1].splitlines()[0])
 
 
 UI = '''import QtQuick
@@ -67,11 +84,14 @@ import Quickshell
 import "modules/settings" as Settings
 import "modules/settings/SettingsCatalog.js" as Catalog
 import qs.services
+import qs.theme
 ShellRoot {
     Settings.SettingsWindow {id:settings;implicitWidth:760;implicitHeight:560}
     TestCase {id:input;when:false}
     property int phase:0
     property var root:null
+    property var targets:[]
+    property int targetIndex:0
     function check(value,message) {if(!value)throw new Error(message);}
     function child(name) {
         input.tryVerify(()=>!!input.findChild(settings.contentItem,name),3000,"Control did not load "+name);
@@ -79,10 +99,13 @@ ShellRoot {
     }
     function searchFor(query) {const search=child("settings-search");search.text=query;search.forceActiveFocus();input.keyClick(Qt.Key_Return);}
     function reachable(item) {
-        const scroll=child("settings-scroll"),point=item.mapToItem(scroll,0,0);
+        const scroll=child("settings-scroll");
+        let ancestor=item.parent;
+        while(ancestor&&ancestor!==scroll){if(ancestor.clip&&ancestor.height<item.height)item=ancestor;ancestor=ancestor.parent;}
+        const point=item.mapToItem(scroll,0,0);
         check(point.y>=0&&point.y+item.height<=scroll.height+1,"Target outside viewport "+item.objectName+" y="+point.y+" height="+item.height+" viewport="+scroll.height);
     }
-    Component.onCompleted:{IslandState.settingsPage="media";IslandState.settingsOpen=true;Preferences.set("motion","instant");}
+    Component.onCompleted:{Theme.setMode("TEST_MODE");IslandState.settingsPage="media";IslandState.settingsOpen=true;Preferences.set("motion","instant");}
     Timer {id:steps;interval:180;running:true;repeat:false;onTriggered:{try {
         root=child("settings-root");check(root,"Settings root missing");
         input.tryVerify(()=>!root.pendingTarget,3000,"Pending reveal did not complete");
@@ -103,14 +126,16 @@ ShellRoot {
             check(Catalog.resolve("launcher","search","terminal").page==="terminal","Launcher terminal reveal alias failed");
             check(Catalog.resolve("missing")===null,"Unknown page accepted");
             check(Catalog.legacy.join(",")==="layout,clock,appearance,motion,launcher,notifications,controls,lock,connections,shortcuts","Legacy sections changed");
-            root.navigate("appearance");check(root.expandedGroups.island&&root.expandedGroups.personal,"First cross-group navigation reset expansion");
-            root.navigate("music");root.expandGroup("personal",false);
-            const page=root.pageId,back=root.back.length,personal=child("category-personal");
-            input.mouseClick(personal);check(root.expandedGroups.personal,"Category click did not expand");
-            check(root.expandedGroups.island&&root.pageId===page&&root.back.length===back,"Category click navigated or collapsed sibling");
-            personal.forceActiveFocus();input.keyClick(Qt.Key_Left);check(!root.expandedGroups.personal&&root.pageId===page,"Left did not collapse independently");
-            input.keyClick(Qt.Key_Right);check(root.expandedGroups.personal&&root.expandedGroups.island,"Right did not expand independently");
-            input.keyClick(Qt.Key_Return);check(!root.expandedGroups.personal&&root.pageId===page,"Keyboard category click navigated");
+            const title=child("settings-page-title"),titleX=title.x;
+            root.navigate("appearance");child("page-motion").forceActiveFocus();input.keyClick(Qt.Key_Space);check(root.pageId==="motion","Keyboard page tab failed");root.navigate("music");
+            input.mouseClick(child("category-personal"));check(root.pageId==="motion","Category did not remember page");
+            input.mouseClick(child("category-island"));check(root.pageId==="music","Island did not remember page");
+            root.lastPages=Object.assign({},root.lastPages,{system:"missing"});
+            const system=child("category-system");system.forceActiveFocus();input.keyClick(Qt.Key_Space);
+            check(root.pageId==="connections","Invalid remembered page did not fall back");
+            check(title.x===titleX,"History buttons shifted title");
+            root.navigate("music");
+            check(child("page-music").visible&&!input.findChild(settings.contentItem,"page-motion"),"Tabs include another category");
             input.findChild(settings,"settings-ipc").reveal("media","pill","mediaLyrics");
         }else if(phase===1){
             check(root.pageId==="music"&&child("control-mediaLyrics").activeFocus,"Alias target lacks focus");
@@ -125,7 +150,7 @@ ShellRoot {
             input.keyClick(Qt.Key_Escape);check(!search.text&&IslandState.settingsOpen,"Escape did not clear search");
             searchFor("Favorites only");
         }else if(phase===2){
-            check(root.pageId==="terminal"&&root.expandedGroups.apps,"Custom navigation did not open destination group");
+            check(root.pageId==="terminal"&&root.current.group==="apps","Custom navigation did not open destination group");
             const favorite=child("Favorites only");check(favorite&&favorite.activeFocus,"Exact favorites control lacks focus");reachable(favorite);
             searchFor("Minimal greeting");
         }else if(phase===3){
@@ -138,7 +163,7 @@ ShellRoot {
             check(child("custom-gallery").activeFocus,"Gallery target lacks focus");reachable(child("custom-gallery"));
             searchFor("Save notes");
         }else if(phase===6){
-            check(child("custom-save-notes").activeFocus,"Save notes target lacks focus");reachable(child("custom-save-notes"));
+            check(!child("custom-save-notes").enabled&&child("custom-notes").activeFocus,"Preview Save notes reveal lacks notes focus");reachable(child("custom-notes"));
             searchFor("Delete all conversations");
         }else if(phase===7){
             check(child("custom-delete-conversations").activeFocus,"Delete conversations target lacks focus");reachable(child("custom-delete-conversations"));
@@ -190,10 +215,246 @@ ShellRoot {
             root.navigate("updates","updates","rollback");
         }else if(phase===20){
             check(child("custom-updates-status").activeFocus,"Update unavailable prerequisite lacks focus");reachable(child("custom-updates-status"));
-            console.log("SETTINGS UI PASS");Qt.quit();return;
+            root.navigate("companion","character","companionSide");
+        }else if(phase===21){
+            const choice=child("control-companionSide"),before=Preferences.companionSide;
+            check(choice.activeFocus,"ComboBox reveal lacks focus");reachable(choice);
+            input.keyClick(Qt.Key_Space);input.tryVerify(()=>choice.popup.visible,1000,"Space did not open ComboBox");
+            input.keyClick(before==="left"?Qt.Key_Down:Qt.Key_Up);input.keyClick(Qt.Key_Return);
+            check(!choice.popup.visible&&Preferences.companionSide!==before,"ComboBox selection did not write or close");
+            input.keyClick(Qt.Key_Space);input.tryVerify(()=>choice.popup.visible,1000,"ComboBox did not reopen");
+            input.keyClick(Qt.Key_Escape);check(!choice.popup.visible&&IslandState.settingsOpen,"Escape closed Settings instead of ComboBox");
+            Preferences.set("matugenAutomatic",false);root.navigate("appearance","palette","matugenScheme");
+        }else if(phase===22){
+            const choice=child("control-matugenScheme");
+            input.keyClick(Qt.Key_Space);input.tryVerify(()=>choice.popup.visible,1000,"Long ComboBox did not open");
+            const list=choice.popup.contentItem;
+            input.tryVerify(()=>list.count===10,1000,"ComboBox options missing");
+            const option=input.findChild(list,"option-matugenScheme-0"),bar=input.findChild(list,"settings-scrollbar");
+            const popupPosition=list.mapToItem(settings.contentItem,0,0);
+            check(popupPosition.x>=0&&popupPosition.y>=0&&popupPosition.x+list.width<=settings.contentItem.width&&popupPosition.y+list.height<=settings.contentItem.height,"Popup outside window");
+            check(option.Accessible.selected===(choice.currentIndex===0),"Popup selected state wrong");
+            check(option.width<=bar.x-2,"Popup scrollbar overlaps options");
+            input.keyClick(Qt.Key_End);input.keyClick(Qt.Key_Return);
+            check(Preferences.matugenScheme==="scheme-smart"&&!choice.popup.visible,"End/Return selection failed");
+            Luma.memory=Array(100).fill("Long notes must remain readable while editing and selecting text.").join("\\n");
+            root.navigate("luma-providers","providers","notes");
+        }else if(phase===23){
+            const notes=child("custom-notes"),view=child("custom-notes-viewport"),bar=input.findChild(view,"settings-scrollbar")||input.findChild(view.parent,"settings-scrollbar");
+            check(notes.activeFocus,"Notes reveal lacks focus");reachable(notes);
+            check(view.x+view.width<=bar.x-4,"Notes scrollbar overlaps text editor");
+            input.keyClick(Qt.Key_End,Qt.ControlModifier);
+            input.tryVerify(()=>view.contentY>0,1000,"Notes did not scroll to keyboard cursor");
+            const cursor=notes.mapToItem(view,notes.cursorRectangle.x,notes.cursorRectangle.y);
+            check(cursor.y>=0&&cursor.y+notes.cursorRectangle.height<=view.height+1,"Notes cursor outside editor viewport");
+            targets=[];Catalog.pages.forEach(p=>p.blocks.forEach(b=>b.items.concat(b.targets.map(t=>({key:t.id,label:t.label}))).forEach(t=>targets.push({page:p.id,block:b.id,key:t.key,label:t.label}))));
+            check(targets.length>=176,"Catalog target sweep lost coverage");
+            targetIndex=0;steps.interval=30;root.navigate(targets[0].page,targets[0].block,targets[0].key);
+        }else{
+            const target=targets[targetIndex];
+            check(root.pageId===target.page,"Sweep page wrong "+JSON.stringify(target));
+            const cards=child("settings-page-content").item.cards;
+            let destination=null;
+            for(let i=0;i<cards.count;i++){
+                const card=cards.itemAt(i);
+                if(card.modelData.id!==target.block)continue;
+                destination=card.modelData.custom?card.editor.item.reveal(target.key):child("setting-"+target.key).reveal();
+            }
+            check(destination&&destination.activeFocus&&root.focusedItem===destination,"Sweep exact target lacks focus "+JSON.stringify(target));
+            reachable(root.focusedItem);
+            check(Catalog.search(target.label).some(r=>r.page===target.page&&r.block===target.block&&r.key===target.key),"Sweep target not searchable "+JSON.stringify(target));
+            const scroll=child("settings-scroll"),page=child("settings-page-content"),bar=input.findChild(scroll,"settings-scrollbar");
+            check(page.width<=bar.x-4,"Main scrollbar overlaps content on "+target.page);
+            const navigation=child("settings-navigation"),nav=child("settings-navigation-content"),navBar=input.findChild(navigation,"settings-scrollbar");
+            check(nav.width<=navBar.x-4,"Navigation scrollbar overlaps categories");
+            if(++targetIndex===targets.length){
+                search.text="a";
+                const result=child("settings-result-0"),resultBar=input.findChild(results,"settings-scrollbar");
+                check(result.width<=resultBar.x-4,"Search scrollbar overlaps results");
+                console.log("SETTINGS UI PASS "+targets.length+" targets");Qt.quit();return;
+            }
+            root.navigate(targets[targetIndex].page,targets[targetIndex].block,targets[targetIndex].key);
         }
         phase++;steps.restart();
     }catch(error){console.error("Phase "+phase+" "+error+" page="+root?.pageId+" pending="+JSON.stringify(root?.pendingTarget)+" searching="+root?.searching);Qt.exit(1);}}}
+}
+'''
+
+DRAFTS = '''import QtQuick
+import QtTest
+import Quickshell
+import "modules/settings" as Settings
+import "modules/settings/SettingsCatalog.js" as Catalog
+import qs.services
+ShellRoot {
+    id:shell
+    Component {id:windowComponent;Settings.SettingsWindow {implicitWidth:760;implicitHeight:560}}
+    property var settings:null
+    property int phase:0
+    property var root:null
+    TestCase {id:input;when:false}
+    function check(value,message) {if(!value)throw new Error(message);}
+    function child(name) {
+        input.tryVerify(()=>!!input.findChild(settings.contentItem,name),3000,"Control did not load "+name);
+        return input.findChild(settings.contentItem,name);
+    }
+    function edit(name,value) {
+        root.focusTarget(child(name));input.keyClick(Qt.Key_A,Qt.ControlModifier);
+        if(!value)input.keyClick(Qt.Key_Backspace);
+        for(let i=0;i<value.length;i++)input.keyClick(value[i]);
+        check(child(name).text===value,"Native edit failed "+name);
+    }
+    function keyButton(provider,label) {return child("custom-"+provider).parent.children.find(item=>item.text===label);}
+    function clickKey(provider,label) {
+        const button=keyButton(provider,label);
+        input.tryVerify(()=>button.visible&&button.enabled,3000,"Key action unavailable "+provider+" "+label);
+        root.focusTarget(button);input.keyClick(Qt.Key_Space);
+        input.tryVerify(()=>keyButton(provider,"Remove").enabled,3000,"Key operation did not finish "+provider);
+    }
+    function retained(notes,gemini,jev) {
+        check(child("custom-notes").text===notes,"Unsaved notes lost");
+        check(child("custom-gemini").text===gemini,"Gemini draft lost or reappeared");
+        check(child("custom-jev").text===jev,"Jev draft lost or reappeared");
+    }
+    Component.onCompleted:{
+        IslandState.settingsPage="luma-providers";IslandState.settingsOpen=true;
+        Preferences.set("motion","instant");settings=windowComponent.createObject(shell);
+    }
+    Timer {id:steps;interval:180;running:true;repeat:false;onTriggered:{try {
+        root=child("settings-root");
+        input.tryVerify(()=>!root.pendingTarget,3000,"Pending reveal did not complete");
+        if(phase===0){
+            input.tryVerify(()=>Luma.loaded,3000,"Initial memory load did not finish");
+            check(child("custom-notes").text==="initial-saved-memory-sentinel","Initial async saved notes did not load");
+            Luma.memory="saved-note-sentinel";
+            check(child("custom-notes").text===Luma.memory,"Untouched notes ignored backend load");
+            edit("custom-notes","modesty-unsaved-notes-sentinel");
+            edit("custom-gemini","modesty-gemini-draft-sentinel");
+            edit("custom-jev","modesty-jev-draft-sentinel");
+            for(const value of ["modesty-unsaved-notes-sentinel","modesty-gemini-draft-sentinel","modesty-jev-draft-sentinel"])
+                check(Catalog.search(value).length===0,"Editor draft entered search");
+            input.mouseClick(child("page-luma-knowledge"));
+        }else if(phase===1){
+            input.mouseClick(child("page-luma-providers"));
+        }else if(phase===2){
+            retained("modesty-unsaved-notes-sentinel","modesty-gemini-draft-sentinel","modesty-jev-draft-sentinel");
+            input.mouseClick(child("category-personal"));
+        }else if(phase===3){
+            input.mouseClick(child("category-assistant"));
+        }else if(phase===4){
+            retained("modesty-unsaved-notes-sentinel","modesty-gemini-draft-sentinel","modesty-jev-draft-sentinel");
+            Luma.memory="later-backend-note-sentinel";
+            check(child("custom-notes").text==="modesty-unsaved-notes-sentinel","Backend update overwrote note draft");
+            edit("custom-notes","");Luma.memory="saved-memory-that-must-not-return";
+            check(child("custom-notes").text==="","Backend update replaced intentional empty draft");
+            input.mouseClick(child("page-luma-knowledge"));
+        }else if(phase===5){
+            input.mouseClick(child("category-apps"));
+        }else if(phase===6){
+            input.mouseClick(child("category-assistant"));input.mouseClick(child("page-luma-providers"));
+        }else if(phase===7){
+            retained("","modesty-gemini-draft-sentinel","modesty-jev-draft-sentinel");
+            const search=child("settings-search");search.text="modesty-gemini-draft-sentinel";search.forceActiveFocus();
+            check(root.results.length===0,"Draft appeared in search results");input.keyClick(Qt.Key_Escape);
+        }else if(phase===8){
+            retained("","modesty-gemini-draft-sentinel","modesty-jev-draft-sentinel");
+            clickKey("gemini","Save");
+            check(child("custom-gemini").text===""&&child("custom-jev").text==="modesty-jev-draft-sentinel","Save cleared wrong provider draft");
+            input.mouseClick(child("page-luma-knowledge"));
+        }else if(phase===9){
+            input.mouseClick(child("page-luma-providers"));
+        }else if(phase===10){
+            retained("","","modesty-jev-draft-sentinel");
+            edit("custom-gemini","modesty-gemini-remove-sentinel");clickKey("gemini","Remove");
+            check(child("custom-gemini").text==="","Remove did not clear Gemini input");
+            edit("custom-notes","notes-to-save-sentinel");
+            root.focusTarget(child("custom-save-notes"));input.keyClick(Qt.Key_Space);
+            check(Luma.memory==="notes-to-save-sentinel","Explicit note Save failed");
+            input.mouseClick(child("page-luma-knowledge"));
+        }else if(phase===11){
+            input.mouseClick(child("page-luma-providers"));
+        }else if(phase===12){
+            retained("notes-to-save-sentinel","","modesty-jev-draft-sentinel");
+            Luma.memory="after-save-backend-note-sentinel";
+            check(child("custom-notes").text===Luma.memory,"Saved note draft blocked later backend update");
+            clickKey("jev","Save");edit("custom-gemini","modesty-window-gemini-sentinel");
+            edit("custom-jev","modesty-jev-remove-sentinel");clickKey("jev","Remove");
+            check(child("custom-jev").text===""&&child("custom-gemini").text==="modesty-window-gemini-sentinel","Remove cleared wrong provider draft");
+            edit("custom-notes","notes-to-clear-sentinel");
+            root.focusTarget(child("custom-clear-notes"));input.keyClick(Qt.Key_Space);
+            check(Luma.memory===""&&child("custom-notes").text==="","Explicit note Clear failed");
+            input.mouseClick(child("page-luma-knowledge"));
+        }else if(phase===13){
+            input.mouseClick(child("page-luma-providers"));
+        }else if(phase===14){
+            retained("","modesty-window-gemini-sentinel","");
+            Luma.memory="new-backend-note-sentinel";
+            check(child("custom-notes").text===Luma.memory,"Cleared note draft blocked later backend load");
+            edit("custom-notes","modesty-window-notes-sentinel");edit("custom-jev","modesty-window-jev-sentinel");
+            settings.destroy();settings=null;
+            Qt.callLater(()=>{IslandState.settingsOpen=true;settings=windowComponent.createObject(shell);});
+        }else if(phase===15){
+            retained("new-backend-note-sentinel","","");
+            console.log("SETTINGS DRAFT PASS");Qt.quit();return;
+        }
+        phase++;steps.restart();
+    }catch(error){console.error("Draft phase "+phase+" "+error);Qt.exit(1);}}}
+}
+'''
+
+PREVIEW_DRAFTS = '''import QtQuick
+import QtTest
+import Quickshell
+import "modules/settings" as Settings
+import qs.services
+ShellRoot {
+    Settings.SettingsWindow {id:settings;implicitWidth:760;implicitHeight:560}
+    TestCase {id:input;when:false}
+    property int phase:0
+    property var root:null
+    function check(value,message) {if(!value)throw new Error(message);}
+    function child(name) {
+        input.tryVerify(()=>!!input.findChild(settings.contentItem,name),3000,"Control did not load "+name);
+        return input.findChild(settings.contentItem,name);
+    }
+    function edit(value) {
+        root.focusTarget(child("custom-notes"));input.keyClick(Qt.Key_A,Qt.ControlModifier);
+        input.keyClick(Qt.Key_Backspace);
+        for(let i=0;i<value.length;i++)input.keyClick(value[i]);
+        check(child("custom-notes").text===value,"Native preview note edit failed");
+    }
+    function retained(value) {
+        check(child("custom-notes").text===value,"Rejected preview action lost note draft");
+        check(Luma.memory==="saved-note-sentinel","Rejected preview action changed saved memory");
+    }
+    function rejectActions(value) {
+        for(const name of ["custom-save-notes","custom-clear-notes"]){
+            const action=child(name);
+            action.clicked();retained(value);
+            check(!action.enabled,"Note action enabled in preview "+name);
+        }
+    }
+    Component.onCompleted:{IslandState.settingsPage="luma-providers";IslandState.settingsOpen=true;Preferences.set("motion","instant");}
+    Timer {id:steps;interval:180;running:true;repeat:false;onTriggered:{try {
+        root=child("settings-root");
+        input.tryVerify(()=>!root.pendingTarget,3000,"Pending reveal did not complete");
+        if(phase===0){
+            check(Preferences.preview,"Preview regression accidentally writable");
+            Luma.memory="saved-note-sentinel";edit("unsaved-note-sentinel");rejectActions("unsaved-note-sentinel");
+            root.navigate("luma-knowledge");
+        }else if(phase===1){
+            root.navigate("luma-providers","providers","save-notes");
+        }else if(phase===2){
+            retained("unsaved-note-sentinel");check(child("custom-notes").activeFocus,"Preview Save reveal did not focus notes");
+            edit("");rejectActions("");root.navigate("luma-knowledge");
+        }else if(phase===3){
+            root.navigate("luma-providers","providers","clear-notes");
+        }else if(phase===4){
+            retained("");check(child("custom-notes").activeFocus,"Preview Clear reveal did not focus notes");
+            console.log("SETTINGS PREVIEW DRAFT PASS");Qt.quit();return;
+        }
+        phase++;steps.restart();
+    }catch(error){console.error("Preview draft phase "+phase+" "+error);Qt.exit(1);}}}
 }
 '''
 
@@ -224,10 +485,45 @@ ShellRoot {
 '''
 
 
-def main():
-    with tempfile.TemporaryDirectory(prefix='modesty-settings-ui-') as directory:
+def test_drafts():
+    with tempfile.TemporaryDirectory(prefix='modesty-settings-drafts-') as directory:
+        environment = workspace(directory, preview=False)
+        audit = Path(directory) / 'editor-calls.jsonl'
+        environment['MODESTY_TEST_EDITOR_CALLS'] = str(audit)
+        run(directory, environment, DRAFTS, 'SETTINGS DRAFT PASS')
+        calls = [json.loads(line) for line in audit.read_text().splitlines()]
+        key_writes = [call for call in calls if call['command'][0] in ('key-set', 'key-clear')]
+        assert key_writes == [
+            dict(command=['key-set', 'gemini'], payload='modesty-gemini-draft-sentinel'),
+            dict(command=['key-clear', 'gemini'], payload=None),
+            dict(command=['key-set', 'jev'], payload='modesty-jev-draft-sentinel'),
+            dict(command=['key-clear', 'jev'], payload=None),
+        ], 'Navigation or editing caused unintended key writes'
+        assert [json.loads(call['payload']) for call in calls if call['command'][0] == 'memory'] == [
+            'notes-to-save-sentinel', ''
+        ], 'Notes wrote without explicit Save or Clear'
+        assert all(call['command'][0] in ('state', 'usage', 'key-status', 'key-set', 'key-clear', 'memory')
+                   for call in calls), 'Editor caused an unexpected backend operation'
+
+
+def test_preview_drafts():
+    with tempfile.TemporaryDirectory(prefix='modesty-settings-preview-drafts-') as directory:
         environment = workspace(directory)
-        run(directory, environment, UI, 'SETTINGS UI PASS')
+        audit = Path(directory) / 'editor-calls.jsonl'
+        environment['MODESTY_TEST_EDITOR_CALLS'] = str(audit)
+        run(directory, environment, PREVIEW_DRAFTS, 'SETTINGS PREVIEW DRAFT PASS')
+        calls = [json.loads(line) for line in audit.read_text().splitlines()] if audit.exists() else []
+        assert not any(call['command'][0] == 'memory' for call in calls), 'Preview note action wrote to backend'
+
+
+def main():
+    test_drafts()
+    test_preview_drafts()
+    for width, height, mode in ((760, 560, 'dark'), (960, 720, 'light')):
+        with tempfile.TemporaryDirectory(prefix='modesty-settings-ui-') as directory:
+            environment = workspace(directory)
+            source = UI.replace('implicitWidth:760;implicitHeight:560', f'implicitWidth:{width};implicitHeight:{height}').replace('TEST_MODE', mode)
+            run(directory, environment, source, 'SETTINGS UI PASS')
     with tempfile.TemporaryDirectory(prefix='modesty-settings-persistence-') as directory:
         environment = workspace(directory, preview=False)
         source = PERSISTENCE.replace('ACTION', 'row.reveal().forceActiveFocus();input.keyClick(Qt.Key_Right);').replace(
