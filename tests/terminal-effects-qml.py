@@ -69,9 +69,16 @@ ShellRoot {
         if(trail.enabled||setup.enabled)throw new Error("Preview actions were enabled");
         if(!effects.message.includes("approved setup"))throw new Error("Setup prerequisite is missing");
         if(!Catalog.search("kitty cursor trail").some(result=>result.page==="terminal"&&result.block==="effects"))throw new Error("Effects search destination is missing");
-        if(effects.reveal("trail")!==setup)throw new Error("Unavailable trail did not reveal setup");
+        if(effects.reveal("trail")!==keyboard.findChild(effects,"terminalEffectsStatus"))throw new Error("Preview trail did not reveal status");
+        const root=keyboard.findChild(settings.contentItem,"settings-root");
+        root.navigate("terminal","effects","trail");
+        if(!Catalog.search("native cursor trail").some(result=>result.key==="trail"))throw new Error("Exact trail search destination is missing");
         keyboard.mouseClick(setup);
-        console.log("TERMINAL QML PREVIEW PASS");Qt.quit();
+        Qt.callLater(()=>{
+            const status=keyboard.findChild(effects,"terminalEffectsStatus");
+            if(!status.activeFocus||root.pendingTarget!==null){console.error("Preview search did not focus status");Qt.exit(1);return;}
+            console.log("TERMINAL QML PREVIEW PASS");Qt.quit();
+        });
     }catch(error){console.error(error);Qt.exit(1);}}}
 }
 ''','TERMINAL QML PREVIEW PASS',timeout=25)

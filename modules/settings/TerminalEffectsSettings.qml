@@ -30,8 +30,9 @@ ColumnLayout {
         operation.running = true;
     }
     function reveal(key) {
+        if (!actionsAllowed) return statusText;
         if (key === "setup" || availability !== "ready") return setupButton;
-        return key === "open" ? openButton : trail;
+        return key === "open" ? openButton : trail.control;
     }
     Component.onCompleted: refresh()
     Process {
@@ -70,15 +71,18 @@ ColumnLayout {
         onToggled: checked => root.perform(["--set-trail", checked ? "on" : "off"])
     }
     PanelText {
+        id: statusText
+        activeFocusOnTab: true
+        Accessible.name: text
         objectName: "terminalEffectsStatus"
         Layout.fillWidth: true
         wrapMode: Text.WordWrap
         elide: Text.ElideNone
         text: root.error || root.message
-        font.pixelSize: 11
+        font.pixelSize: 12
         color: root.error ? Theme.red : Theme.subtext
     }
-    RowLayout {
+    Flow {
         Layout.fillWidth: true
         spacing: 8
         ActionButton {
@@ -101,7 +105,7 @@ ColumnLayout {
         wrapMode: Text.WordWrap
         elide: Text.ElideNone
         text: Preferences.preview ? "Preview session actions are disabled." : Session.locked ? "Unlock to change or launch the optional profile." : "Setup asks separately for Kitty packages and file changes. Foot, Super+T and ordinary Kitty stay unchanged."
-        font.pixelSize: 11
+        font.pixelSize: 12
         color: Theme.subtext
     }
 }

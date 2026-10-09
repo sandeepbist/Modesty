@@ -4,6 +4,7 @@ import qs.theme
 
 Rectangle {
     id: root
+    readonly property alias control: control
 
     property string label: ""
     property string description: ""
@@ -43,6 +44,7 @@ Rectangle {
     }
 
     Toggle {
+        id: control
         objectName: root.label
         anchors.right: parent.right
         anchors.rightMargin: 14
