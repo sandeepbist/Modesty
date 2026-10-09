@@ -16,7 +16,7 @@ ColumnLayout {
     PanelText {
         Layout.fillWidth:true;wrapMode:Text.WordWrap
         text:"Install once to download the model and its isolated runtime. No API key or manual configuration. Audio stays on this PC."
-        font.pixelSize:11;color:Theme.subtext
+        font.pixelSize:12;color:Theme.subtext
     }
     RowLayout {
         Layout.fillWidth:true;spacing:8
@@ -30,7 +30,7 @@ ColumnLayout {
         PanelText {
             Layout.fillWidth:true;wrapMode:Text.WordWrap
             text:Voice.checking?"Checking…":Voice.installed?"Installed":"Not installed"
-            font.pixelSize:11;color:Voice.installed?Theme.green:Theme.subtext
+            font.pixelSize:12;color:Voice.installed?Theme.green:Theme.subtext
         }
     }
     PanelText {
@@ -38,6 +38,6 @@ ColumnLayout {
         Accessible.name:text
         Layout.fillWidth:true;wrapMode:Text.WordWrap
         text:Preferences.preview?"Voice installation is unavailable in preview.":Session.isLocked()?"Unlock your session to install local voice.":Voice.active?"Finish voice input before repairing installation.":Voice.installing?"Wait for voice installation to finish.":Voice.checking?"Wait for the voice installation check.":Voice.setupMessage||Voice.error||"Setup opens a terminal with download progress. Your password is requested only if a system dependency is missing."
-        font.pixelSize:11;color:Theme.subtext
+        font.pixelSize:12;color:Theme.subtext
     }
 }

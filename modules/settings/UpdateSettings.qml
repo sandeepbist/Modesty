@@ -17,22 +17,22 @@ ColumnLayout {
     RowLayout {
         Layout.fillWidth:true;spacing:8
         ActionButton {id:checkUpdate;objectName:"custom-check";text:"Check for updates";enabled:!Updates.busy&&!Preferences.preview;Accessible.name:text;onClicked:Updates.run("check")}
-        ActionButton {id:downloadUpdate;objectName:"custom-download";text:"Download";visible:Updates.state.available&&!Updates.state.staged;enabled:!Updates.busy;Accessible.name:text;onClicked:Updates.run("download")}
+        ActionButton {id:downloadUpdate;objectName:"custom-download";text:"Download";visible:!!Updates.state.available&&!Updates.state.staged;enabled:!Updates.busy;Accessible.name:text;onClicked:Updates.run("download")}
         ActionButton {id:installUpdate;objectName:"custom-install";text:"Install and reload";primary:true;visible:!!Updates.state.staged;enabled:!Updates.busy;Accessible.name:text;onClicked:Updates.run("apply")}
         Item {Layout.fillWidth:true}
     }
-    PanelText {Layout.fillWidth:true;visible:!!Updates.state.error;text:Updates.state.error||"";wrapMode:Text.WordWrap;elide:Text.ElideNone;font.pixelSize:11;color:Theme.red}
+    PanelText {Layout.fillWidth:true;visible:!!Updates.state.error;text:Updates.state.error||"";wrapMode:Text.WordWrap;elide:Text.ElideNone;font.pixelSize:12;color:Theme.red}
     PanelText {
-        Layout.fillWidth:true;wrapMode:Text.WordWrap;elide:Text.ElideNone;font.pixelSize:11;color:Theme.subtext
+        Layout.fillWidth:true;wrapMode:Text.WordWrap;elide:Text.ElideNone;font.pixelSize:12;color:Theme.subtext
         text:"Updates use checked main revisions and test the download before installation. Reload briefly closes Modesty’s panels. Finish assistant work, voice input and recording first."
     }
     PanelText {
-        Layout.fillWidth:true;wrapMode:Text.WordWrap;elide:Text.ElideNone;font.pixelSize:11;color:Theme.subtext
+        Layout.fillWidth:true;wrapMode:Text.WordWrap;elide:Text.ElideNone;font.pixelSize:12;color:Theme.subtext
         text:"Your desktop configs, packages, plugins and model files stay in place. Update system packages separately with a full Arch upgrade. Local checkout edits need a manual update."
     }
     Repeater {
         model:Updates.state.compatibility?.warnings||[]
-        PanelText {required property string modelData;Layout.fillWidth:true;text:modelData;wrapMode:Text.WordWrap;elide:Text.ElideNone;font.pixelSize:11;color:Theme.subtext}
+        PanelText {required property string modelData;Layout.fillWidth:true;text:modelData;wrapMode:Text.WordWrap;elide:Text.ElideNone;font.pixelSize:12;color:Theme.subtext}
     }
     RowLayout {
         Layout.fillWidth:true;spacing:8
