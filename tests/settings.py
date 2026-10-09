@@ -307,9 +307,12 @@ ShellRoot {
     function keyButton(provider,label) {return child("custom-"+provider).parent.children.find(item=>item.text===label);}
     function clickKey(provider,label) {
         const button=keyButton(provider,label);
-        input.tryVerify(()=>button.visible&&button.enabled,3000,"Key action unavailable "+provider+" "+label);
+        const owner=child("custom-"+provider).parent.parent;
+        const worker=Array.from(owner.data).find(item=>typeof item.running==="boolean"&&typeof item.command!=="undefined");
+        check(worker,"Key worker missing "+provider);
+        input.tryVerify(()=>button.visible&&button.enabled&&!worker.running,3000,"Key action unavailable "+provider+" "+label);
         root.focusTarget(button);input.keyClick(Qt.Key_Space);
-        input.tryVerify(()=>keyButton(provider,"Remove").enabled,3000,"Key operation did not finish "+provider);
+        input.tryVerify(()=>!worker.running,3000,"Key operation did not finish "+provider);
     }
     function retained(notes,gemini,jev) {
         check(child("custom-notes").text===notes,"Unsaved notes lost");
