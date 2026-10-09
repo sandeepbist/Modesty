@@ -493,15 +493,18 @@ def test_drafts():
         run(directory, environment, DRAFTS, 'SETTINGS DRAFT PASS')
         calls = [json.loads(line) for line in audit.read_text().splitlines()]
         key_writes = [call for call in calls if call['command'][0] in ('key-set', 'key-clear')]
-        assert key_writes == [
+        expected_key_writes = [
             dict(command=['key-set', 'gemini'], payload='modesty-gemini-draft-sentinel'),
             dict(command=['key-clear', 'gemini'], payload=None),
             dict(command=['key-set', 'jev'], payload='modesty-jev-draft-sentinel'),
             dict(command=['key-clear', 'jev'], payload=None),
-        ], 'Navigation or editing caused unintended key writes'
-        assert [json.loads(call['payload']) for call in calls if call['command'][0] == 'memory'] == [
-            'notes-to-save-sentinel', ''
-        ], 'Notes wrote without explicit Save or Clear'
+        ]
+        assert key_writes == expected_key_writes, (
+            f'Navigation or editing caused unintended key writes: actual={key_writes!r}, expected={expected_key_writes!r}')
+        note_writes = [json.loads(call['payload']) for call in calls if call['command'][0] == 'memory']
+        expected_note_writes = ['notes-to-save-sentinel', '']
+        assert note_writes == expected_note_writes, (
+            f'Notes wrote without explicit Save or Clear: actual={note_writes!r}, expected={expected_note_writes!r}')
         assert all(call['command'][0] in ('state', 'usage', 'key-status', 'key-set', 'key-clear', 'memory')
                    for call in calls), 'Editor caused an unexpected backend operation'
 
