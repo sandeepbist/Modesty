@@ -11,7 +11,7 @@ commands = [
     ['node', 'tests/layout.cjs'], ['node', 'tests/search.cjs'], ['node', 'tests/palette.cjs'],
     *[[sys.executable, f'tests/{name}.py'] for name in
       ('release', 'install', 'installation', 'updates', 'structure', 'backend', 'file-urls', 'desktop-configs', 'display', 'privacy-camera', 'recording', 'appearance', 'terminal', 'terminal-effects-qml', 'settings', 'wallpaper-colors', 'gtk-theme', 'folder-theme', 'session-control', 'night-light',
-       'launcher', 'launcher-ui', 'motion', 'voice', 'luma', 'luma-light', 'luma-system', 't3-status', 'levels', 'conversation', 'calculator', 'control-tiles', 'live-media', 'file-drop', 'companion')],
+       'launcher', 'launcher-ui', 'motion', 'frame-spring', 'voice', 'luma', 'luma-light', 'luma-system', 't3-status', 'levels', 'conversation', 'calculator', 'control-tiles', 'live-media', 'file-drop', 'companion')],
     ['node', 'tests/wallpaper-palette.cjs'],
     [sys.executable, 'tests/shell-renderer.py'],
     [sys.executable, 'tests/native-egl-bootstrap.py'],

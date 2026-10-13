@@ -63,9 +63,9 @@ FocusScope {
                 highlight:Rectangle {
                     width:list.width-6;height:50;radius:12;color:Theme.withAlpha(Theme.text,.07)
                     Rectangle {x:1;anchors.verticalCenter:parent.verticalCenter;width:3;height:24;radius:1.5;color:Theme.accent}
-                    y:list.currentItem?.y??0
+                    y:highlightMotion.value
                     visible:list.count>0
-                    Behavior on y {enabled:!root.resettingResults&&!Tokens.reducedMotion;SpringMotion {}}
+                    FrameSpring {id:highlightMotion;owner:root;targetValue:list.currentItem?.y??0;enabled:highlightMotion.available&&!root.resettingResults}
                 }
                 highlightRangeMode:ListView.ApplyRange
                 preferredHighlightBegin:0;preferredHighlightEnd:height-50

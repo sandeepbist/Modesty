@@ -15,7 +15,6 @@ AbstractButton {
     hoverEnabled: true
     HoverHandler { cursorShape: Qt.PointingHandCursor }
     opacity: enabled ? 1 : 0.4
-    scale: pressed ? 0.97 : 1
 
     background: Rectangle {
         radius: 12
@@ -39,6 +38,7 @@ AbstractButton {
         verticalAlignment: Text.AlignVCenter
     }
 
-    Behavior on scale { enabled:!Tokens.reducedMotion; SpringMotion { epsilon:.002 } }
+    scale: pressMotion.value
+    FrameSpring { id:pressMotion;owner:root;targetValue:root.pressed?.97:1;pressFeedback:true;positionTolerance:.0002 }
 
 }

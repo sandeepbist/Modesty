@@ -16,9 +16,9 @@ AbstractButton {
         border.width:root.activeFocus?1:0;border.color:Theme.text
         Behavior on color {ColorAnimation {duration:Tokens.animFast}}
         Rectangle {
-            x:root.checked?parent.width-width-3:3;y:3;width:12;height:12;radius:6
+            id:thumb;x:thumbMotion.value;y:3;width:12;height:12;radius:6
             color:root.checked?Theme.bgSolid:Theme.subtext
-            Behavior on x {enabled:!Tokens.reducedMotion;SpringMotion {}}
+            FrameSpring {id:thumbMotion;owner:root;targetValue:root.checked?thumb.parent.width-thumb.width-3:3}
             Behavior on color {ColorAnimation {duration:Tokens.animFast}}
         }
     }

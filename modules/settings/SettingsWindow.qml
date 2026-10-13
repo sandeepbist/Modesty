@@ -225,11 +225,10 @@ FloatingWindow {
                     ScrollBar.vertical:SettingsScrollBar {}
                     Loader {
                         id:pageLoader;objectName:"settings-page-content";width:scroll.width-root.scrollGutter;active:window.visible&&!root.searching
-                        property real arrival:1
+                        property real arrival:entrance.value
                         transform:Translate {y:14*(1-pageLoader.arrival)}
-                        function enter():void {entrance.stop();arrival=Tokens.reducedMotion?1:0;if(!Tokens.reducedMotion)entrance.start();}
-                        SpringMotion {id:entrance;target:pageLoader;property:"arrival";to:1;epsilon:.002}
-                        Connections {target:Tokens;function onReducedMotionChanged(){if(Tokens.reducedMotion){entrance.stop();pageLoader.arrival=1;}}}
+                        function enter():void {entrance.reset(Tokens.reducedMotion?1:0);if(!Tokens.reducedMotion)entrance.start();}
+                        FrameSpring {id:entrance;owner:pageLoader;targetValue:1;positionTolerance:.002;enabled:entrance.available&&pageLoader.active}
                         onLoaded:Qt.callLater(()=>{root.revealTarget();enter();})
                         sourceComponent:ColumnLayout {
                             spacing:20
