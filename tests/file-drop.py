@@ -31,6 +31,7 @@ ShellRoot {
             property alias clockStage:clock
             Item {
                 id:clock;x:450;width:100;height:35
+                property real restingWidth:100
                 property real hoverLift:0
                 property string panel:"idle"
                 property bool nearRest:true
@@ -40,7 +41,7 @@ ShellRoot {
             }
         }
     }
-    Island.DropTarget {id:target;sourceIsland:source;visible:false}
+    Island.DropTarget {id:target;sourceIsland:source;visible:true}
     function check(ok,label) {if(!ok)throw new Error(label);}
     Timer {interval:100;running:true;onTriggered:{try {
         IslandDrop.beginDrag(firstOwner);
@@ -53,17 +54,29 @@ ShellRoot {
         IslandDrop.beginDrag(null);
         check(!IslandDrop.dragging,"Invalid owner started a drag");
         check(target.liveBox.width>=Math.ceil((IslandState.sizes.dropcue[0]+12)*Preferences.uiScale),"Native target is smaller than the expanded cue");
+        clock.panel="files";
+        const inactive={x:target.box.x,width:target.box.width};
+        for(const width of [380,640]) {
+            clock.width=width;clock.x=500-width/2;
+            check(target.visible&&!target.interactive,"Expanded clock hid or enabled the inactive target");
+            check(target.box.x===inactive.x&&target.box.width===inactive.width&&target.implicitWidth===inactive.width,"Inactive clock expansion resized or moved the native target");
+        }
+        clock.panel="context";
+        check(target.interactive&&target.box.width===Math.ceil((clock.width+12)*Preferences.uiScale)&&target.box.x===Math.floor(clock.x-6),"Context did not immediately restore active geometry");
+        clock.width=380;clock.x=310;clock.panel="idle";
+        check(target.interactive&&target.box.width===Math.ceil((clock.width+12)*Preferences.uiScale)&&target.box.x===Math.floor(clock.x-6),"Active idle did not restore live geometry");
         target.heldBox=target.liveBox;target.holding=true;
-        const held=target.box;
+        const held={x:target.box.x,width:target.box.width};
         clock.width=176;clock.x=412;clock.panel="dropcue";
         check(target.box.x===held.x&&target.box.width===held.width,"Cue animation moved the native surface");
         target.completing=true;target.holding=false;
-        clock.width=380;clock.panel="files";
+        clock.width=640;clock.x=180;clock.panel="files";
         check(target.box.x===held.x&&target.box.width===held.width,"Drop completion moved the native surface");
         target.completing=false;
-        check(target.box.width===target.liveBox.width,"Finished target retained stale geometry");
+        clock.panel="context";
+        check(target.box.x===target.liveBox.x&&target.box.width===target.liveBox.width,"Finished target retained stale geometry");
         check(!IslandDrop.accept([])&&IslandDrop.files.length===0,"Preview executed file processing");
-        console.log("FILE DROP CHECK PASS: ownership, cue coverage, frozen geometry and completion");Qt.quit();
+        console.log("FILE DROP CHECK PASS: ownership, cue coverage, inactive width, active geometry, frozen geometry and completion");Qt.quit();
     }catch(error){console.error(error);Qt.exit(1);}}}
 }
-'''.replace('MODULE', directory.as_uri()),'FILE DROP CHECK PASS: ownership, cue coverage, frozen geometry and completion')
+'''.replace('MODULE', directory.as_uri()),'FILE DROP CHECK PASS: ownership, cue coverage, inactive width, active geometry, frozen geometry and completion')

@@ -38,6 +38,7 @@ Singleton {
     readonly property string prompt: pam.responseRequired ? pam.message : "Password"
     function lock(suspend: bool): void {
         if (Quickshell.env("MODESTY_PREVIEW") === "1") { SystemInfo.error = "Preview — session actions are disabled"; return; }
+        Notes.flush("lock");
         cancelVerification();
         SystemInfo.refresh();
         unlockDelay.stop(); unlocking = false;

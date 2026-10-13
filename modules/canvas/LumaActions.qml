@@ -33,14 +33,15 @@ Column {
                     id:step;required property var modelData
                     property bool open:false
                     width:parent.width;spacing:6
-                    readonly property string detail:{const t=modelData.tool||{},r=modelData.result||{};return [t.argv?.length?t.argv.join(" "):t.path||t.uri||t.action_name||"",[t.id||"",t.operation||""].filter(Boolean).join(" · "),t.action_args||"",r.error||"",r.stdout||"",r.stderr||"",r.note||""].filter(Boolean).join("\n\n");}
+                    readonly property bool pending:["requested","pending","outcome_unknown"].includes(modelData.result?.status)
+                    readonly property string detail:{const t=modelData.tool||{},r=modelData.result||{};return [t.argv?.length?t.argv.join(" "):t.path||t.uri||t.action_name||"",[t.id||"",t.operation||""].filter(Boolean).join(" · "),r.id?"Item "+r.id+(r.revision?" · revision "+r.revision:""):"",t.action_args||"",r.error||"",r.stdout||"",r.stderr||"",r.note||""].filter(Boolean).join("\n\n");}
                     AbstractButton {
                         id:stepButton;width:parent.width;height:Math.max(42,title.implicitHeight+20);hoverEnabled:true
                         onClicked:step.open=!step.open
                         Accessible.name:title.text
                         background:Rectangle {radius:10;color:Theme.withAlpha(Theme.text,stepButton.hovered?.04:.018)}
                         contentItem:Item {
-                            Icon {x:10;anchors.verticalCenter:parent.verticalCenter;icon:step.modelData.result?.ok?"check":"error";size:14;color:step.modelData.result?.ok?Theme.accent:Theme.red}
+                            Icon {x:10;anchors.verticalCenter:parent.verticalCenter;icon:step.pending?"schedule":step.modelData.result?.ok?"check":"error";size:14;color:step.pending?Theme.subtext:step.modelData.result?.ok?Theme.accent:Theme.red}
                             PanelText {id:title;x:34;y:10;width:parent.width-122;text:step.modelData.tool?.purpose||step.modelData.tool?.name||"Action";font.pixelSize:12;wrapMode:Text.WordWrap;elide:Text.ElideNone}
                             PanelText {anchors.right:parent.right;anchors.rightMargin:12;anchors.verticalCenter:parent.verticalCenter;width:76;horizontalAlignment:Text.AlignRight;elide:Text.ElideRight;text:step.modelData.result?.status|| (step.modelData.result?.ok?"Observed":"Failed");font.pixelSize:10;color:Theme.subtext}
                         }

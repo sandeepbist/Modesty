@@ -47,6 +47,9 @@ def permitted(path, selected):
                 and any(root in resolved.parents for root in selected)
                 and not any(p.startswith(".") or p in SKIP for p in resolved.relative_to(HOME).parts)
                 and not re.search(r"(?:secrets?|credentials?|passwords?|private[-_]key|tokens?)[-_.]", resolved.name, re.I)
+                and resolved not in {(STATE/name).resolve() for name in ("notes.json","notes.backup.json","notes.lock","notes-ui.json")}
+                and not (resolved.parent==STATE.resolve() and (resolved.name.startswith("notes") or resolved.name.startswith(".notes-")))
+                and (STATE/"notes").resolve() not in resolved.parents
                 and resolved.suffix.lower() in TEXT | {".pdf"}
                 and resolved.stat().st_size <= 8_000_000)
     except (OSError, ValueError):

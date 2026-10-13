@@ -8,6 +8,7 @@ Item {
     property int transitionDuration: 320
     property bool front: false
     readonly property bool ready: first.status === Image.Ready || second.status === Image.Ready
+    readonly property bool transitioning: first.status === Image.Loading || second.status === Image.Loading || firstFade.running || secondFade.running || cleanup.running
     signal failed()
     signal presented()
     function update(): void {

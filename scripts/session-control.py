@@ -82,11 +82,40 @@ def assert_unlocked():
                 if 'lock' in surface.get('namespace', '').lower():
                     raise RuntimeError('A lock surface is active; unlock before switching shells.')
 
+def flush_notes(timeout=8):
+    command=['quickshell','ipc','-p',str(ROOT/'shell.qml'),'call','notes']
+    result=run([*command,'flush','session'],check=False)
+    if (result.stdout+result.stderr).strip() == 'Target not found.':
+        return
+    if result.returncode:
+        raise RuntimeError('Notes did not acknowledge save. The running shell was kept.')
+    try: acknowledgement=json.loads(result.stdout)
+    except ValueError: raise RuntimeError('Notes did not acknowledge save. The running shell was kept.') from None
+    if not isinstance(acknowledgement,dict) or not acknowledgement.get('ok') or acknowledgement.get('status') not in ('pending','persisted','verified') or acknowledgement.get('error'):
+        raise RuntimeError('Notes did not acknowledge save. The running shell was kept.')
+    deadline=time.monotonic()+timeout
+    while time.monotonic()<deadline:
+        result=run([*command,'status'],check=False)
+        try: state=json.loads(result.stdout)
+        except ValueError: raise RuntimeError('Notes returned an invalid save status. The running shell was kept.') from None
+        if not isinstance(state,dict) or any(not isinstance(state.get(key),bool) for key in ('loaded','dirty','saving')) or state.get('saveState') not in ('Loading','Unsaved','Saving','Saved','Failed','Conflict'):
+            raise RuntimeError('Notes returned an invalid save status. The running shell was kept.')
+        if result.returncode or state.get('error') or state.get('saveState') in ('Failed','Conflict'):
+            raise RuntimeError('Notes could not be saved. The running shell was kept. '+str(state.get('error','')))
+        if state.get('saveState')=='Saved' and state.get('loaded') and not state.get('dirty') and not state.get('saving') and not state.get('pending',False): return
+        time.sleep(.05)
+    raise RuntimeError('Notes are still saving. The running shell was kept. Retry after Saved appears.')
+
 def stop_modesty():
+    result = run(['quickshell', 'list', '-p', str(ROOT/'shell.qml')], check=False)
+    instances = result.stdout + result.stderr
+    pids = re.findall(r'Process ID: (\d+)', instances)
+    if result.returncode or not pids and 'No running instances for ' not in instances:
+        raise RuntimeError('Could not confirm the running shell instances. The running shell was kept.')
+    if not pids: return
+    flush_notes()
     if (STATE/'bindings.json').exists():
         run(['python3',str(ROOT/'scripts/bindings.py'),'--clear-live'],check=False)
-    instances = run(['quickshell', 'list', '-p', str(ROOT/'shell.qml')], check=False).stdout
-    pids = re.findall(r'Process ID: (\d+)', instances)
     run(['quickshell', 'kill', '-p', str(ROOT/'shell.qml')], check=False)
     deadline = time.monotonic() + 5
     while any(Path('/proc', pid).exists() for pid in pids):
@@ -148,7 +177,8 @@ def start():
         run(['caelestia', 'shell', '-d']); return
     from desktop_environment import clean_environment
     env = dict(clean_environment(), MODESTY_COMPAT='1', MODESTY_PREVIEW='0')
-    subprocess.run(['quickshell', '-d', '--no-duplicate', '-p', str(ROOT/'shell.qml')], env=env, check=True, timeout=12)
+    from shell_renderer import run_shell
+    run_shell(['quickshell', '-d', '--no-duplicate', '-p', str(ROOT/'shell.qml')], env)
     end = time.monotonic() + 8
     while time.monotonic() < end:
         info = health()

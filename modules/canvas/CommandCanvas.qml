@@ -693,6 +693,7 @@ PanelWindow {
                     RollingText {width:card.panelWidth-96;height:18;text:window.displayedVoiceError?"Voice unavailable":window.displayedVoiceStatus;color:Theme.subtext;font.family:Tokens.font;font.pixelSize:12;font.weight:Font.Medium;horizontalAlignment:Text.AlignLeft;verticalAlignment:Text.AlignVCenter}
                 }
                 IconButton {x:parent.width-width-20;y:17;icon:"close";size:16;label:Voice.active?"Cancel voice":"Dismiss voice error";onClicked:{if(Voice.active)Voice.cancel();else Voice.error="";}}
+                ActionButton {anchors.right:parent.right;anchors.rightMargin:60;y:13;text:"Finish";visible:Voice.active&&Voice.held;enabled:Voice.phase!=="finishing";onClicked:Voice.release()}
                 Flickable {
                     id:voiceViewport
                     x:32;y:142;width:parent.width-64

@@ -21,7 +21,7 @@ Singleton {
     readonly property bool menuOpen: menu !== "none"
     // Playback never changes the resting shape. Only deliberate interaction reveals media.
     readonly property string state: IslandDrop.dragging ? "dropcue" : previewPanel || (menuOpen ? menu : Context.active ? "context" : Notifications.popups.length ? "toast" : Recorder.active&&!Recorder.selecting ? "recording" : FocusTimer.active ? "focusstatus" : "idle")
-    readonly property var sizes: ({ dropcue:[176,Preferences.barHeight],files:[380,IslandDrop.panelHeight],performance:[Preferences.controlsWidth,root.detailHeight("performance",610)],activities:[Activities.width,Preferences.barHeight],focusstatus:[Activities.width,Preferences.barHeight],focus:[Preferences.controlsWidth,root.detailHeight("focus",440)], recording:[Activities.width,Preferences.barHeight],recorder:[Preferences.controlsWidth,root.detailHeight("recorder",360)],unlockcheck: [390, 280], wifi:[Preferences.controlsWidth,root.detailHeight("wifi",480)], bluetooth: [Preferences.controlsWidth, Math.max(310,Math.min(480,226+Radio.devices.length*48))], display:[Preferences.controlsWidth,root.detailHeight("display",510)], sound:[Preferences.controlsWidth,root.detailHeight("sound",490)], authentication: [380, root.measuredPanels.authentication?root.measuredPanels.authentication+Preferences.innerPadding*2:286], context: [Context.width, Preferences.barHeight], idle: [Preferences.collapsedWidth + (Preferences.showSeconds ? 20 : 0), Preferences.barHeight], clock: [216, 96], media: [Preferences.mediaWidth, 186], privacy: [350, Math.max(200, Math.min(350, 135 + Audio.captureStreams.length * 65))], toast: [390, Math.max(128,Math.min(260,Notifications.popupHeight+Preferences.innerPadding*2))], calendar: [Reminders.calendarEditing?Math.max(340,Preferences.calendarWidth):Preferences.calendarWidth,Reminders.calendarExpanded?460:320], quicksettings: [Preferences.controlsWidth, ControlLayout.panelHeight], settings: [900, 650], themes: [570, 210], wallpapers: [730, 186], power: [420, root.measuredPanels.power ?? 94], launcher: [Preferences.launcherWidth, 94+Preferences.launcherVisibleRows*56], notifhistory: [Preferences.controlsWidth, 400] })
+    readonly property var sizes: ({ dropcue:[176,Preferences.barHeight],files:[380,IslandDrop.panelHeight],notes:[Notes.libraryOpen?700:440,Notes.libraryOpen?496:440],performance:[Preferences.controlsWidth,root.detailHeight("performance",610)],activities:[Activities.width,Preferences.barHeight],focusstatus:[Activities.width,Preferences.barHeight],focus:[Preferences.controlsWidth,root.detailHeight("focus",440)], recording:[Activities.width,Preferences.barHeight],recorder:[Preferences.controlsWidth,root.detailHeight("recorder",360)],unlockcheck: [390, 280], wifi:[Preferences.controlsWidth,root.detailHeight("wifi",480)], bluetooth: [Preferences.controlsWidth, Math.max(310,Math.min(480,226+Radio.devices.length*48))], display:[Preferences.controlsWidth,root.detailHeight("display",510)], sound:[Preferences.controlsWidth,root.detailHeight("sound",490)], authentication: [380, root.measuredPanels.authentication?root.measuredPanels.authentication+Preferences.innerPadding*2:286], context: [Context.width, Preferences.barHeight], idle: [Preferences.collapsedWidth + (Preferences.showSeconds ? 20 : 0), Preferences.barHeight], clock: [216, 96], media: [Preferences.mediaWidth, 186], privacy: [350, Math.max(200, Math.min(350, 135 + Audio.captureStreams.length * 65))], toast: [390, Math.max(128,Math.min(260,Notifications.popupHeight+Preferences.innerPadding*2))], calendar: [Reminders.calendarEditing?Math.max(340,Preferences.calendarWidth):Preferences.calendarWidth,Reminders.calendarExpanded?460:320], quicksettings: [Preferences.controlsWidth, ControlLayout.panelHeight], settings: [900, 650], themes: [570, 210], wallpapers: [730, 186], power: [420, root.measuredPanels.power ?? 94], launcher: [Preferences.launcherWidth, 94+Preferences.launcherVisibleRows*56], notifhistory: [Preferences.controlsWidth, 400] })
     readonly property string owner: ["performance", "quicksettings", "wifi", "bluetooth", "display", "sound", "notifhistory", "recorder", "focus", "recording", "focusstatus"].includes(state) || (state==="context"&&!["workspace","welcome","volume","brightness","luma"].includes(Context.kind)) ? "controls" : state === "media" ? "media" : "clock"
     function hover(stage: string, inside: bool): void {
         if (inside) { hoverStage = stage; pointerInside = true; }
@@ -32,6 +32,8 @@ Singleton {
         pointerInside = false;
     }
     function openMenu(name: string): void {
+        if(Session.isLocked())return;
+        if(name==="notes"&&menu!=="notes")Notes.libraryOpen=false;
         if(name==="calendar"&&menu!=="calendar"){Reminders.calendarExpanded=false;Reminders.calendarEditing=false;}
         if (name === "settings") {
             closeMenu();
@@ -40,9 +42,9 @@ Singleton {
             Qt.callLater(() => settingsOpen = true);
             return;
         }
-        if (sizes[name] && !["idle", "toast", "context"].includes(name)) { previewPanel = ""; menu = name; }
+        if (sizes[name] && !["idle", "toast", "context"].includes(name)) { if(menu==="notes"&&name!=="notes")Notes.flush("switch"); previewPanel = ""; menu = name; }
     }
-    function closeMenu(): void { previewPanel = ""; menu = "none"; }
+    function closeMenu(): void { if(menu==="notes")Notes.flush("close"); previewPanel = ""; menu = "none"; }
     function toggle(name: string): void { if (name === "settings") { if (settingsOpen) settingsOpen = false; else openMenu(name); return; } if (menu === name) dismissCurrent(); else openMenu(name); }
     function dismissCurrent(): void {
         closeMenu();

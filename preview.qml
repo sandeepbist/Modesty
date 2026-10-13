@@ -20,15 +20,15 @@ ShellRoot {
         Item {
             id: scene; anchors.fill: parent
             Rectangle { anchors.fill: parent; gradient: Gradient { GradientStop { position: 0; color: "#305255" } GradientStop { position: 1; color: "#162628" } } }
-            Island.IslandSurface { id: surface; anchors.horizontalCenter: parent.horizontalCenter; y: 56 + Preferences.topMargin; scale: Preferences.uiScale; transformOrigin: Item.Top; availableWidth: scene.width; focus: true; Keys.onEscapePressed: IslandState.dismissCurrent() }
+            Island.IslandSurface { id: surface; anchors.horizontalCenter: parent.horizontalCenter; y: 56 + Preferences.topMargin; scale: Preferences.uiScale; transformOrigin: Item.Top; availableWidth: scene.width; availableHeight: scene.height-y-70; focus: true; Keys.onEscapePressed: IslandState.dismissCurrent() }
             Loader { anchors.fill: parent; active: lockPreview; sourceComponent: Lock.LockContent { preview: true } }
             Row {
                 anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.bottom; anchors.bottomMargin: 22; spacing: 5
                 Repeater {
-                    model: ["idle", "media", "calendar", "quicksettings", "settings", "themes", "wallpapers", "power", "lock"]
+                    model: ["idle", "media", "calendar", "notes", "quicksettings", "settings", "themes", "wallpapers", "power", "lock"]
                     Rectangle {
                         id: tab; required property string modelData
-                        width: 106; height: 30; radius: 15
+                        width: 98; height: 30; radius: 15
                         color: (lockPreview ? modelData === "lock" : IslandState.state === modelData) ? Theme.accent : Theme.surfaceSolid
                         Text { anchors.centerIn: parent; text: tab.modelData === "idle" ? "Live hover" : tab.modelData; font.family: Tokens.font; font.pixelSize: 10; color: (lockPreview ? tab.modelData === "lock" : IslandState.state === tab.modelData) ? Theme.bgSolid : Theme.text }
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { lockPreview = tab.modelData === "lock"; if (tab.modelData === "idle") IslandState.dismissCurrent(); else if (tab.modelData === "settings") IslandState.openMenu("settings"); else if (!lockPreview) IslandState.previewPanel = tab.modelData; } }

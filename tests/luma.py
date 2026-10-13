@@ -53,6 +53,34 @@ spec.loader.exec_module(assistant)
 assert assistant.validated_action is validated_action
 print('PASS Luma action boundaries, streamed text, conversation, sensors, clock and CLI imports')
 
+permission_call = dict(name='desktop_action', purpose='Create requested note',
+                       action_name='note_create', action_args=json.dumps({'body': 'Buy milk'}))
+for answer in (None, {}, {'permission': {}},
+               {'permission': {'choice': 'execute', 'confidence': .89}},
+               {'permission': {'choice': 'confirm', 'confidence': .79}}):
+    with patch.object(assistant, 'jev_questions', return_value=answer):
+        verdict = assistant.system_permission('Take a note: Buy milk', [], permission_call, [])
+    assert verdict == 'confirm', (answer, verdict)
+for error in (OSError('Classifier unavailable'), ValueError('Invalid answer'), KeyError('permission')):
+    with patch.object(assistant, 'jev_questions', side_effect=error):
+        verdict = assistant.system_permission('Take a note: Buy milk', [], permission_call, [])
+    assert verdict == 'confirm', (error, verdict)
+removal = dict(name='desktop_action', purpose='Remove reminder', action_name='reminder_remove',
+               action_args=json.dumps({'id': 'observed-id', 'expectedRevision': 1}))
+with patch.object(assistant, 'jev_questions', return_value={}):
+    assert assistant.system_permission('What is the weather?', [], removal, []) == 'confirm'
+    assert assistant.system_permission('What is the weather?', [], {'name': 'unknown'}, []) == 'confirm'
+with patch.object(assistant, 'jev_questions', return_value={'permission': {'choice': 'execute', 'confidence': .95}}):
+    assert assistant.system_permission('Take a note: Buy milk', [], permission_call, []) == 'execute'
+    assert assistant.system_permission('Remove this reminder', [], removal, []) == 'confirm'
+with patch.object(assistant, 'jev_questions', return_value={'permission': {'choice': 'deny', 'confidence': .95}}):
+    assert assistant.system_permission('What is the weather?', [], permission_call, []) == 'deny'
+with patch.object(assistant, 'jev_questions', side_effect=AssertionError('Read must not ask classifier')):
+    for name in ('list_directory', 'read_file', 'desktop_state', 'application_interfaces',
+                 'notes_list', 'notes_read', 'reminders_list', 'reminders_read'):
+        assert assistant.system_permission('Read requested item', [], {'name': name}, []) == 'execute'
+print('PASS Luma scope confirmation on classifier abstention/errors, destructive review and confident requested work')
+
 # API keys partition caches and quota state; neither document authenticates users.
 with tempfile.TemporaryDirectory(prefix='modesty-provider-key-') as temporary:
     folder = Path(temporary)

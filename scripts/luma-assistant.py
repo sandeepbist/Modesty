@@ -23,7 +23,7 @@ import time
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from luma.actions import ACTIONS, PANELS, attachment_file, validated_action
+from luma.actions import ACTIONS, PANELS, ACTION_SCHEMA, CATALOG, action_instructions, local_note_action, attachment_file, validated_action
 from luma.observations import clock, hardware, metrics
 from luma.protocol import (clean_messages, clean_task_context,
                            conversation_state, presentation, request_scope, stream_answer)
@@ -617,14 +617,20 @@ def native_system_action(name, args, applications, reminders, attachments):
         launcher=importlib.util.module_from_spec(launch_spec); launch_spec.loader.exec_module(launcher)
         if name=="close_app": return launcher.close_app(args["id"])
         return dict(launcher.launch(args["id"]),status="requested")
-    action=validated_action({"name":name,"args":args},applications,reminders,attachments)
-    return system_tools.ipc("execute",json.dumps(action,ensure_ascii=False))
+    live=system_tools.ipc("snapshot")
+    if live.get("ok") is False: raise ValueError(live.get("error", "Native desktop context is unavailable"))
+    action=validated_action({"name":name,"args":args},applications,live.get("reminders",[]),attachments,live.get("notes",[]),live)
+    action["operationId"]=os.urandom(16).hex()
+    return system_tools.wait_receipt(system_tools.ipc("execute",json.dumps(action,ensure_ascii=False)))
+
 
 
 def system_permission(query, history, call, ledger):
     """Jev judges requested scope, not capability; code enforces access/isolation."""
-    if call["name"] in {"list_directory","read_file","desktop_state","application_interfaces"}:
+    if call["name"] in {"list_directory","read_file","desktop_state","application_interfaces","notes_list","notes_read","reminders_list","reminders_read"}:
         return "execute"
+    if call["name"]=="desktop_action" and CATALOG.get(call.get("action_name"),{}).get("review"):
+        return "confirm"
     try:
         observations=[dict(tool={k:v for k,v in entry["tool"].items() if k!="content"},result={k:v[:1200] if isinstance(v,str) else v for k,v in entry["result"].items() if k not in {"content","stdout","stderr","entries"}}) for entry in ledger[-8:]]
         answers=jev_questions(request_scope(query,history,proposed_tool=call,observed_results=observations,
@@ -640,10 +646,7 @@ def system_permission(query, history, call, ledger):
         if selected=="confirm" and type(certainty) in (int,float) and certainty>=.8: return "confirm"
     except (OSError,ValueError,KeyError):
         pass
-    # These tools cannot delete/install/upload or obtain privilege. New-file
-    # creation is exclusive; replacements are revision-checked and backed up.
-    # An uncertain classifier must not veto ordinary requested work.
-    return "execute" if call["name"] in {"write_file","desktop_action","open_uri","media_control"} or call["name"]=="run_command" and not any(call[k] for k in ("writable","network","session","privileged")) else "confirm"
+    return "confirm"
 
 
 def converse(payload, system_ledger=None):
@@ -700,6 +703,14 @@ def converse(payload, system_ledger=None):
             except ValueError:
                 pass
     if not system_ledger and not payload.get("preview") and payload.get("intent", "auto") in {"auto", "desktop"} and payload.get("desktop", True) and not payload.get("attachments") and not payload.get("sharedText"):
+        note_action=local_note_action(query,payload.get("context",{}),task_context["recentTasks"]) if offline else None
+        if note_action:
+            try:
+                action=validated_action(note_action,notes=payload.get("context",{}).get("notes",[]),desktop=payload.get("context",{}))
+                emit(event="answer",text=action["label"],actions=[action],citations=[],files=[],intent="desktop",router="local",model="",presentation={},localTask=True)
+            except ValueError as error:
+                emit(event="answer",text=str(error),actions=[],citations=[],files=[],intent="desktop",router="local",model="",presentation={})
+            return
         local = tasks.commands(query, payload.get("applications", [])) if offline else None
         if local:
             actions = [validated_action(action, payload.get("applications", [])) for action in local]
@@ -822,7 +833,8 @@ Submitted requests allow up to three read/observe/replan rounds; typing previews
 DESKTOP ACTIONS
 Only PROPOSE allowlisted actions for the user's explicit request. The user reviews each proposal before it runs. Describe pending changes in future tense; never claim they already happened. Preserve explanations alongside proposals. Use exact installed application IDs from applications. Maximum four actions. Conditional automation and dependent application workflows are not supported by these immediate actions; never flatten them into unconditional changes or claim a future trigger was installed. Ask a short clarification when a necessary date, time, application or command is ambiguous. Do not guess. Never propose file deletion, installation, purchases, messages or credential access. Reminder cancellation is supported only for an existing reminder explicitly selected by the user. No arbitrary executable commands as actions; command text can only be a draft for review.
 Actions supported:
-volume/brightness {level:0..100}; focus {minutes:1..120 whole}; focus_pause/focus_cancel/media_pause/media_play/media_next/media_previous {}; appearance {mode:'light'|'dark'}; awake {enabled:boolean,seconds:optional 1..86400 duration, omitted for indefinite}; peace/nightlight {enabled:boolean}; open_panel {panel:one of settings,quicksettings,calendar,themes,wallpapers,wifi,bluetooth,display,sound,media,notifhistory,focus,performance}; reminder {title,date:'YYYY-MM-DD',time:'HH:MM',lead:0..30 advance days,count:1..lead+1 reminders}. open_app {id:exact installed application ID from applications}. reminder_update {id:exact active reminder ID,title:up to 160 characters,dueAt:future Unix milliseconds within one year}; reminder_remove {id:exact active reminder ID}. file_action {operation:compress|merge|export,paths:exact explicitly attached file paths}; export also requires width:1..8192 pixels and format:PNG|JPEG|WEBP. Merge needs at least two attached PDFs in listed order. Operations create new copies, never overwrite originals; arbitrary paths, deleting or renaming files are not supported here. Never invent an ID. Resolve changes and cancellations against recent_tasks and current desktop.reminders; ask when multiple tasks fit. A focus duration change restarts the timer; explain this before proposing it.
+""" + action_instructions() + """
+Quick Notes bodies are never ambient context. Use notes_list and notes_read for scoped relevant content. Mutations require actual expectedRevision. Resolve this note against activeNoteId and new notes against acknowledged receipts. Preserve recurrence on reminder updates unless explicitly changed. Ask for ambiguous note/reminder matches. Permanent deletion, forgetting devices/networks, display changes, updates and power operations require explicit review. Never change Luma access, privacy permissions or credentials.
 Media controls operate on the active player's existing track. media_play only resumes that track; it cannot search for or choose a named song, playlist or video. open_app only launches an application. For a request containing both a supported launch and unsupported content navigation, preserve the launch proposal and clearly explain the unavailable operation. Never substitute resume/next for selecting requested content.
 
 TRUST
@@ -855,7 +867,8 @@ system_execution contains the exact attempted tools and outcomes for this task. 
     parts.append({"text":"Explicit attachment paths for reviewed file actions: "+json.dumps(paths)})
     parts.append({"text": json.dumps(request_scope(query, history, max_turns=8, max_text=12000, recent_tasks=task_context["recentTasks"]), ensure_ascii=False)})
     contents.append({"role": "user", "parts": parts})
-    schema = {"type": "OBJECT", "properties": {"intent": {"type": "STRING", "enum": sorted(INTENTS)},"file_queries": {"type": "ARRAY", "items": {"type": "STRING"}}, "knowledge_queries": {"type":"ARRAY","items":{"type":"STRING"}}, "search_queries": {"type": "ARRAY", "items": {"type": "STRING"}}, "read_tools": {"type": "ARRAY", "items": {"type": "STRING", "enum": list(enabled_reads)}}, "answer": {"type": "STRING"}, "source_ids": {"type": "ARRAY", "items": {"type": "INTEGER"}}, "actions": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {"name": {"type": "STRING", "enum": sorted(ACTIONS)}, "args": {"type": "OBJECT", "properties": {"id": {"type": "STRING"}, "level": {"type": "NUMBER"}, "minutes": {"type": "INTEGER"}, "seconds": {"type": "NUMBER"}, "enabled": {"type": "BOOLEAN"}, "mode": {"type": "STRING"}, "panel": {"type": "STRING"}, "title": {"type": "STRING"}, "date": {"type": "STRING"}, "time": {"type": "STRING"}, "lead": {"type": "INTEGER"}, "count": {"type": "INTEGER"}, "dueAt": {"type": "NUMBER"}, "operation":{"type":"STRING"}, "paths":{"type":"ARRAY","items":{"type":"STRING"}}, "width":{"type":"INTEGER"}, "format":{"type":"STRING"}}}}, "required": ["name", "args"]}}}, "required": ["intent", "answer", "source_ids", "actions", "search_queries", "file_queries", "knowledge_queries", "read_tools"]}
+    schema = {"type":"OBJECT","properties":{"intent":{"type":"STRING","enum":sorted(INTENTS)},"file_queries":{"type":"ARRAY","items":{"type":"STRING"}},"knowledge_queries":{"type":"ARRAY","items":{"type":"STRING"}},"search_queries":{"type":"ARRAY","items":{"type":"STRING"}},"read_tools":{"type":"ARRAY","items":{"type":"STRING","enum":list(enabled_reads)}},"answer":{"type":"STRING"},"source_ids":{"type":"ARRAY","items":{"type":"INTEGER"}},"actions":ACTION_SCHEMA},"required":["intent","answer","source_ids","actions","search_queries","file_queries","knowledge_queries","read_tools"]}
+
     if not enabled_reads:
         schema["properties"]["read_tools"]["items"].pop("enum")
     schema["properties"]["plan"]={"type":"ARRAY","minItems":1,"maxItems":8,"description":"Concise requested outcome checklist. Preserve it in the final response even after completing the tools. No private reasoning or claims of execution. A simple question needs one goal.","items":{"type":"STRING"}}
@@ -999,10 +1012,12 @@ system_execution contains the exact attempted tools and outcomes for this task. 
                     continue
                 if len(system_ledger)>=24:
                     raise ValueError("Execution step limit reached; continue this task in another request")
-                permission=system_permission(query,history,call,system_ledger) if payload.get("useJev",True) else "confirm" if call["name"] not in {"list_directory","read_file","desktop_state","application_interfaces"} else "execute"
+                permission=system_permission(query,history,call,system_ledger) if payload.get("useJev",True) else "confirm" if not system_tools.observational(call) else "execute"
                 full_access=payload.get("accessMode")=="full" and system_tools.ipc("status").get("access")=="full"
                 if permission!="deny":
-                    if full_access: permission="execute"
+                    hard_review=call["name"]=="desktop_action" and CATALOG.get(call.get("action_name"),{}).get("review")
+                    if hard_review: permission="confirm"
+                    elif full_access: permission="execute"
                     elif call["name"]=="run_command": permission="confirm"
                 if permission=="confirm":
                     detail=call["purpose"]+"\n"+(shlex.join(call["argv"]) if call["name"]=="run_command" else json.dumps(call,ensure_ascii=False))
@@ -1021,6 +1036,8 @@ system_execution contains the exact attempted tools and outcomes for this task. 
                     try:
                         emit(event="phase",phase="reading" if system_tools.observational(call) else "acting",text=call["purpose"])
                         observed=system_tools.execute(call,lambda name,args:native_system_action(name,args,applications,desktop_reminders,paths),approved=full_access)
+                        if call["name"]=="desktop_action" and observed.get("ok"):
+                            desktop.update(system_tools.ipc("snapshot"))
                     except (OSError,ValueError,RuntimeError,subprocess.SubprocessError) as error:
                         observed={"ok":False,"error":str(error)}
                     system_ledger.pop(index)
@@ -1156,7 +1173,7 @@ system_execution contains the exact attempted tools and outcomes for this task. 
             return []
         if result.get("actions") and not payload.get("desktop",True):
             raise ValueError("Desktop changes are disabled. No changes were run.")
-        return [validated_action(bind_action_arguments(action,decision),applications,desktop_reminders,paths) for action in result.get("actions",[])]
+        return [validated_action(bind_action_arguments(action,decision),applications,desktop.get("reminders",desktop_reminders),paths,desktop.get("notes",[]),desktop) for action in result.get("actions",[])]
     result["actions"]=checked_proposals()
     completion_checked=False
     unresolved_goals=[]

@@ -25,7 +25,7 @@ FocusScope {
     function step(direction:int):void {Reminders.calendarExpanded=false;const base=pending||{year,month,mode};if(base.mode==="days")navigate(base.year,base.month+direction,base.mode);else navigate(base.year+(base.mode==="years"?12:1)*direction,base.month,base.mode);}
     function select(day:string):void {selectedDate=day;upcoming=false;const d=Dates.parse(day);if(d.getFullYear()!==year||d.getMonth()!==month)navigate(d.getFullYear(),d.getMonth(),"days");}
     function today():void {Reminders.calendarExpanded=false;select(Dates.key(Time.date));navigate(Time.date.getFullYear(),Time.date.getMonth(),"days");}
-    function edit(entry):void {Reminders.calendarExpanded=true;edited=entry;Reminders.error="";editing=true;}
+    function edit(entry):void {Reminders.calendarExpanded=true;edited=entry?Reminders.read(entry.id).reminder:null;Reminders.error="";editing=true;}
     function syncAgenda():void {
         const next=entries;
         for(let i=agendaModel.count-1;i>=0;i--)if(!next.some(r=>r.id===agendaModel.get(i).entry.id))agendaModel.remove(i);
@@ -109,10 +109,10 @@ FocusScope {
             displaced:Transition {NumberAnimation {properties:"x,y";duration:Tokens.animMedium;easing.type:Easing.OutCubic}}
             delegate:Rectangle {
                 id:row;required property var entry;width:agenda.width-4;height:48;radius:12;color:Theme.surfaceSolid
-                IconButton {x:5;anchors.verticalCenter:parent.verticalCenter;icon:row.entry.done?"check_circle":"radio_button_unchecked";label:row.entry.done?"Mark incomplete":"Mark complete";size:17;color:row.entry.done?Theme.accent:Theme.subtext;onClicked:Reminders.complete(row.entry.id,!row.entry.done)}
+                IconButton {x:5;anchors.verticalCenter:parent.verticalCenter;icon:row.entry.done?"check_circle":"radio_button_unchecked";label:row.entry.projected?"Future occurrence":row.entry.done?"Mark incomplete":"Mark complete";enabled:!row.entry.projected;size:17;color:row.entry.done?Theme.accent:Theme.subtext;onClicked:Reminders.complete(row.entry.id,!row.entry.done,row.entry.date+"T"+row.entry.time,row.entry.revision)}
                 Column {x:43;anchors.verticalCenter:parent.verticalCenter;width:parent.width-54;spacing:4
                     PanelText {width:parent.width;text:row.entry.title;font.pixelSize:12;font.strikeout:row.entry.done;opacity:row.entry.done?.5:1}
-                    PanelText {width:parent.width;text:(root.upcoming?Qt.formatDateTime(Dates.parse(row.entry.date),"d MMM")+" · ":"")+row.entry.time;font.pixelSize:10;color:Theme.subtext}
+                    PanelText {width:parent.width;text:(root.upcoming?Qt.formatDateTime(Dates.parse(row.entry.date),"d MMM")+" · ":"")+row.entry.time+(Dates.repeatLabel(row.entry)?" · "+Dates.repeatLabel(row.entry):"");font.pixelSize:10;color:Theme.subtext}
                 }
                 MouseArea {x:40;width:parent.width-40;height:parent.height;cursorShape:Qt.PointingHandCursor;onClicked:{root.selectedDate=row.entry.date;root.edit(row.entry);}}
             }
@@ -121,6 +121,6 @@ FocusScope {
         PanelText {Layout.fillWidth:true;visible:agenda.count>0&&!!Reminders.error;text:Reminders.error;font.pixelSize:10;color:Theme.red;wrapMode:Text.Wrap;elide:Text.ElideNone}
     }
     Loader {anchors.fill:parent;active:root.editing||opacity>0;opacity:root.editing?1:0;visible:opacity>0;enabled:root.editing;Behavior on opacity {NumberAnimation {duration:Tokens.animFast}}
-        sourceComponent:ReminderEditor {day:root.selectedDate;entry:root.edited;onCancelled:{root.editing=false;root.forceActiveFocus();}onSaved:{root.editing=false;root.upcoming=false;root.forceActiveFocus();}}
+        sourceComponent:ReminderEditor {day:root.edited?.date||root.selectedDate;entry:root.edited;onCancelled:{root.editing=false;root.forceActiveFocus();}onSaved:{root.editing=false;root.upcoming=false;root.forceActiveFocus();}}
     }
 }

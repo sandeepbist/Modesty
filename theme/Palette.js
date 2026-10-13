@@ -12,14 +12,20 @@ function readable(value,backgrounds,minimum) {
     for(let i=0;i<12;i++){const mid=(low+high)/2;const c=blend(value,target,mid);if(backgrounds.every(b=>contrast(c,b)>=minimum))high=mid;else low=mid;}
     return blend(value,target,high);
 }
+var refineCache=[];
 function refine(p) {
-    const result=Object.assign({},p), backgrounds=[p.bgSolid,p.surfaceSolid];
+    const key=JSON.stringify(Object.keys(p).sort().map(k=>[k,p[k]]));
+    const cached=refineCache.find(entry=>entry.key===key);
+    if(cached)return Object.assign({},p,cached.colors);
+    const result={}, backgrounds=[p.bgSolid,p.surfaceSolid];
     for(const key of ["accent","green","yellow","red"])result[key]=readable(p[key],backgrounds,3);
     // Selected rows tint both application surfaces; labels stay opaque.
     const textBackgrounds=backgrounds.concat(backgrounds.map(b=>blend(b,result.accent,.18)));
     for(const key of ["text","subtext"])result[key]=readable(p[key],textBackgrounds,4.5);
     result.accentText=readable(p.accentText||p.bgSolid,[result.accent],4.5);
-    return result;
+    if(refineCache.length===32)refineCache.shift();
+    refineCache.push({key,colors:result});
+    return Object.assign({},p,result);
 }
 var light={
     everblush:{bg:"#f4f7f5",surface:"#e7eeea",text:"#20312e",subtext:"#506660",accent:"#246d6a",green:"#386b36",yellow:"#7b611c",red:"#a53643"},

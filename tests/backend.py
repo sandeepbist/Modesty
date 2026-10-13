@@ -14,13 +14,46 @@ system, prefs = module('system'), module('preferences')
 with tempfile.TemporaryDirectory() as tmp:
     directory=Path(tmp); walls=directory/'walls'; walls.mkdir(); state=directory/'state'
     tricky=walls/"quote ' and $().png"; tricky.write_bytes(b'fake test image')
+    options=dict(automatic=False,scheme='scheme-fidelity',contrast=.25,source=2)
+    data={
+        'colors':{name:{mode:{'color':'#102030' if mode=='dark' else '#e0d0c0'} for mode in ('dark','light')}
+                  for name in ('surface_dim','surface','surface_container','on_surface','on_surface_variant','primary','on_primary','secondary','tertiary','error')},
+        'modesty':dict(options,sample='preview'),
+        'unknown':{'unicode':'森 雪 café 🙂','nested':[None,True,2.5,{'escaped':'a\\b\n"c"'}]},
+        'future':[{'retained':{'key':'値'}}],
+    }
+    untouched=json.dumps(data)
     with (patch.object(system,'WALLS',walls), patch.object(system,'STATE',state),
           patch.object(system,'WALL_CACHE',directory/'wallpapers.json'),
           patch.object(system,'optional',return_value='[]'),
-          patch.object(system.wallpaper_tools,'cached_image',side_effect=lambda path,*args:Path(path)),
+          patch.object(system.wallpaper_tools,'cached_image',side_effect=lambda path,*args:Path(path)) as images,
+          patch.object(system.wallpaper_tools,'cached_data',return_value=data),
+          patch.object(system.wallpaper_tools,'generate_data',return_value=data),
           patch.object(system.wallpaper_tools,'display_url',return_value=tricky.as_uri()),
           patch.object(system,'run') as run):
         assert system.wallpapers()[0]['path'] == str(tricky)
+        stored=(directory/'wallpapers.json').read_text()
+        default=system.wallpapers(options)
+        assert default[0]['paletteData']==data
+        encoded=system.wallpapers(dict(options,paletteDataFormat='json'))
+        assert isinstance(encoded[0]['paletteData'],str)
+        assert json.loads(encoded[0]['paletteData'])==data
+        assert encoded[0]['paletteData']==json.dumps(data,separators=(',',':'))
+        assert {key:value for key,value in encoded[0].items() if key!='paletteData'}=={
+            key:value for key,value in default[0].items() if key!='paletteData'}
+        for settings in (options,dict(options,paletteDataFormat='yaml'),dict(options,paletteDataFormat=None)):
+            assert system.wallpapers(settings)==default
+        assert system.wallpapers()==json.loads(stored)['wallpapers']
+        assert (directory/'wallpapers.json').read_text()==stored
+        assert 'paletteData' not in stored and 'paletteDataFormat' not in stored
+        assert images.call_count==2
+        tools=system.wallpaper_tools
+        assert tools.palette_options(dict(options,paletteDataFormat='json'))==tools.palette_options(options)
+        assert tools.palette_cache_path(tricky,*tools.palette_options(dict(options,paletteDataFormat='json')))==tools.palette_cache_path(tricky,*tools.palette_options(options))
+        result=system.action('palette',json.dumps(dict(options,path=str(tricky),paletteDataFormat='json',key='selected')))
+        assert isinstance(result['raw'],dict) and result['raw']==data
+        assert result['palette']==default[0]['palette'] and result['key']=='selected'
+        assert json.dumps(data)==untouched
         system.action('wallpaper',str(tricky))
         assert json.loads((state/'wallpaper.json').read_text())['path']==str(tricky)
         run.assert_not_called()
@@ -33,6 +66,7 @@ with tempfile.TemporaryDirectory() as tmp:
     assert json.loads((state/'preferences.json').read_text())['motion']=='gentle'
     assert not list(state.glob('.preferences-*'))
 print('PASS wallpaper path validation, no shell interpolation, brightness clamp, atomic preferences')
+print('PASS wallpaper palette JSON opt-in, full metadata, Unicode, object defaults, variants, image cache and palette keys')
 
 # A rounded snapshot must not generate an unsolicited brightness OSD on panel open.
 import os

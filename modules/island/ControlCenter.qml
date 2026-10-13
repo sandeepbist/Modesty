@@ -32,17 +32,22 @@ Item {
             opacity:root.detail?0.25:1;enabled:!root.modal
             Behavior on opacity { NumberAnimation {duration:Tokens.animMedium;easing.type:Easing.OutCubic} }
             Repeater { model:Object.keys(ControlLayout.shapes)
-                ControlTile {
+                Item {
+                    id:tile
                     required property string modelData
                     readonly property var entry:ControlLayout.items.find(a=>a.id===modelData)
                     readonly property real pitch:(tiles.width+Preferences.controlGap)/ControlLayout.columns
-                    visible:!!entry;kind:modelData;interactive:!root.detail&&root.enabled
+                    visible:!!entry
                     x:(entry?.x??0)*pitch;y:(entry?.y??0)*pitch
                     width:(entry?.w??1)*pitch-Preferences.controlGap;height:(entry?.h??1)*pitch-Preferences.controlGap
                     Behavior on x {enabled:!Tokens.reducedMotion;SmoothedAnimation {velocity:-1;duration:Tokens.animMedium;reversingMode:SmoothedAnimation.Immediate}}
                     Behavior on y {enabled:!Tokens.reducedMotion;SmoothedAnimation {velocity:-1;duration:Tokens.animMedium;reversingMode:SmoothedAnimation.Immediate}}
                     Behavior on width {enabled:!Tokens.reducedMotion;SmoothedAnimation {velocity:-1;duration:Tokens.animMedium;reversingMode:SmoothedAnimation.Immediate}}
                     Behavior on height {enabled:!Tokens.reducedMotion;SmoothedAnimation {velocity:-1;duration:Tokens.animMedium;reversingMode:SmoothedAnimation.Immediate}}
+                    Loader {
+                        anchors.fill:parent;active:!!tile.entry
+                        sourceComponent:ControlTile {kind:tile.modelData;interactive:!root.detail&&root.enabled}
+                    }
                 }
             }
         }
@@ -52,17 +57,18 @@ Item {
         opacity:!root.modal&&ControlLayout.footerShown&&root.apertureHeight>=root.overviewHeight+Preferences.innerPadding*2-2?1:0
         visible:opacity>0;enabled:!root.modal&&opacity>.7
         Behavior on opacity {NumberAnimation {duration:Tokens.animFast;easing.type:Easing.OutCubic}}
-        readonly property bool showTray:Preferences.footerTray&&Tray.items.length>0
+        readonly property bool showTray:Preferences.footerVisible&&Preferences.footerTray&&Tray.items.length>0
         readonly property real dividerWidth:showTray&&footerButtons.width>0?21:0
         width:footerButtons.width+dividerWidth+(showTray?footerTray.width:0);height:38
         anchors.horizontalCenter:parent.horizontalCenter;y:root.overviewHeight-height
         Row {
             id:footerButtons;spacing:10;anchors.verticalCenter:parent.verticalCenter
+            IconButton {visible:ControlLayout.notesEntryShown;icon:"edit_note";label:"Quick Notes";size:19;implicitWidth:38;implicitHeight:38;color:Theme.accent;onClicked:{Tray.close();IslandState.openMenu("notes");}}
             Repeater {
                 model:[{key:"footerPerformance",icon:"monitoring",label:"Performance",panel:"performance"},{key:"footerThemes",icon:"palette",label:"Themes",panel:"themes"},{key:"footerWallpapers",icon:"wallpaper",label:"Wallpapers",panel:"wallpapers"},{key:"footerPower",icon:"power_settings_new",label:"Power",panel:"power"},{key:"footerSettings",icon:"settings",label:"Settings",panel:"settings"}]
                 IconButton {
                     required property var modelData
-                    visible:Preferences[modelData.key];icon:modelData.icon;label:modelData.label;size:19
+                    visible:Preferences.footerVisible&&Preferences[modelData.key];icon:modelData.icon;label:modelData.label;size:19
                     implicitWidth:38;implicitHeight:38;color:Theme.subtext
                     background:"transparent"
                     onClicked:{Tray.close();IslandState.openMenu(modelData.panel);}

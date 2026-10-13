@@ -93,7 +93,18 @@ Singleton {
         const cached = previewPaletteCache[paletteKey];
         if (cached) {
             pendingPalette = null; paletteDelay.stop();
+            if (typeof cached.raw === "string") {
+                try {
+                    const raw = JSON.parse(cached.raw);
+                    if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Invalid wallpaper colors");
+                    cached.raw = raw;
+                } catch (e) {
+                    wallpaperWarning = "Couldn't read wallpaper colors";
+                    return;
+                }
+            }
             if (Theme.wallpaperData !== cached.raw) Theme.installWallpaperData(cached.palette, cached.raw);
+            if (wallpaperWarning === "Couldn't read wallpaper colors") wallpaperWarning = "";
             return;
         }
         request.key=paletteKey;pendingPalette=request;paletteDelay.restart();
@@ -105,7 +116,7 @@ Singleton {
     Connections {target:Preferences;function onMatugenAutomaticChanged(){root.recolor();if(root.previewWallpaperPath)root.previewWallpaper(root.previewWallpaperPath);}function onMatugenSchemeChanged(){root.recolor();if(root.previewWallpaperPath)root.previewWallpaper(root.previewWallpaperPath);}function onMatugenContrastChanged(){root.recolor();if(root.previewWallpaperPath)root.previewWallpaper(root.previewWallpaperPath);}function onMatugenSourceChanged(){root.recolor();if(root.previewWallpaperPath)root.previewWallpaper(root.previewWallpaperPath);}function onWallpaperColorsChanged(){if(Preferences.wallpaperColors){Theme.setPalette("wallpaper");root.recolor();if(root.previewWallpaperPath)root.previewWallpaper(root.previewWallpaperPath);}else{root.previewPaletteKey="";root.pendingPreviewPalette=null;previewDelay.stop();Theme.clearWallpaperPreview();}}}
     function scanWallpapers(): void {
         if (wallProc.running) return;
-        wallProc.command = ["python3", script, "wallpapers", JSON.stringify({automatic:Preferences.matugenAutomatic,scheme:Preferences.matugenScheme,contrast:Preferences.matugenContrast,source:Preferences.matugenSource})];
+        wallProc.command = ["python3", script, "wallpapers", JSON.stringify({automatic:Preferences.matugenAutomatic,scheme:Preferences.matugenScheme,contrast:Preferences.matugenContrast,source:Preferences.matugenSource,paletteDataFormat:"json"})];
         wallProc.running = true;
     }
     function action(name: string, value: string): void {
@@ -124,6 +135,7 @@ Singleton {
     property bool brightnessDirty: false
     property bool brightnessInFlight: false
     property int brightnessSequence: 0
+    property int brightnessAcknowledgedSequence: 0
     onBrightnessChanged: if (!brightnessProc.running) pendingBrightness = brightness
     FileView {
         id: brightnessFile
@@ -142,8 +154,9 @@ Singleton {
         pendingBrightness = Math.max(0.01, Math.min(1, value));
         brightness = pendingBrightness;
         brightnessDirty = true;
+        error = "";
         brightnessIdle.restart();
-        if (!brightnessProc.running) { error = ""; brightnessProc.running = true; }
+        if (!brightnessProc.running) brightnessProc.running = true;
         else if (!brightnessTimer.running) brightnessTimer.start();
     }
     function flushBrightness(): void {
@@ -168,10 +181,16 @@ Singleton {
                 const result = JSON.parse(data);
                 root.brightnessInFlight = false;
                 if (!result.ok) { root.error = result.error || "Couldn't change brightness"; root.brightnessDirty = false; }
-                else if (root.brightnessDirty && !brightnessTimer.running) brightnessTimer.start();
+                else if (result.sequence !== root.brightnessSequence || !Number.isFinite(result.value)) root.error = "Couldn't read the brightness response";
+                else {
+                    root.brightnessAcknowledgedSequence = result.sequence;
+                    if (!root.brightnessDirty) root.brightness = result.value;
+                    else if (!brightnessTimer.running) brightnessTimer.start();
+                }
             } catch (e) { root.error = "Couldn't read the brightness response"; root.brightnessInFlight = false; }
         } }
         onExited: {
+            if (root.brightnessInFlight || root.brightnessDirty) root.error = root.error || "Brightness stopped without a response";
             root.brightnessInFlight = false;
             root.brightnessDirty = false;
             brightnessTimer.stop();

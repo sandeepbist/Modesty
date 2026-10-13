@@ -5,6 +5,8 @@ import qs.components
 Item {
     id: root
     property real availableWidth: 1000
+    property real availableHeight: 1080
+    readonly property real maximumHeight: Math.max(0,(availableHeight-16)/Preferences.uiScale)
     readonly property string panel: IslandState.state
     readonly property alias capsule: center.capsule
     readonly property alias mediaStage: left
@@ -12,6 +14,7 @@ Item {
     readonly property alias controlStage: right
     readonly property alias trayIcons: tray
     readonly property alias trayMenu: trayMenu
+    readonly property Item popupInputRegion: center.popupInputRegion
     readonly property real levelProgress: clockViewport.levelAmount
     readonly property var levelStatus: ({kind:clockViewport.levelEvent.kind,value:clockViewport.levelEvent.value,progress:clockViewport.levelAmount})
     readonly property bool agentPulse: AgentWork.pulse && left.mode !== "agent" && center.panel === "idle" && clockViewport.welcomeAmount === 0
@@ -64,7 +67,7 @@ Item {
             topMargin: Preferences.topMargin
         };
     }
-    function bounded(value: real): real { return Math.min(value, (availableWidth - 32) / Preferences.uiScale - 2 * (Preferences.barHeight + gap)); }
+    function bounded(value: real): real { return Math.max(0,Math.min(value, (availableWidth - 32) / Preferences.uiScale - 2 * (Preferences.barHeight + gap))); }
     Binding {target:LiveMedia;property:"visibleOnScreen";value:root.visible&&left.visible&&left.mode==="media"&&!left.expanded}
     DropArea {
         id:fileDrop;z:100
@@ -80,6 +83,7 @@ Item {
     Stage {
         id: left
         maximumWidth: root.bounded(Infinity)
+        maximumHeight: root.maximumHeight
         x: center.x - (visible ? root.gap : 0) - width
         stage: "media"
         readonly property bool mediaAvailable: Preferences.showAlbum && (!Preferences.mediaAutoHide || Media.hasSession || sessionGrace.running)
@@ -111,7 +115,7 @@ Item {
         // Preserve the circle's geometry while fading; collapsing its width
         // would squeeze the artwork during the next appearance.
         targetWidth: expanded ? root.bounded(IslandState.sizes[panel][0]) : restingWidth
-        targetHeight: expanded ? IslandState.sizes[panel][1] : Preferences.barHeight
+        targetHeight: expanded ? Math.min(root.maximumHeight,IslandState.sizes[panel][1]) : Preferences.barHeight
         Art {anchors.right:parent.right;anchors.rightMargin:(Preferences.barHeight-23)/2;anchors.verticalCenter:parent.verticalCenter;width:23;height:23;source:Media.artUrl;radius:width/2;compact:true;visible:left.mode==="media"}
         Item {
             x: 6; anchors.verticalCenter: parent.verticalCenter; width: 23; height: 23
@@ -142,6 +146,7 @@ Item {
     Stage {
         id: center
         maximumWidth: root.bounded(Infinity)
+        maximumHeight: root.maximumHeight
         readonly property bool privacySpace: Preferences.privacyRadar && !!Audio.indicatorKind && panel === "idle"
         readonly property real clockRestingWidth: Math.max(Preferences.collapsedWidth+(Preferences.showSeconds?20:0),clockViewport.clockTextWidth+clockViewport.privacyPadding*2)
         readonly property real agentRestingWidth: Math.max(AgentWork.width,clockViewport.agentLabelWidth+clockViewport.privacyPadding*2)
@@ -157,7 +162,7 @@ Item {
         panel: IslandState.owner === "clock" ? root.panel : "idle"
         inlineContext:clockViewport.levelRequested||clockViewport.levelAmount>0
         targetWidth: root.bounded(clockViewport.welcomeRequested||clockViewport.welcomeAmount>0?clockViewport.welcomeWidth:panel==="idle"?restingWidth:root.agentWidthHeld?AgentWork.width:(IslandState.sizes[panel]?.[0] ?? Preferences.collapsedWidth))
-        targetHeight: IslandState.sizes[panel]?.[1] ?? Preferences.barHeight
+        targetHeight: Math.min(root.maximumHeight,IslandState.sizes[panel]?.[1] ?? Preferences.barHeight)
         // One persistent clock survives both directions of the weekly expansion.
         onActivated: localX => {if (privacySpace && localX >= clockPrivacy.x && localX <= clockPrivacy.x + clockPrivacy.width) IslandState.toggle("privacy"); else if (root.agentPulse) AgentWork.focusT3(); else if (Context.active && Context.kind === "luma") CanvasState.show(); else IslandState.toggle("clock");}
     }
@@ -175,11 +180,12 @@ Item {
     Stage {
         id: right
         maximumWidth: root.bounded(Infinity)
+        maximumHeight: root.maximumHeight
         x: center.x + center.width + (visible ? root.gap : 0)
         stage: "controls"; visible: Preferences.showStatus || IslandState.owner === "controls" || Recorder.active || FocusTimer.active
         panel: IslandState.owner === "controls" ? (["recording","focusstatus"].includes(root.panel)?"activities":root.panel==="context"?"context":"quicksettings") : (Recorder.active&&!Recorder.selecting)||FocusTimer.active ? "activities" : "idle"
         targetWidth: !visible ? 0 : expanded ? root.bounded(IslandState.sizes[panel==="quicksettings"?root.panel:panel]?.[0]??Preferences.controlsWidth) : Preferences.barHeight
-        targetHeight: expanded ? IslandState.sizes[panel==="quicksettings"?root.panel:panel][1] : Preferences.barHeight
+        targetHeight: expanded ? Math.min(root.maximumHeight,IslandState.sizes[panel==="quicksettings"?root.panel:panel][1]) : Preferences.barHeight
         StatusOrb { anchors.centerIn:parent }
         onActivated: {
             if (panel === "context" && Context.kind === "audiooutput") {

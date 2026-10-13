@@ -16,7 +16,7 @@ ShellRoot {
         Grid {
             id: grid; columns: 4; spacing: 10; anchors.centerIn: parent
             Repeater {
-                model: ["media", "display", "sound", "wifi", "bluetooth", "lock", "appearance", "notifications", "peace", "nightlight", "focus", "awake", "recorder", "power"]
+                model: ["media", "display", "sound", "wifi", "bluetooth", "lock", "appearance", "notifications", "peace", "nightlight", "focus", "awake", "recorder", "power", "notes"]
                 Island.ControlTile { required property string modelData; kind: modelData; width: 150; height: 140 }
             }
         }

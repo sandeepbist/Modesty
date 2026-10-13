@@ -7,13 +7,13 @@ import "modules/settings" as Settings
 import "modules/settings/SettingsCatalog.js" as Catalog
 import qs.services
 ShellRoot {
-    FloatingWindow { visible:false; implicitWidth:1920;implicitHeight:1080;Island.IslandSurface {id:surface;availableWidth:1920} }
+    FloatingWindow { visible:false; implicitWidth:1920;implicitHeight:1080;Island.IslandSurface {id:surface;availableWidth:1920;availableHeight:1080} }
     LazyLoader {active:IslandState.settingsOpen;Settings.SettingsWindow {visible:false} }
     property int index:0
     property int attempts:0
     property bool checking:false
     property int settingsIndex:0
-    property var names:["media","clock","quicksettings","wifi","bluetooth","display","sound","privacy","performance","focus","recorder","notifhistory","calendar","wallpapers","themes","launcher","dropcue","files","authentication","unlockcheck","power","settings"]
+    property var names:["media","clock","quicksettings","wifi","bluetooth","display","sound","privacy","performance","focus","recorder","notifhistory","calendar","notes","wallpapers","themes","launcher","dropcue","files","authentication","unlockcheck","power","settings"]
     Timer {interval:80;repeat:true;running:true;onTriggered:{
         if(index>=names.length){console.log("VALIDATION COMPLETE");Qt.quit();return;}
         if(!checking){IslandState.openMenu(names[index]);checking=true;attempts=0;return;}

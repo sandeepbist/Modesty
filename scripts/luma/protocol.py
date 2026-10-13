@@ -22,7 +22,7 @@ def clean_execution(value):
         if not isinstance(tool,dict) or not isinstance(result,dict): continue
         receipts.append({"at":entry.get("at",0),
             "tool":{k:v[:2000] if isinstance(v,str) else v[:96] for k,v in tool.items() if k in {"name","purpose","path","argv","uri","action_name","action_args","id","operation"} and isinstance(v,(str,list))},
-            "result":{k:v[:2000] if isinstance(v,str) else v for k,v in result.items() if k in {"ok","status","error","path","exitCode","stdout","stderr","note"} and (isinstance(v,(str,bool)) or v is None or type(v) in (int,float))}})
+            "result":{k:v[:2000] if isinstance(v,str) else v for k,v in result.items() if k in {"ok","status","error","path","exitCode","stdout","stderr","note","id","revision","ticket"} and (isinstance(v,(str,bool)) or v is None or type(v) in (int,float))}})
     return receipts
 
 
@@ -56,17 +56,25 @@ def clean_task_context(value):
         if not isinstance(task, dict) or task.get("name") not in ACTIONS or not isinstance(task.get("args"), dict):
             continue
         clean = {k: v[:240] if isinstance(v, str) else v for k, v in task.items()
-                 if k in {"key", "name", "status", "batch", "reminderId", "expectedUntil", "at"}
+                 if k in {"key", "name", "status", "batch", "reminderId", "noteId", "revision", "expectedUntil", "at"}
                  and (isinstance(v, str) or type(v) in (int, float) and math.isfinite(v))}
         clean["args"] = {k: v[:240] if isinstance(v, str) else v for k, v in task["args"].items()
-                         if k in {"title", "date", "time", "id", "dueAt", "lead", "count", "mode", "enabled", "seconds", "minutes", "level", "paused", "panel", "operation", "width", "format"}
+                         if k in {"title", "date", "time", "id", "dueAt", "lead", "count", "mode", "enabled", "seconds", "minutes", "level", "paused", "panel", "operation", "width", "format", "expectedRevision", "pinned", "repeat", "zone"}
                          and (isinstance(v, str) or type(v) is bool or type(v) in (int, float) and math.isfinite(v))}
         if task["name"]=="file_action" and isinstance(task["args"].get("paths"),list):
             clean["args"]["paths"]=[p[:1024] for p in task["args"]["paths"][:3] if isinstance(p,str)]
+        if isinstance(task["args"].get("repeat"),dict):
+            from .actions import checked_repeat
+            try: clean["args"]["repeat"]=checked_repeat(task["args"]["repeat"])
+            except ValueError: pass
         recent.append(clean)
     pending = value.get("pendingTask")
     pending = {k: v[:160] if isinstance(v, str) else v for k, v in pending.items()
-               if k in {"kind", "need", "title", "date", "time", "dueAt"} and (isinstance(v, str) or type(v) in (int, float) and math.isfinite(v))} if isinstance(pending, dict) and pending.get("kind") == "reminder" else None
+               if k in {"kind", "need", "title", "date", "time", "dueAt", "zone"} and (isinstance(v, str) or type(v) in (int, float) and math.isfinite(v))} if isinstance(pending, dict) and pending.get("kind") == "reminder" else None
+    if pending and isinstance(value.get("pendingTask",{}).get("repeat"),dict):
+        from .actions import checked_repeat
+        try: pending["repeat"]=checked_repeat(value["pendingTask"]["repeat"])
+        except ValueError: pass
     expires = value.get("taskExpires", 0)
     expires = expires if type(expires) in (int, float) and math.isfinite(expires) and time.time()*1000 < expires <= time.time()*1000+120000 else 0
     run=value.get("systemRun","")

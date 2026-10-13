@@ -33,6 +33,12 @@ def emit(**data):
     print(json.dumps(data, ensure_ascii=False), flush=True)
 
 
+def protected_note(path):
+    path=Path(path).expanduser().resolve()
+    state=Path(os.environ.get("XDG_STATE_HOME",HOME/".local/state"))/"modesty"
+    return path.parent==state.resolve() and (path.name.startswith("notes") or path.name.startswith(".notes-")) or (state/"notes").resolve() in path.parents
+
+
 def index_files():
     CACHE.mkdir(parents=True, exist_ok=True)
     with (CACHE / "command-files.lock").open("w") as lock:
@@ -54,7 +60,7 @@ def index_files():
                     entries = os.scandir(folder)
                     with entries:
                         for item in entries:
-                            if item.name in SKIP or item.is_symlink():
+                            if item.name in SKIP or item.is_symlink() or protected_note(item.path):
                                 continue
                             try:
                                 directory = item.is_dir(follow_symlinks=False)
@@ -96,7 +102,7 @@ def fetch_file_rows(query):
         db.close()
     except (sqlite3.Error, OSError):
         rows = []
-    return [dict(path=p, title=n, subtitle=str(Path(p).parent).replace(str(HOME), "~", 1), kind=k, modified=m) for p,n,folder,k,m in rows]
+    return [dict(path=p, title=n, subtitle=str(Path(p).parent).replace(str(HOME), "~", 1), kind=k, modified=m) for p,n,folder,k,m in rows if not protected_note(p)]
 
 
 def search_files(query):
@@ -505,7 +511,7 @@ def clipboard_wipe():
 
 def preview(path):
     file = Path(path).expanduser().resolve()
-    if not file.is_file() or HOME not in file.parents or file.stat().st_size > 32_000_000:
+    if protected_note(file) or not file.is_file() or HOME not in file.parents or file.stat().st_size > 32_000_000:
         emit(ok=False, path=path, text="Preview unavailable")
         return
     suffix = file.suffix.lower()

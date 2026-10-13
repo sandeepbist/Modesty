@@ -10,6 +10,38 @@ assistant, notifications, a lock screen and a window companion.
 [Screenshots and video](#screenshots-and-video) · [Uninstall](#uninstall-and-restore) ·
 [Contribute](#contribute) · [Get help](https://github.com/sandeepbist/Modesty/issues/new/choose)**
 
+<details>
+<summary>Optional AMD shell memory reduction</summary>
+
+The main-shell startup has an opt-in optimization for a verified AMD Mesa
+Wayland device. It avoids loading unused EGL vendors inside Quickshell. It
+does not change animations, shaders, or the GPU environment passed to apps.
+Other desktops keep normal startup by default.
+
+From a working desktop session, enable it locally and restart:
+
+```sh
+python3 scripts/shell_renderer.py --enable
+python3 scripts/session-control.py restart
+```
+
+The selection is saved in local state, outside the dotfiles. Each startup checks
+the saved device against normal and Mesa EGL initialization. Changed devices,
+explicit GPU or plugin choices, preload libraries, reconnect mode, unavailable
+drivers, and missing compiler support keep normal startup. The helper builds
+once with the installed C compiler and stays in the user's cache. This applies
+only to main-shell startup through `session-control.py`, not direct or preview
+launches. It does not promise a higher frame rate.
+
+To return to normal startup:
+
+```sh
+python3 scripts/shell_renderer.py --disable
+python3 scripts/session-control.py restart
+```
+
+</details>
+
 ## Install
 
 You need **x86_64 Arch Linux**, working graphics drivers, a normal user account,
@@ -119,6 +151,7 @@ python3 install.py --install-voice
 | Tap Super | Application launcher |
 | Super + Space | Luma search and assistant |
 | Super + comma | Settings |
+| Super + Alt + N | Quick Notes; customizable in Settings |
 | Super + L | Lock screen |
 | Escape / outside click | Dismiss the current panel |
 
@@ -128,6 +161,8 @@ python3 install.py --install-voice
 | Settings | Spacing, motion, colors, control-center layout, notifications and companion; reduced motion supported |
 | Privacy indicators | Microphone/camera activity while capture is active; microphone mute controls in the privacy panel |
 | Luma | Applications, files, file contents, clipboard entries, calculations, web search and desktop actions; AI answers use your configured cloud provider |
+| Quick Notes | Plain text and Markdown capture, search, pins, Archive, Trash, restore, and Markdown export |
+| Reminders | One-time advance notices and daily, weekly, weekday, or monthly calendar recurrence with a timezone |
 | Agent activity | T3 Code task status: working, waiting and completion feedback |
 
 Settings uses five categories with page tabs and remembers the last page in each category. Search individual controls with Ctrl+F, then use Up/Down and Enter. Unavailable controls stay visible and link to their prerequisite. Music and media share one page. Unsaved personal notes and provider key inputs remain in the current Settings window when you switch pages or search.
@@ -168,6 +203,26 @@ reinstall preserves a previous opt-in.
   not implemented yet.
 
 </details>
+
+Open **Notes** from the control center or its shortcut. Start typing in the body;
+the title is optional. **Library** searches your notes and opens Archive or Trash.
+The overflow menu has pin, archive, trash, and export actions. Notes keep your
+draft, cursor, and scroll position when the panel closes. Wait for **Saved** before
+ending the session. A failed save keeps the draft available for retry.
+
+Typed and spoken Luma requests use the same native controls. For example, say
+"Take a note: buy milk", "Append eggs to this note", or "Remind me to drink water
+every weekday at 9 AM". Luma asks when a note or time is ambiguous. It reads note
+bodies only through scoped Notes tools. Edits require the current revision and
+cannot overwrite unsaved typing.
+
+Native actions cover notes, reminders, audio devices and microphone mute, Wi-Fi,
+Bluetooth, media, recording, notifications, appearance, wallpaper, display,
+presentation preferences, and session and update controls. Hardware capabilities
+determine which actions are available. Passwords, pairing, display confirmation,
+and administrator authentication stay in their native panels. Access and privacy
+permissions require Settings. **Requested** means completion is pending;
+**Saved** and **Verified** require a persistence receipt or observed result.
 
 ## Update
 
