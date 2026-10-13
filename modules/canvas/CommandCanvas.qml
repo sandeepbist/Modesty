@@ -655,7 +655,7 @@ PanelWindow {
                     font.kerning:true;font.preferTypoLineMetrics:true
                     font.hintingPreference:Font.PreferVerticalHinting;renderType:Tokens.textRenderType
                     Accessible.name:"Ask Luma"
-                    cursorDelegate:Rectangle {width:1.5;height:input.font.pixelSize+3;y:(input.height-height)/2;radius:.75;color:Theme.accent;opacity:input.activeFocus&&input.cursorVisible&&input.text.length?1:0;Behavior on opacity {NumberAnimation {duration:Tokens.reducedMotion?0:90}}}
+                    cursorDelegate:InputCaret {editor:input;caretWidth:1.5;reveal:input.text.length>0;visibilityDuration:90}
                     Keys.onDownPressed:window.scope==="ask"?conversation.scroll(36):window.answerExpanded?window.scrollAnswer(36):window.step(1)
                     Keys.onUpPressed:window.scope==="ask"?conversation.scroll(-36):window.answerExpanded?window.scrollAnswer(-36):window.step(-1)
                     Keys.onEscapePressed:if(window.scope==="ask"&&conversation.historyOpen)conversation.historyOpen=false;else window.closeOne()

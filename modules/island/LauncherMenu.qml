@@ -36,7 +36,9 @@ FocusScope {
             Rectangle {x:8;y:parent.height+5;width:parent.width-16;height:1;color:Theme.withAlpha(Theme.text,.07)}
             Icon {x:12;anchors.verticalCenter:parent.verticalCenter;icon:"search";size:19;color:Theme.subtext}
             TextInput {
-                id:input;objectName:"appSearch";x:43;anchors.verticalCenter:parent.verticalCenter;width:parent.width-58;height:24;verticalAlignment:TextInput.AlignVCenter
+                id:input;objectName:"appSearch"
+                cursorDelegate:InputCaret {editor:input}
+                x:43;anchors.verticalCenter:parent.verticalCenter;width:parent.width-58;height:24;verticalAlignment:TextInput.AlignVCenter
                 focus:true;color:Theme.text;selectionColor:Theme.accent;selectedTextColor:Theme.bgSolid
                 font.family:Tokens.font;font.pixelSize:15;font.hintingPreference:Font.PreferVerticalHinting;renderType:Tokens.textRenderType
                 selectByMouse:true;clip:true;onTextChanged:root.query=text

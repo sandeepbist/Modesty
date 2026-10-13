@@ -28,6 +28,7 @@ FocusScope {
             Icon { icon: "search"; size: 14; color: Theme.subtext }
             TextInput {
                 id: search; objectName: "themeSearch"; Layout.fillWidth: true; color: Theme.text; font.family: Tokens.font; font.pixelSize: 13; selectByMouse: true; clip: true; focus: true
+                cursorDelegate:InputCaret {editor:search}
                 onTextChanged: root.query = text
                 Keys.onLeftPressed: carousel.decrementCurrentIndex()
                 Keys.onRightPressed: carousel.incrementCurrentIndex()

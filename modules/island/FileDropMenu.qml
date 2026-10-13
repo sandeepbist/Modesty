@@ -126,6 +126,7 @@ ColumnLayout {
                 // The island animates its outer height; this field follows the same content measure.
                 SurfaceLighting { anchors.fill: parent; radius: parent.radius; focused: question.activeFocus; interactive: false }
                 ScrollView {
+                    id:questionScroll
                     x: 14; y: 13; width: parent.width - 60; height: parent.height - 26
                     contentWidth: availableWidth
                     clip: true
@@ -133,6 +134,7 @@ ColumnLayout {
                     ScrollBar.vertical.policy: ScrollBar.AsNeeded
                     TextArea {
                         id: question
+                        cursorDelegate:InputCaret {editor:question;viewport:questionScroll.contentItem}
                         padding: 0; wrapMode: TextEdit.Wrap; selectByMouse: true; textFormat: TextEdit.PlainText
                         text: IslandDrop.question; placeholderText: "Ask Luma…"
                         color: Theme.text; placeholderTextColor: Theme.subtext

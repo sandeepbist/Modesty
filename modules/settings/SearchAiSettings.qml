@@ -74,6 +74,7 @@ ColumnLayout {
             ScrollBar.vertical:SettingsScrollBar {parent:notesFrame;anchors.top:parent.top;anchors.bottom:parent.bottom;anchors.right:parent.right;anchors.margins:6}
             TextArea.flickable:TextArea {
                 id:notes;objectName:"custom-notes";padding:6;text:root.drafts.hasNotes?root.drafts.notes:Luma.memory;placeholderText:"Preferences Luma should remember. Saved only when you choose Save.";wrapMode:TextEdit.Wrap
+                cursorDelegate:InputCaret {editor:notes;viewport:notesViewport}
                 onTextEdited:{root.drafts.notes=text;root.drafts.hasNotes=true;}
                 textFormat:TextEdit.PlainText
                 color:Theme.text;placeholderTextColor:Theme.subtext;font.family:Tokens.font;font.pixelSize:12

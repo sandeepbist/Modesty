@@ -83,7 +83,7 @@ FocusScope {
             contentItem:PanelText {leftPadding:12;rightPadding:28;text:identity.displayText;verticalAlignment:Text.AlignVCenter;font.pixelSize:12}
         }
         EntryField {
-            id:response;Layout.fillWidth:true;implicitHeight:46;leftPadding:14;rightPadding:14;font.pixelSize:16
+            id:response;caretRevealed:response.echoMode===TextInput.Normal&&response.text.length>0;Layout.fillWidth:true;implicitHeight:46;leftPadding:14;rightPadding:14;font.pixelSize:16
             horizontalAlignment:TextInput.AlignHCenter
             transform:Translate {x:root.shake}
             property string hint:root.waiting?"":root.flow?.inputPrompt||"Password"
@@ -96,7 +96,6 @@ FocusScope {
             onEnabledChanged:{if(enabled)Qt.callLater(root.focusResponse);else clear();}
             onAccepted:root.submit()
             Accessible.name:root.flow?.inputPrompt||"Password"
-            cursorDelegate:Rectangle {width:1;color:Theme.accent;visible:response.echoMode===TextInput.Normal&&response.text.length>0&&response.cursorVisible}
             PasswordDots {
                 anchors.centerIn:parent;maximumWidth:parent.width-48
                 length:Array.from(response.text).length
