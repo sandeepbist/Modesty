@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Exercise continuous spring state, preference changes and native inline handoff."""
 from qml import run
 
 run('''import QtQuick

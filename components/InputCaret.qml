@@ -14,15 +14,12 @@ Item {
     property int visibilityDuration: 0
     width: caretWidth
 
-    readonly property bool displayable: editor.activeFocus && editor.cursorVisible && editor.enabled && editor.visible && !editor.readOnly && reveal
+    readonly property bool displayable: visible && editor.activeFocus && editor.cursorVisible && editor.enabled && editor.visible && !editor.readOnly && reveal
                                        && (!editor.Window.window || editor.Window.window.visible)
     property real visualX: x
     property real visualY: y
     property bool ready: false
     property bool forceSnap: true
-    property int previousPosition: 0
-    property real anchorX: 0
-    property real anchorY: 0
     property bool blinkOn: true
     readonly property bool moving: horizontal.running || vertical.running
     readonly property bool blinking: blink.running
@@ -33,9 +30,9 @@ Item {
         else blink.stop();
     }
     function sync(): void {
-        const anchor = editor.positionToRectangle(Math.min(previousPosition, editor.length));
-        const layoutMoved = ready && (Math.abs(anchor.x - anchorX) > 1 || Math.abs(anchor.y - anchorY) > 1);
-        const animate = ready && !forceSnap && !layoutMoved && displayable && !Tokens.reducedMotion
+        pendingSync.stop();
+        const overflow = editor.contentWidth > Math.max(0, editor.width - editor.leftPadding - editor.rightPadding);
+        const animate = ready && !forceSnap && !overflow && displayable && !Tokens.reducedMotion
                         && !editor.inputMethodComposing && editor.selectionStart === editor.selectionEnd;
         if (animate) {
             horizontal.to = x;
@@ -46,22 +43,20 @@ Item {
             horizontal.stop(); vertical.stop();
             visualX = x; visualY = y;
         }
-        previousPosition = editor.cursorPosition;
-        const cursor = editor.positionToRectangle(previousPosition);
-        anchorX = cursor.x;
-        anchorY = cursor.y;
         ready = true;
         forceSnap = false;
         resetBlink();
     }
-    function snap(): void { forceSnap = true; Qt.callLater(sync); }
-    onXChanged: Qt.callLater(sync)
-    onYChanged: Qt.callLater(sync)
+    function queueSync(): void { pendingSync.restart(); }
+    function snap(): void { forceSnap = true; queueSync(); }
+    onXChanged: queueSync()
+    onYChanged: queueSync()
     onHeightChanged: snap()
     onDisplayableChanged: snap()
     onRevealChanged: snap()
     Component.onCompleted: snap()
 
+    Timer {id:pendingSync;interval:0;onTriggered:root.sync()}
     NumberAnimation {id:horizontal;target:root;property:"visualX";duration:Math.round(60/Preferences.motionSpeed);easing.type:Easing.OutCubic}
     NumberAnimation {id:vertical;target:root;property:"visualY";duration:Math.round(60/Preferences.motionSpeed);easing.type:Easing.OutCubic}
     Rectangle {
@@ -89,8 +84,8 @@ Item {
         function onFontChanged(): void { root.snap(); }
         function onRenderTypeChanged(): void { root.snap(); }
         function onInputMethodComposingChanged(): void { root.snap(); }
-        function onSelectionStartChanged(): void { Qt.callLater(root.sync); }
-        function onSelectionEndChanged(): void { Qt.callLater(root.sync); }
+        function onSelectionStartChanged(): void { root.queueSync(); }
+        function onSelectionEndChanged(): void { root.queueSync(); }
         function onTextEdited(): void { root.resetBlink(); }
     }
     Connections {

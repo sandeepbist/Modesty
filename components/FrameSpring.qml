@@ -42,7 +42,6 @@ QtObject {
                                       root.frequency * Preferences.motionSpeed, root.dampingRatio);
             root.value = next[0];
             root.velocity = next[1];
-            // A constrained endpoint has no visible rebound beyond its boundary.
             if ((root.targetValue <= root.minimumValue && root.value <= root.minimumValue && root.velocity <= 0)
                     || (root.targetValue >= root.maximumValue && root.value >= root.maximumValue && root.velocity >= 0)
                     || (Math.abs(root.value - root.targetValue) <= root.positionTolerance
