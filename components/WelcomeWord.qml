@@ -43,14 +43,16 @@ Canvas {
         const xs=points.map(p=>p.x),ys=points.map(p=>p.y),halfStroke=1.05;
         const left=Math.min(...xs)-halfStroke,top=Math.min(...ys)-halfStroke;
         inkBounds=Qt.rect(left,top,Math.max(...xs)+halfStroke-left,Math.max(...ys)+halfStroke-top);
-        length=distance;strokes=output;requestPaint();
+        length=distance;strokes=output;if(visible)requestPaint();
     }
     Component.onCompleted:trace()
-    onProgressChanged:requestPaint()
-    onInkChanged:requestPaint()
-    onWidthChanged:requestPaint()
-    onHeightChanged:requestPaint()
+    onProgressChanged:if(visible)requestPaint()
+    onInkChanged:if(visible)requestPaint()
+    onWidthChanged:if(visible)requestPaint()
+    onHeightChanged:if(visible)requestPaint()
+    onVisibleChanged:if(visible)requestPaint()
     onPaint:{
+        if(!visible)return;
         const ctx=getContext("2d");
         ctx.reset();ctx.clearRect(0,0,width,height);
         const fit=Math.min(width/inkBounds.width,height/inkBounds.height);

@@ -56,6 +56,7 @@ PanelWindow {
         scale: Preferences.uiScale
         transformOrigin: Item.Top
         availableWidth: root.width
+        availableHeight: root.height-y
         visible: !root.hiddenByFullscreen
         focus: true
         Keys.onEscapePressed: { Tray.close(); IslandState.dismissCurrent(); }
@@ -68,6 +69,7 @@ PanelWindow {
         Region { item: root.hiddenByFullscreen || !surface.controlStage.visible ? null : surface.controlStage.inputRegion; radius: surface.controlStage.capsule.radius }
         Region { item: root.hiddenByFullscreen || !surface.trayIcons.visible ? null : surface.trayIcons; radius: Preferences.barHeight / 2 }
         Region { item: Tray.open && !root.hiddenByFullscreen ? surface.trayMenu : null; radius:18 }
+        Region { item: root.hiddenByFullscreen ? null : surface.popupInputRegion; radius:12*Preferences.uiScale }
     }
 
 }

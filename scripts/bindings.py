@@ -2,7 +2,7 @@
 """Apply additional Modesty shortcuts without replacing existing Hyprland binds."""
 import json,os,re,subprocess,sys
 from pathlib import Path
-ACTIONS=('reminder','focus','focuspause','recorder','recordstop','recordpause','launcher','canvas','settings','quicksettings','media','calendar','themes','wallpapers','wifi','bluetooth','display','sound','notifhistory','power','appearance','awake','peace','nightlight','lock','playpause','next','previous')
+ACTIONS=('notes','reminder','focus','focuspause','recorder','recordstop','recordpause','launcher','canvas','settings','quicksettings','media','calendar','themes','wallpapers','wifi','bluetooth','display','sound','notifhistory','power','appearance','awake','peace','nightlight','lock','playpause','next','previous')
 STATE=Path(os.environ.get('XDG_STATE_HOME',Path.home()/'.local/state'))/'modesty'/'bindings.json'
 SCRIPT=Path(__file__).resolve().parents[1]/'shell.qml'
 MODS={'SUPER':64,'CTRL':4,'ALT':8,'SHIFT':1}
@@ -27,7 +27,8 @@ def apply(data):
     for action,chord in data.items():
         if action not in ACTIONS:raise ValueError('Unknown shortcut action')
         chord,mask,key=normalize(chord)
-        if not chord:continue
+        if not chord:
+            normalized[action]='';continue
         identity=(mask,key.lower())
         if identity in seen:raise ValueError(chord+' is assigned more than once')
         seen.add(identity)
@@ -35,6 +36,7 @@ def apply(data):
         normalized[action]=chord
     lines=['if _modesty_custom_binds then for _,b in ipairs(_modesty_custom_binds) do pcall(function() b:unbind() end) end end','_modesty_custom_binds = {}']
     for action,chord in normalized.items():
+        if not chord:continue
         command='quickshell ipc -p '+str(SCRIPT)+' call island action '+action
         lines.append('_modesty_custom_binds[#_modesty_custom_binds+1] = hl.bind('+json.dumps(chord)+',hl.dsp.exec_cmd('+json.dumps(command)+'),{description='+json.dumps('Modesty custom:'+action)+'})')
     response=run(['hyprctl','eval','\n'.join(lines)])
@@ -49,7 +51,12 @@ if __name__=='__main__':
         if len(sys.argv)>1 and sys.argv[1]=="--clear-live":
             clear_live();print(json.dumps({"ok":True}));sys.exit(0)
         data=json.loads(sys.argv[1]) if len(sys.argv)>1 else json.loads(STATE.read_text()) if STATE.exists() else {}
-        # Nothing to restore on a first launch; avoid touching the compositor.
-        result=apply(data) if data or len(sys.argv)>1 else {}
-        print(json.dumps({'ok':True,'bindings':result}),flush=True)
+        default_error=''
+        if len(sys.argv)==1 and 'notes' not in data:
+            try: result=apply(dict(data,notes='SUPER + ALT + N'))
+            except Exception as error:
+                default_error='Quick Notes shortcut: '+str(error)
+                result=apply(data) if data else {}
+        else: result=apply(data) if data or len(sys.argv)>1 else {}
+        print(json.dumps({'ok':True,'bindings':result,'defaultError':default_error}),flush=True)
     except Exception as e:print(json.dumps({'ok':False,'error':str(e)}),flush=True);sys.exit(1)

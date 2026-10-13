@@ -50,7 +50,7 @@ with tempfile.TemporaryDirectory() as tmp:
         print('PASS changed config is detected before any file is written')
 
 # A syntax failure must never remove the working shell, even on exit code zero.
-from subprocess import CompletedProcess
+from subprocess import CompletedProcess, TimeoutExpired
 with patch.object(mod.subprocess, 'run', return_value=CompletedProcess([], 0, 'ERROR: Failed to load configuration', '')):
     try: mod.validate_shell()
     except RuntimeError: pass
@@ -77,3 +77,72 @@ with tempfile.TemporaryDirectory() as tmp:
         else: raise AssertionError('Invalid shell restarted')
         stop.assert_not_called(); start.assert_not_called()
 print('PASS failed QML validation preserves the live shell, including zero-exit errors')
+
+with patch.object(mod,'health',return_value={'locked':False}):
+    for code in (0,1):
+        with patch.object(mod,'run',return_value=CompletedProcess([],code,'Target not found.\n','')) as run:
+            mod.flush_notes()
+            assert run.call_count == 1
+    acknowledgement='{"ok":true,"status":"pending"}'
+    saved='{"loaded":true,"dirty":false,"saving":false,"saveState":"Saved","error":""}'
+    with patch.object(mod,'run',side_effect=[CompletedProcess([],0,acknowledgement,''),CompletedProcess([],0,saved,'')]):
+        mod.flush_notes()
+    for response in ('Function not found.', 'Storage target not found.', 'No handler was able to save.', '{"ok":false,"status":"failed"}', '{"ok":false,"status":"failed","error":"Target not found."}', '[]'):
+        with patch.object(mod,'run',return_value=CompletedProcess([],0,response,'')):
+            try:mod.flush_notes()
+            except RuntimeError:pass
+            else:raise AssertionError('Invalid Notes acknowledgement allowed a restart '+response)
+    for response in ('Target not found.', '[]', '{"loaded":true,"dirty":false,"saving":false,"saveState":"Failed"}', '{"loaded":true,"dirty":false,"saving":false,"saveState":"Saved","error":"disk failure"}'):
+        with patch.object(mod,'run',side_effect=[CompletedProcess([],0,acknowledgement,''),CompletedProcess([],0,response,'')]):
+            try:mod.flush_notes()
+            except RuntimeError:pass
+            else:raise AssertionError('Invalid Notes save status allowed a restart '+response)
+print('PASS Notes restart flush accepts exact absent-target response and refuses missing functions, invalid statuses and failed saves')
+
+listing=['quickshell','list','-p',str(ROOT/'shell.qml')]
+flushing=['quickshell','ipc','-p',str(ROOT/'shell.qml'),'call','notes','flush','session']
+status=['quickshell','ipc','-p',str(ROOT/'shell.qml'),'call','notes','status']
+killing=['quickshell','kill','-p',str(ROOT/'shell.qml')]
+live=CompletedProcess([],0,'Instance test:\n  Process ID: 987654321\n','')
+with tempfile.TemporaryDirectory() as tmp, patch.object(mod,'STATE',Path(tmp)), patch.object(mod,'health',return_value=None):
+    for response in (CompletedProcess([],1,'','IPC unavailable'),CompletedProcess([],0,'',''),CompletedProcess([],0,'Function not found.',''),CompletedProcess([],0,'[]','')):
+        def respond(args,check=True):
+            if args==listing:return live
+            if args==flushing:return response
+            if args==killing:return CompletedProcess([],0,'','')
+            raise AssertionError('Unexpected shell command '+str(args))
+        with patch.object(mod,'run',side_effect=respond) as run:
+            try:mod.stop_modesty()
+            except RuntimeError:pass
+            else:raise AssertionError('Missing health and Notes acknowledgement killed the live shell')
+            assert [call.args[0] for call in run.call_args_list]==[listing,flushing]
+    for response in (CompletedProcess([],1,saved,''),CompletedProcess([],0,'',''),CompletedProcess([],0,'Target not found.',''),CompletedProcess([],0,'[]',''),CompletedProcess([],0,'{"loaded":true,"dirty":false,"saving":false,"saveState":"Failed"}',''),CompletedProcess([],0,'{"loaded":true,"dirty":false,"saving":false,"saveState":"Saved","error":"disk failure"}','')):
+        with patch.object(mod,'run',side_effect=[live,CompletedProcess([],0,acknowledgement,''),response]) as run:
+            try:mod.stop_modesty()
+            except RuntimeError:pass
+            else:raise AssertionError('Invalid Notes save status killed the live shell')
+            assert [call.args[0] for call in run.call_args_list]==[listing,flushing,status]
+    for replies,commands in (([live,TimeoutExpired(flushing,12)],[listing,flushing]),([live,CompletedProcess([],0,acknowledgement,''),TimeoutExpired(status,12)],[listing,flushing,status])):
+        with patch.object(mod,'run',side_effect=replies) as run:
+            try:mod.stop_modesty()
+            except TimeoutExpired as error:assert error.timeout==12
+            else:raise AssertionError('Notes IPC timeout killed the live shell')
+            assert [call.args[0] for call in run.call_args_list]==commands
+    absent=CompletedProcess([],0,'',f'No running instances for "{ROOT}/shell.qml"\nUse --all to list all instances.\n')
+    with patch.object(mod,'run',return_value=absent) as run:
+        mod.stop_modesty()
+        assert [call.args[0] for call in run.call_args_list]==[listing]
+    for response in (CompletedProcess([],1,'','List unavailable'),CompletedProcess([],0,'',''),CompletedProcess([],0,'Unknown response','')):
+        with patch.object(mod,'run',return_value=response) as run:
+            try:mod.stop_modesty()
+            except RuntimeError:pass
+            else:raise AssertionError('Unknown shell instance state allowed a stop')
+            assert [call.args[0] for call in run.call_args_list]==[listing]
+    with patch.object(mod,'run',side_effect=[live,CompletedProcess([],0,acknowledgement,''),CompletedProcess([],0,saved,''),CompletedProcess([],0,'','')]) as run:
+        mod.stop_modesty()
+        assert [call.args[0] for call in run.call_args_list]==[listing,flushing,status,killing]
+    for code in (0,1):
+        with patch.object(mod,'run',side_effect=[live,CompletedProcess([],code,'Target not found.\n',''),CompletedProcess([],0,'','')]) as run:
+            mod.stop_modesty()
+            assert [call.args[0] for call in run.call_args_list]==[listing,flushing,killing]
+print('PASS missing health never skips Notes save; absent instances are a no-op; failed flush, status and instance listing preserve the live shell')

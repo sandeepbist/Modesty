@@ -5,8 +5,18 @@ Entries are prepared before publishing. GitHub Releases records which versions h
 
 ## [Unreleased]
 
+### Added
+
+- Quick Notes captures plain text and Markdown with search, pins, archive, trash, restore, and Markdown export. Drafts survive delayed or failed saves, and native note edits require the current revision.
+- Reminders support recurring schedules, revision-checked edits, durable command retries, and calendar-day selection.
+- Luma can request native note, reminder, media, display, network, workspace, and power actions. Completion follows the actual persistence receipt or observed result.
+
 ### Fixed
 
+- Notes action menus follow the shell scale, expose their full pointer region, and retain native keyboard navigation and scrolling.
+- Notes recovery refuses to replace a readable current store. Shell shutdown requires a Notes save acknowledgement before stopping a live instance.
+- Reminder completion, removal, and Luma Undo reject stale revisions. Undo reports success only after the durable command receipt.
+- Luma requires confirmation when the permission classifier cannot establish intent, including reminder removal.
 - Palette refinement chooses the stronger contrast direction for mid-tone accents and keeps labels readable on translucent selections.
 - Thunar backgrounds and selection colors follow the active palette in both modes. Selected file labels use the matching foreground, and keyboard focus outlines remain visible. Named application palettes use the shell's selection foreground.
 - Voice ribbons fade in when activated, including after panel travel and when reopening, instead of appearing at full brightness.
@@ -25,6 +35,10 @@ Entries are prepared before publishing. GitHub Releases records which versions h
 - Notification bursts retain the newest 50 history records after exit animations.
 
 ### Changed
+
+- Wallpaper color scans defer full palette parsing until the selected entry needs it, while preserving preview colors and complete color metadata. Identical preview palettes skip redundant Theme updates.
+- Main-shell startup has an optional local AMD Mesa optimization that avoids loading unused EGL vendors. Other desktops retain normal startup, and explicit graphics overrides or failed verification use the normal path. Animations and warm voice remain enabled.
+- Hidden wallpaper and file-drop surfaces suspend redundant rendering and resume updates for geometry, exposure, and input changes.
 
 - Settings uses five categories with wrapping page tabs, keyboard search, prerequisite links, one Music & media page, and privacy indicator spacing controls. Selectors and sliders align within each row, scrollbars have reserved space, and unsaved notes and provider key inputs survive page navigation in the current window.
 - Optional Kitty cursor trails now require a default-no installer choice, separate package approval and final file approval. Settings can toggle the native effects include or open the exact profile; setup and uninstall use the existing receipt and backups. Foot, Super+T, launcher defaults and normal Kitty configuration are preserved.

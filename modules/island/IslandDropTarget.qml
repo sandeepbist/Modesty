@@ -14,7 +14,7 @@ PanelWindow {
     property rect heldBox:Qt.rect(0,0,1,1)
     readonly property rect liveBox: {
         clock.x;clock.width;clock.hoverLift;sourceIsland.surface.x;sourceIsland.surface.y;sourceIsland.surface.width;
-        const width=Math.max(clock.width,IslandState.sizes.dropcue[0]);
+        const width=Math.max(root.interactive?clock.width:clock.restingWidth,IslandState.sizes.dropcue[0]);
         const p=clock.mapToItem(sourceIsland.surface.parent,(clock.width-width)/2-6,clock.hoverLift);
         return Qt.rect(Math.floor(p.x),Math.floor(p.y),Math.ceil((width+12)*Preferences.uiScale),Math.ceil((Preferences.barHeight+7)*Preferences.uiScale));
     }
@@ -28,12 +28,32 @@ PanelWindow {
     WlrLayershell.namespace:"modesty-island-drop"
     WlrLayershell.layer:WlrLayer.Overlay
     WlrLayershell.keyboardFocus:WlrKeyboardFocus.None
+    onBoxChanged:root.updatesEnabled=true
+    onInteractiveChanged:root.updatesEnabled=true
+    onWidthChanged:root.updatesEnabled=true
+    onHeightChanged:root.updatesEnabled=true
+    onScreenChanged:root.updatesEnabled=true
+    onDevicePixelRatioChanged:root.updatesEnabled=true
+    onBackingWindowVisibleChanged:root.updatesEnabled=true
+    onWindowConnected:root.updatesEnabled=true
+    onWindowTransformChanged:root.updatesEnabled=true
+    onColorChanged:root.updatesEnabled=true
+    onMaskChanged:root.updatesEnabled=true
     // Keep the native surface mapped; use an empty input region while another
     // panel is active so rapid drops do not race surface remapping.
     visible:!Session.locked&&!Session.secure&&!sourceIsland.hiddenByFullscreen&&sourceIsland.surface.visible&&Startup.progress>.99
     readonly property bool interactive:visible&&(holding||completing||(clock.panel==="idle"&&clock.nearRest)||clock.panel==="context")
-    mask:Region {item:root.interactive?clockInput:null;radius:root.clock.capsule.radius*Preferences.uiScale}
-    onVisibleChanged:if(!visible){holding=false;completing=false;IslandDrop.endDrag(root);IslandState.hover("clock",false);}
+    mask:Region {
+        item:root.interactive?clockInput:null;radius:root.clock.capsule.radius*Preferences.uiScale
+        onItemChanged:root.updatesEnabled=true
+        onRadiusChanged:if(item)root.updatesEnabled=true
+    }
+    onVisibleChanged:{root.updatesEnabled=true;if(!visible){holding=false;completing=false;IslandDrop.endDrag(root);IslandState.hover("clock",false);}}
+    Connections {
+        target:hit.Window.window
+        function onExposed() {root.updatesEnabled=true;}
+        function onAfterAnimating() {root.updatesEnabled=false;}
+    }
     Item {
         id:hit;anchors.fill:parent
         // Capture the visible clock, leaving neighbouring pill edges untouched.

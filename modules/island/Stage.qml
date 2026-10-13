@@ -13,12 +13,20 @@ Item {
     property real targetWidth: 33
     property real targetHeight: Preferences.barHeight
     property real maximumWidth: Infinity
-    readonly property var panelSources: ({dropcue:"DropCue.qml",files:"FileDropMenu.qml",activities:"ActivityStatus.qml",clock:"WeekCard.qml", context:"ContextPanel.qml",toast:"ToastStack.qml",calendar:"CalendarMenu.qml",media:"MediaCard.qml",privacy:"PrivacyMenu.qml",quicksettings:"ControlCenter.qml",themes:"ThemesMenu.qml",wallpapers:"WallpaperMenu.qml",power:"PowerMenu.qml",launcher:"LauncherMenu.qml",authentication:"AuthenticationMenu.qml",unlockcheck:"UnlockCheckMenu.qml"})
+    property real maximumHeight: Infinity
+    readonly property var panelSources: ({dropcue:"DropCue.qml",files:"FileDropMenu.qml",notes:"NotesMenu.qml",activities:"ActivityStatus.qml",clock:"WeekCard.qml", context:"ContextPanel.qml",toast:"ToastStack.qml",calendar:"CalendarMenu.qml",media:"MediaCard.qml",privacy:"PrivacyMenu.qml",quicksettings:"ControlCenter.qml",themes:"ThemesMenu.qml",wallpapers:"WallpaperMenu.qml",power:"PowerMenu.qml",launcher:"LauncherMenu.qml",authentication:"AuthenticationMenu.qml",unlockcheck:"UnlockCheckMenu.qml"})
     property bool expanded: panel !== "idle"
     property bool inlineContext: false
     property bool continuousWidth: false
     readonly property bool resizing: widthMotion.running || levelWidthMotion.running || heightMotion.running
     readonly property alias capsule: capsule
+    readonly property Item popupInputRegion: {
+        for (let i = 0; i < contentPanes.count; i++) {
+            const pane = contentPanes.itemAt(i);
+            if (pane?.selected && pane.enabled && pane.item?.popupInputRegion) return pane.item.popupInputRegion;
+        }
+        return null;
+    }
     readonly property Item inputRegion: Item {
         parent: root
         Component.onCompleted: parent = root
@@ -48,7 +56,7 @@ Item {
     property real apertureHeight: targetHeight
     // Rebound must not shrink the resting pill or cross the screen's margin.
     width: Math.max(0,Math.min(maximumWidth,Math.max(Math.min(restingWidth,targetWidth),apertureWidth)))
-    height: Math.max(Math.min(Preferences.barHeight,targetHeight),apertureHeight)
+    height: Math.max(0,Math.min(maximumHeight,Math.max(Math.min(Preferences.barHeight,targetHeight),apertureHeight)))
     Behavior on apertureWidth { enabled:!Tokens.reducedMotion&&!root.continuousWidth; animation:root.inlineContext?levelWidthMotion:widthMotion }
     SpringMotion { id:widthMotion }
     // Held volume/brightness keys keep the original short feedback deadline.
@@ -91,7 +99,7 @@ Item {
         }
         Repeater {
             id: contentPanes
-            model: ["clock", "activities", "context", "dropcue", "files", "toast", "calendar", "media", "privacy", "quicksettings", "themes", "wallpapers", "power", "launcher", "authentication", "unlockcheck"]
+            model: ["clock", "activities", "context", "dropcue", "files", "notes", "toast", "calendar", "media", "privacy", "quicksettings", "themes", "wallpapers", "power", "launcher", "authentication", "unlockcheck"]
             delegate: Loader {
                 id: content
                 required property string modelData
@@ -102,14 +110,14 @@ Item {
                 property real heldWidth: IslandState.sizes[modelData]?.[0] ?? 33
                 property real heldHeight: IslandState.sizes[modelData]?.[1] ?? 33
                 function resizeContent() { if (selected) { heldWidth = root.targetWidth; heldHeight = root.targetHeight; if(presentationScale>=.995)presented=true; } }
-                onSelectedChanged: { if(!selected){outgoingScale=visibleScale;outgoingReveal=revealAmount;presented=false;}else if (modelData === "launcher" && item) item.beginSearch(); Qt.callLater(resizeContent); Qt.callLater(focusContent); }
+                onSelectedChanged: { if(!selected){outgoingScale=presented?1:Math.max(0,Math.min(1,(root.width-inset*2)/Math.max(1,width),(root.height-inset*2)/Math.max(1,height)));const t=Math.max(0,Math.min(1,(outgoingScale-.55)/.43));outgoingReveal=t*t*(3-2*t);presented=false;}else if (modelData === "launcher" && item) item.beginSearch(); Qt.callLater(resizeContent); Qt.callLater(focusContent); }
                 Connections { target: root; enabled: content.selected; function onTargetWidthChanged() { Qt.callLater(content.resizeContent); } function onTargetHeightChanged() { Qt.callLater(content.resizeContent); } }
                 Component.onCompleted: Qt.callLater(resizeContent)
                 readonly property real inset: ["context","activities","dropcue"].includes(modelData) ? 0 : Preferences.innerPadding
                 width: Math.max(0, heldWidth - inset * 2); height: Math.max(0, heldHeight - inset * 2)
                 x: root.stage === "media" ? parent.width - heldWidth + inset : root.stage === "controls" ? inset : (parent.width - width) / 2
                 y: inset
-                readonly property real presentationScale:Math.max(0,Math.min(1,(root.width-inset*2)/Math.max(1,width),(root.height-inset*2)/Math.max(1,height)))
+                readonly property real presentationScale:selected?Math.max(0,Math.min(1,(root.width-inset*2)/Math.max(1,width),(root.height-inset*2)/Math.max(1,height))):outgoingScale
                 readonly property real visibleScale:presented?1:presentationScale
                 onPresentationScaleChanged:if(selected&&presentationScale>=.995)presented=true
                 readonly property real revealAmount: {

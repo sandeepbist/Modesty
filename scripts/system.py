@@ -56,7 +56,7 @@ def wallpapers(options=None):
             if data:
                 try:
                     entry['palette'] = wallpaper_tools.extract_palettes(data)
-                    entry['paletteData'] = data
+                    entry['paletteData'] = json.dumps(data, separators=(',', ':')) if options.get('paletteDataFormat') == 'json' else data
                 except (KeyError, TypeError, ValueError): pass
     return result
 

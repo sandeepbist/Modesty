@@ -2,6 +2,8 @@
 """Conservative local task parsing. Ambiguous requests stay in conversation."""
 from datetime import datetime, timedelta
 import re
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from reminders import local_zone, local_timestamp, repeat_value, recurring_days
 
 START = re.compile(r"^(?:please\s+)?(?:remind\s+me\b|(?:set|add|create|schedule)\s+(?:me\s+)?(?:a\s+)?reminder\b)\s*", re.I)
 UNITS = {"s": 1, "sec": 1, "secs": 1, "second": 1, "seconds": 1,
@@ -56,6 +58,42 @@ def day(text, now):
     return None
 
 
+def recurrence(text):
+    names = "|".join(sorted(WEEKDAYS, key=len, reverse=True))
+    weekday_pattern = r"(?:" + names + r")s?"
+    patterns = [
+        (r"\b(?:every\s+weekdays?|(?:on\s+)?weekdays|every\s+weekday)\b", 'weekdays'),
+        (r"\bevery\s+" + weekday_pattern + r"(?:\s*(?:,|and|&)\s*" + weekday_pattern + r")*\b", 'named'),
+        (r"\b(?:every\s+(?:(\d+)\s+)?(days?|weeks?|months?)|daily|weekly|monthly)\b", 'regular'),
+    ]
+    for pattern, kind in patterns:
+        match = re.search(pattern, text, re.I)
+        if not match:
+            continue
+        repeat = {'kind': 'weekly', 'interval': 1}
+        if kind == 'weekdays':
+            repeat['weekdays'] = [1, 2, 3, 4, 5]
+        elif kind == 'named':
+            repeat['weekdays'] = sorted({WEEKDAYS[value.lower().removesuffix('s')]+1 for value in re.findall(weekday_pattern, match[0], re.I)})
+        else:
+            value = match[0].lower()
+            repeat['kind'] = 'daily' if 'day' in value or value == 'daily' else 'weekly' if 'week' in value else 'monthly'
+            repeat['interval'] = int(match[1] or 1)
+        remaining = (text[:match.start()]+' '+text[match.end():]).strip()
+        if repeat['kind'] == 'monthly':
+            anchor = re.search(r"\b(?:on\s+(?:the\s+)?)?(\d{1,2})(?:st|nd|rd|th)\b", remaining, re.I)
+            if anchor:
+                repeat['anchorDay'] = int(anchor[1])
+                remaining = (remaining[:anchor.start()]+' '+remaining[anchor.end():]).strip()
+        elif repeat['kind'] == 'weekly' and kind == 'regular':
+            weekdays = re.search(r"\bon\s+"+weekday_pattern+r"(?:\s*(?:,|and|&)\s*"+weekday_pattern+r")*\b", remaining, re.I)
+            if weekdays:
+                repeat['weekdays'] = sorted({WEEKDAYS[value.lower().removesuffix('s')]+1 for value in re.findall(weekday_pattern, weekdays[0], re.I)})
+                remaining = (remaining[:weekdays.start()]+' '+remaining[weekdays.end():]).strip()
+        return repeat, remaining
+    return None, text
+
+
 def reminder(query, pending=None, now=None):
     """Return a resolved request/clarification, or None for the model to interpret."""
     now = now or datetime.now().astimezone()
@@ -70,18 +108,35 @@ def reminder(query, pending=None, now=None):
     text = query.strip()[intro.end():].strip() if intro else query.strip()
     if re.search(r"\b(?:and(?:\s+then)?|then)\s+(?:change|switch|set|turn|stay|keep|open|launch|start|pause|resume|cancel|stop)\b", text, re.I):
         return None
+    zone_match = re.search(r"\b(?:in\s+)?([A-Za-z_]+(?:/[A-Za-z_+-]+)+|UTC)\b", text)
+    if zone_match:
+        try:
+            ZoneInfo(zone_match[1])
+        except (ValueError, ZoneInfoNotFoundError):
+            return {"text": "Which timezone did you mean? Use a name such as Asia/Kolkata.", "draft": dict(draft, need="when")}
+        draft['zone'] = zone_match[1]
+        text = (text[:zone_match.start()]+' '+text[zone_match.end():]).strip()
+    zone = draft.get('zone') or getattr(now.tzinfo, 'key', None) or ('UTC' if now.utcoffset() == timedelta(0) else local_zone())
+    now = now.astimezone(ZoneInfo(zone))
+    draft['zone'] = zone
     if pending and not intro and draft.get("need") == "title":
-        # Only the immediate clarification accepts a free-form title.
         if START.match(text) or len(text) > 160:
             return None
         draft["title"] = text
         text = ""
+    repeat, text = recurrence(text)
+    if repeat:
+        draft['repeat'] = repeat
     relative = RELATIVE.search(text)
     if relative:
+        if draft.get('repeat'):
+            remaining = (text[:relative.start()]+' '+text[relative.end():]).strip()
+            draft['title'] = re.sub(r"^(?:for|to|about)\s+", "", remaining, flags=re.I).strip(" ,.;")
+            return {"text": "At what local time should this repeat? Use a time such as 9am.", "draft": dict(draft, need="when")}
         seconds = sum(float(n) * UNITS[u.lower()] for n, u in re.findall(r"(\d+(?:\.\d+)?)\s*([a-z]+)", relative[1], re.I))
         if not 1 <= seconds <= 365*86400:
             return {"text": "Choose a reminder between one second and one year from now.", "draft": {}}
-        draft["dueAt"] = round((now + timedelta(seconds=seconds)).timestamp()*1000)
+        draft["dueAt"] = round(now.timestamp()*1000 + seconds*1000)
         text = (text[:relative.start()] + " " + text[relative.end():]).strip()
     else:
         date_pattern = r"\b(?:on\s+)?(?:\d{4}-\d{2}-\d{2}|today|tomorrow|(?:next\s+)?(?:" + "|".join(WEEKDAYS) + r")|\d{1,2}(?:st|nd|rd|th)?\s+(?:" + "|".join(MONTHS) + r")(?:\s+\d{4})?|(?:" + "|".join(MONTHS) + r")\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s+\d{4})?)\b"
@@ -90,9 +145,11 @@ def reminder(query, pending=None, now=None):
             try:
                 resolved = day(date_match[0], now)
             except ValueError:
-                return {"text": "That date isn’t valid. Which date did you mean?", "draft": {"kind": "reminder", "need": "when"}}
+                return {"text": "That date isn't valid. Which date did you mean?", "draft": dict(draft, need="when")}
             draft["date"] = resolved.isoformat()
             text = (text[:date_match.start()] + " " + text[date_match.end():]).strip()
+        if re.search(r"\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b", text):
+            return {"text": "Which date did you mean? Use a month name or YYYY-MM-DD.", "draft": dict(draft, need="when")}
         time_match = re.search(r"\bat\s+\d{1,2}(?::[0-5]\d)?\s*(?:am|pm)?\b", text, re.I)
         if not time_match and pending and pending.get("need") == "when":
             time_match = TIME.fullmatch(text)
@@ -102,18 +159,32 @@ def reminder(query, pending=None, now=None):
                 draft["time"] = "%02d:%02d" % value
                 text = (text[:time_match.start()] + " " + text[time_match.end():]).strip()
             else:
+                remaining = (text[:time_match.start()]+' '+text[time_match.end():]).strip()
+                supplied_title = re.sub(r"^(?:for|to|about)\s+", "", remaining, flags=re.I).strip(" ,.;")
+                if supplied_title and len(supplied_title) <= 160:
+                    draft['title'] = supplied_title
                 return {"text": "Morning or evening? Use a time such as 10am or 22:00.", "draft": dict(draft, need="when")}
-        if draft.get("date") and draft.get("time"):
-            due = datetime.fromisoformat(draft["date"] + "T" + draft["time"]).astimezone()
-            draft["dueAt"] = round(due.timestamp()*1000)
+        if draft.get('repeat') and draft.get('time'):
+            try:
+                anchor = day(draft.get('date', now.date().isoformat()), now)
+                draft['repeat'] = repeat_value(draft['repeat'], anchor)
+                entry = dict(date=anchor.isoformat(), startsOn=anchor.isoformat(), time=draft['time'], repeat=draft['repeat'], zone=zone)
+                for value in recurring_days(entry, anchor):
+                    at = local_timestamp(value.isoformat(), entry['time'], zone)
+                    if at > now.timestamp()*1000:
+                        draft['date'], draft['dueAt'] = value.isoformat(), at
+                        break
+            except (ValueError, OverflowError):
+                return {"text": "Choose a valid recurrence interval, weekday, or day of the month.", "draft": dict(draft, need="when")}
+        elif draft.get("date") and draft.get("time"):
+            draft["dueAt"] = local_timestamp(draft['date'], draft['time'], zone)
         elif draft.get("time") and not draft.get("date"):
-            due = now.replace(hour=int(draft["time"][:2]), minute=int(draft["time"][3:]), second=0, microsecond=0)
-            if due > now:
-                draft["dueAt"] = round(due.timestamp()*1000)
+            at = local_timestamp(now.date().isoformat(), draft['time'], zone)
+            if at > now.timestamp()*1000:
+                draft["dueAt"] = at
     title = re.sub(r"^(?:for|to|about)\s+", "", text, flags=re.I).strip(" ,.;\"'")
     if title:
-        # Unsupported scheduling/repeat words go to the model, never become a title.
-        if re.search(r"\b(?:on|at|every|weekly|daily|before|from now)\b", title, re.I):
+        if re.search(r"\b(?:on|at|every|weekly|daily|monthly|before|from now)\b", title, re.I):
             return None
         if len(title) > 160:
             return {"text": "Use a reminder title of up to 160 characters.", "draft": dict(draft, need="title")}
@@ -125,8 +196,11 @@ def reminder(query, pending=None, now=None):
     if draft["dueAt"] <= now.timestamp()*1000:
         draft.pop("dueAt", None)
         return {"text": "That time has passed. When should I remind you instead?", "draft": dict(draft, need="when")}
-    due = datetime.fromtimestamp(draft["dueAt"]/1000).astimezone()
-    return {"title": draft["title"], "date": due.date().isoformat(), "time": due.strftime("%H:%M"), "dueAt": draft["dueAt"], "lead": 0, "count": 1}
+    due = datetime.fromtimestamp(draft["dueAt"]/1000, ZoneInfo(zone))
+    value = {"title": draft["title"], "date": draft.get('date', due.date().isoformat()), "time": draft.get('time', due.strftime("%H:%M")), "dueAt": draft["dueAt"], "lead": 0, "count": 1, "zone": zone}
+    if draft.get('repeat'):
+        value['repeat'] = draft['repeat']
+    return value
 
 
 def command(query, applications=()):

@@ -22,7 +22,23 @@ Singleton {
     property bool restoringPreview:false
     readonly property int paletteMotion: Tokens.reducedMotion ? 0 : (previewWallpaperVariants || restoringPreview ? 120 : 320)
     function installWallpaperData(palette,data):void {wallpaperData=data;loadWallpaperPalette(palette);scheduleSync();}
-    function showWallpaperPreview(palette):void { if (paletteName === "wallpaper" && validPalette(palette.dark) && validPalette(palette.light)) previewWallpaperVariants = palette; }
+    function showWallpaperPreview(palette):void {
+        if (paletteName !== "wallpaper" || !validPalette(palette.dark) || !validPalette(palette.light)) return;
+        const before = previewWallpaperVariants;
+        if (before) {
+            const sameColors = (a, b) => {
+                const keys = Object.keys(b);
+                return Object.keys(a).length === keys.length
+                    && keys.every(key => Object.prototype.hasOwnProperty.call(a, key) && a[key] === b[key]);
+            };
+            const keys = Object.keys(palette);
+            if (Object.keys(before).length === keys.length
+                && keys.every(key => Object.prototype.hasOwnProperty.call(before, key)
+                    && (key === "dark" || key === "light" || before[key] === palette[key]))
+                && sameColors(before.dark, palette.dark) && sameColors(before.light, palette.light)) return;
+        }
+        previewWallpaperVariants = palette;
+    }
     function clearWallpaperPreview():void {
         if (!previewWallpaperVariants) return;
         restoringPreview = true;
