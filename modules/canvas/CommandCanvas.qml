@@ -767,7 +767,11 @@ PanelWindow {
                 Behavior on opacity {NumberAnimation {duration:Tokens.reducedMotion?0:135;easing.type:Easing.OutCubic}}
                 keyNavigationEnabled:false;boundsBehavior:Flickable.StopAtBounds
                 highlightFollowsCurrentItem:false
-                highlight:Rectangle {width:list.width;height:48;radius:12;color:Theme.withAlpha(Theme.text,.025);border.width:1;border.color:Theme.withAlpha(Theme.accent,.65);y:list.currentItem?.y??0;Behavior on y {enabled:!window.syncingResults&&window.selectionPinned&&!Tokens.reducedMotion;SmoothedAnimation {velocity:-1;duration:145;reversingMode:SmoothedAnimation.Immediate}}}
+                highlight:Rectangle {
+                    width:list.width;height:48;radius:12;color:Theme.withAlpha(Theme.text,.07)
+                    Rectangle {x:1;anchors.verticalCenter:parent.verticalCenter;width:3;height:24;radius:1.5;color:Theme.accent}
+                    y:list.currentItem?.y??0;Behavior on y {enabled:!window.syncingResults&&window.selectionPinned&&!Tokens.reducedMotion;SmoothedAnimation {velocity:-1;duration:145;reversingMode:SmoothedAnimation.Immediate}}
+                }
                 delegate:AbstractButton {
                     id:row;required property var model;required property int index
                     readonly property var modelData:model
