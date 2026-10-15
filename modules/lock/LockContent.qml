@@ -148,12 +148,9 @@ Item {
                 onEnabledChanged:if(enabled)Qt.callLater(root.focusPassword)
                 font.letterSpacing: Session.responseVisible ? 0 : 2
                 selectByMouse: false
-                // No idle caret slicing through the placeholder. Native editing
-                // retains selection/IME behavior once there is input.
-                cursorDelegate: Rectangle {
-                    width: 1; color: Theme.wallpaperText
-                    visible: Session.responseVisible && password.text.length > 0 && password.cursorVisible
-                    opacity: password.activeFocus ? 1 : 0
+                cursorDelegate: InputCaret {
+                    editor:password;caretWidth:1;color:Theme.wallpaperText
+                    reveal:Session.responseVisible&&password.text.length>0
                 }
                 onAccepted: { if (!root.preview && text.length) { Session.submit(text); clear(); } }
                 Keys.onEscapePressed: clear()

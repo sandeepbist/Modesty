@@ -36,7 +36,9 @@ FocusScope {
             Rectangle {x:8;y:parent.height+5;width:parent.width-16;height:1;color:Theme.withAlpha(Theme.text,.07)}
             Icon {x:12;anchors.verticalCenter:parent.verticalCenter;icon:"search";size:19;color:Theme.subtext}
             TextInput {
-                id:input;objectName:"appSearch";x:43;anchors.verticalCenter:parent.verticalCenter;width:parent.width-58;height:24;verticalAlignment:TextInput.AlignVCenter
+                id:input;objectName:"appSearch"
+                cursorDelegate:InputCaret {editor:input}
+                x:43;anchors.verticalCenter:parent.verticalCenter;width:parent.width-58;height:24;verticalAlignment:TextInput.AlignVCenter
                 focus:true;color:Theme.text;selectionColor:Theme.accent;selectedTextColor:Theme.bgSolid
                 font.family:Tokens.font;font.pixelSize:15;font.hintingPreference:Font.PreferVerticalHinting;renderType:Tokens.textRenderType
                 selectByMouse:true;clip:true;onTextChanged:root.query=text
@@ -63,9 +65,9 @@ FocusScope {
                 highlight:Rectangle {
                     width:list.width-6;height:50;radius:12;color:Theme.withAlpha(Theme.text,.07)
                     Rectangle {x:1;anchors.verticalCenter:parent.verticalCenter;width:3;height:24;radius:1.5;color:Theme.accent}
-                    y:list.currentItem?.y??0
+                    y:highlightMotion.value
                     visible:list.count>0
-                    Behavior on y {enabled:!root.resettingResults&&!Tokens.reducedMotion;SpringMotion {}}
+                    FrameSpring {id:highlightMotion;owner:root;targetValue:list.currentItem?.y??0;enabled:highlightMotion.available&&!root.resettingResults}
                 }
                 highlightRangeMode:ListView.ApplyRange
                 preferredHighlightBegin:0;preferredHighlightEnd:height-50

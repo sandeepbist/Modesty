@@ -37,11 +37,11 @@ FocusScope {
         Item {
             Layout.fillWidth:true;implicitHeight:64
             Rectangle {
-                x:root.selected*(parent.width+4)/5
+                id:highlight;x:highlightMotion.value
                 width:(parent.width-16)/5;height:64;radius:14
                 color:Theme.withAlpha(root.pending?Theme.red:Theme.text,.055)
                 border.width:1;border.color:Theme.withAlpha(root.pending?Theme.red:Theme.accent,root.pending?.35:.25)
-                Behavior on x {enabled:!Tokens.reducedMotion;SpringMotion {}}
+                FrameSpring {id:highlightMotion;owner:root;targetValue:root.selected*(highlight.parent.width+4)/5}
                 Behavior on color {ColorAnimation {duration:Tokens.animFast}}
                 Behavior on border.color {ColorAnimation {duration:Tokens.animFast}}
             }

@@ -4,6 +4,8 @@ import qs.theme
 
 TextField {
     id: root
+    property bool caretRevealed: true
+    cursorDelegate: InputCaret {editor:root;reveal:root.caretRevealed}
 
     implicitHeight: 38
     leftPadding: 12

@@ -46,25 +46,39 @@ Item {
         return false;
     }
     scale: 1
-    property real hoverLift: restingHovered ? Preferences.hoverLift : 0
-    Behavior on hoverLift { enabled:!Tokens.reducedMotion; SpringMotion { epsilon:.01 } }
+    property real hoverLift: hoverMotion.value
+    FrameSpring {id:hoverMotion;owner:root;targetValue:root.restingHovered?Preferences.hoverLift:0;positionTolerance:.01}
     function diagnostics(): var {
         const entries=[];for(let i=0;i<contentPanes.count;i++){const p=contentPanes.itemAt(i);entries.push({name:p.modelData,selected:p.selected,opacity:p.opacity,enabled:p.enabled,loaded:!!p.item,status:p.status,width:p.width,height:p.height,input:p.item?.diagnostics?p.item.diagnostics():null});}
         return {name:stage,panel,x,y,width,height,targetWidth,targetHeight,radius:capsule.radius,visible,scale,hoverLift,restingHovered,restWidth:rest.width,restHeight:rest.height,restOpacity:rest.opacity,entries};
     }
-    property real apertureWidth: targetWidth
-    property real apertureHeight: targetHeight
+    property real apertureWidth: widthMotion.value
+    property real apertureHeight: heightMotion.value
+    Component.onCompleted: apertureWidth = widthMotion.value
+    onTargetWidthChanged: if (inlineContext || continuousWidth) apertureWidth = targetWidth
+    function transferWidth(): void {
+        if (inlineContext || continuousWidth) apertureWidth = targetWidth;
+        else { widthMotion.reset(apertureWidth); widthMotion.start(); }
+    }
+    function finishWidth(): void { apertureWidth = targetWidth; }
+    onInlineContextChanged: Qt.callLater(transferWidth)
+    onContinuousWidthChanged: Qt.callLater(transferWidth)
     // Rebound must not shrink the resting pill or cross the screen's margin.
     width: Math.max(0,Math.min(maximumWidth,Math.max(Math.min(restingWidth,targetWidth),apertureWidth)))
     height: Math.max(0,Math.min(maximumHeight,Math.max(Math.min(Preferences.barHeight,targetHeight),apertureHeight)))
-    Behavior on apertureWidth { enabled:!Tokens.reducedMotion&&!root.continuousWidth; animation:root.inlineContext?levelWidthMotion:widthMotion }
-    SpringMotion { id:widthMotion }
+    FrameSpring {
+        id:widthMotion;owner:root;targetValue:root.targetWidth
+        enabled:widthMotion.available&&!root.inlineContext&&!root.continuousWidth
+        minimumValue:Math.min(root.restingWidth,root.targetWidth);maximumValue:root.maximumWidth
+        onValueChanged: if (!root.inlineContext && !root.continuousWidth) root.apertureWidth = value
+        onAvailableChanged: if (!available && root.inlineContext) Qt.callLater(root.finishWidth)
+    }
     // Held volume/brightness keys keep the original short feedback deadline.
-    SmoothedAnimation { id:levelWidthMotion;velocity:-1;duration:root.expanded?Tokens.morphDuration:Tokens.collapseDuration;reversingMode:SmoothedAnimation.Immediate }
-    Behavior on apertureHeight { enabled:!Tokens.reducedMotion; SpringMotion { id:heightMotion } }
+    Behavior on apertureWidth {enabled:widthMotion.available&&root.inlineContext&&!root.continuousWidth;SmoothedAnimation {id:levelWidthMotion;velocity:-1;duration:root.expanded?Tokens.morphDuration:Tokens.collapseDuration;reversingMode:SmoothedAnimation.Immediate}}
+    FrameSpring {id:heightMotion;owner:root;targetValue:root.targetHeight;minimumValue:Math.min(Preferences.barHeight,root.targetHeight);maximumValue:root.maximumHeight}
     Connections {
         target:Tokens
-        function onReducedMotionChanged(){if(Tokens.reducedMotion){root.apertureWidth=Qt.binding(()=>root.targetWidth);root.apertureHeight=Qt.binding(()=>root.targetHeight);}}
+        function onReducedMotionChanged(){if(Tokens.reducedMotion)root.apertureWidth=root.targetWidth;}
     }
     RectangularShadow { anchors.fill: outline; radius: outline.radius; blur: root.expanded ? 24 : root.restingHovered ? 16 : 10; offset.y: root.expanded ? 7 : root.restingHovered ? 6 : 3; color: "#65000000"; visible: Preferences.shadows; cached: false
         Behavior on blur { NumberAnimation { duration: Tokens.animMedium } }

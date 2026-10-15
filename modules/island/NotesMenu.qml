@@ -193,6 +193,7 @@ FocusScope {
                 visible: root.listVisible; enabled: visible && root.interactive; spacing: 8
                 TextField {
                     id: searchField; objectName: "notesSearch"
+                    cursorDelegate:InputCaret {editor:searchField}
                     Layout.fillWidth: true; implicitHeight: 36; placeholderText: "Search notes"; selectByMouse: true
                     font.family: Tokens.font; font.pixelSize: 13; color: Theme.text; placeholderTextColor: Theme.subtext; selectionColor: Theme.accent; selectedTextColor: Theme.accentText
                     leftPadding: 12; rightPadding: clearSearch.visible ? 36 : 12
@@ -268,6 +269,7 @@ FocusScope {
                 ColumnLayout {anchors.fill: parent; spacing: 16
                     TextField {
                         id: titleField; objectName: "notesTitle"; Layout.fillWidth: true; implicitHeight: 32
+                        cursorDelegate:InputCaret {editor:titleField}
                         maximumLength: 300
                         placeholderText: "Title, if you like"; readOnly: !root.editable; selectByMouse: true
                         padding: 0; font.family: Tokens.font; font.pixelSize: 20; font.weight: Font.Medium
@@ -284,6 +286,7 @@ FocusScope {
                         ScrollBar.vertical: ScrollBar {policy: ScrollBar.AsNeeded}
                         TextArea.flickable: TextArea {
                             id: bodyField; objectName: "notesBody"
+                            cursorDelegate:InputCaret {editor:bodyField;viewport:bodyScroll}
                             placeholderText: "Write something to remember…"; readOnly: !root.editable; selectByMouse: true
                             wrapMode: TextEdit.Wrap; textFormat: TextEdit.PlainText
                             padding: 0; leftPadding: 0; rightPadding: 0; bottomPadding: 8

@@ -22,7 +22,6 @@ Item {
     Keys.onSpacePressed: clicked()
     Keys.onReturnPressed: clicked()
     Keys.onEnterPressed: clicked()
-    scale: mouse.pressed ? 0.96 : 1
     opacity: enabled ? 1 : 0.35
 
     Rectangle {
@@ -70,6 +69,7 @@ Item {
         onClicked: root.clicked()
     }
 
-    Behavior on scale { enabled:!Tokens.reducedMotion; SpringMotion { epsilon:.002 } }
+    scale: pressMotion.value
+    FrameSpring { id:pressMotion;owner:root;targetValue:mouse.pressed ? 0.96 : 1;pressFeedback:true;positionTolerance:.0002 }
 
 }

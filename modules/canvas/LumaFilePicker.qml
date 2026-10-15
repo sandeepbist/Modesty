@@ -64,6 +64,7 @@ Item {
             IconButton {icon:"arrow_upward";size:16;label:"Parent folder";enabled:root.path!=="/";onClicked:root.navigate(directory.parentFolder)}
             TextInput {
                 id:location;objectName:"lumaAttachmentPath";Layout.fillWidth:true;Layout.preferredHeight:32
+                cursorDelegate:InputCaret {editor:location}
                 color:activeFocus?Theme.text:"transparent"
                 Binding {target:location;property:"text";value:root.displayPath;when:!location.activeFocus;restoreMode:Binding.RestoreNone}
                 font.family:Tokens.font;font.pixelSize:12;font.weight:Font.Medium
@@ -86,6 +87,7 @@ Item {
             Item {Layout.fillWidth:true}
             TextInput {
                 id:filter;objectName:"lumaAttachmentFilter";Layout.preferredWidth:Math.min(220,root.width*.5);Layout.preferredHeight:32
+                cursorDelegate:InputCaret {editor:filter}
                 color:Theme.text;font.family:Tokens.font;font.pixelSize:13
                 verticalAlignment:TextInput.AlignVCenter;clip:true;selectByMouse:true
                 selectionColor:Theme.accent;selectedTextColor:Theme.accentText;renderType:Tokens.textRenderType
