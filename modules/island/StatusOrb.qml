@@ -15,7 +15,7 @@ Item {
     readonly property color ringColor:batteryKnown&&(deviceShown?DeviceStatus.low:SystemInfo.batteryPercent<=20)?Theme.red:Theme.text
     readonly property real wifiStrength:Wireless.available&&SystemInfo.wifiEnabled&&network&&Number.isFinite(network.signalStrength)?Math.max(0,Math.min(1,network.signalStrength)):0
     readonly property int wifiDots:Math.ceil(wifiStrength*4)
-    readonly property string batteryText:SystemInfo.hasBattery?"Laptop battery "+Math.round(SystemInfo.batteryPercent)+"%"+(SystemInfo.charging?", charging":""):"Laptop battery unavailable"
+    readonly property string batteryText:SystemInfo.hasBattery?"Laptop battery "+Math.round(SystemInfo.batteryPercent)+"%"+(SystemInfo.charging?", plugged in":""):"Laptop battery unavailable"
     readonly property string wifiText:!Wireless.available?"Wi-Fi unavailable":!SystemInfo.wifiEnabled?"Wi-Fi off":network?"Wi-Fi connected"+(Wireless.connectedName?" to "+Wireless.connectedName:"")+", "+Math.round(wifiStrength*100)+"% signal":"Wi-Fi disconnected"
     readonly property string statusText:(deviceShown?DeviceStatus.name+(batteryKnown?", "+Math.round(DeviceStatus.battery*100)+"% battery"+(DeviceStatus.low?", low battery":""):", battery unavailable")+" · ":"")+batteryText+" · "+wifiText
     Behavior on level {NumberAnimation {duration:Tokens.reducedMotion?0:420;easing.type:Easing.OutCubic}}

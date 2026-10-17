@@ -85,7 +85,7 @@ ShellRoot {
         check(fill.strokeColor.toString()===Theme.text.toString(),"Laptop 21% normal text");dots(3);
         SystemInfo.batteryPercent=90;SystemInfo.charging=true;test.wait(5);
         near(arc.sweepAngle,216,"Battery must not change dots");dots(3);
-        description(["Laptop battery 90%","charging","60% signal"]);
+        description(["Laptop battery 90%","plugged in","60% signal"]);
         SystemInfo.hasBattery=false;test.wait(5);
         near(arc.sweepAngle,0,"Missing battery has no filled fallback");near(fill.strokeColor.a,0,"Missing battery hides fill");
         near(track.strokeColor.a,.18,"Missing battery preserves track");dots(3);
