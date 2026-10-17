@@ -149,7 +149,7 @@ ShellRoot {
             check(surface.clockStage.height<=surface.maximumHeight,"Height escaped screen clamp");
             check(surface.clockStage.targetWidth>=0&&surface.clockStage.targetHeight<=surface.maximumHeight,"Invalid compact targets");
             const custom=[{id:"wifi",x:1,y:1,w:3,h:1}];ControlLayout.items=custom;Preferences.set("footerVisible",false);
-            check(ControlLayout.notesEntryShown&&ControlLayout.footerShown,"Custom layout hides Notes entry");
+            check(!ControlLayout.footerShown,"Disabled footer reserves space for obsolete Notes fallback");
             check(JSON.stringify(ControlLayout.items)===JSON.stringify(custom),"Notes discovery moved custom controls");
             console.log("PASS Notes geometry: capture/library targets, screen clamps and custom layout discovery");Qt.quit();return;
         }
