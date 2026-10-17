@@ -7,12 +7,17 @@ Item {
     id:root
     width:26;height:26
     readonly property bool deviceShown:DeviceStatus.available
-    readonly property bool batteryKnown:deviceShown&&DeviceStatus.batteryAvailable
+    readonly property bool batteryKnown:deviceShown?DeviceStatus.batteryAvailable:SystemInfo.hasBattery
     readonly property string glyph:deviceShown?DeviceStatus.icon:SystemInfo.wifiEnabled?"wifi":"wifi_off"
     readonly property var network:Wireless.networks.find(n=>n.connected)??null
-    readonly property bool levelKnown:batteryKnown||(!deviceShown&&!!network)
-    property real level:batteryKnown?DeviceStatus.battery:!deviceShown&&network?network.signalStrength:0
-    readonly property color ringColor:root.batteryKnown&&DeviceStatus.low?Theme.red:Theme.text
+    readonly property bool levelKnown:batteryKnown
+    property real level:batteryKnown?(deviceShown?DeviceStatus.battery:SystemInfo.batteryPercent/100):0
+    readonly property color ringColor:batteryKnown&&(deviceShown?DeviceStatus.low:SystemInfo.batteryPercent<=20)?Theme.red:Theme.text
+    readonly property real wifiStrength:Wireless.available&&SystemInfo.wifiEnabled&&network&&Number.isFinite(network.signalStrength)?Math.max(0,Math.min(1,network.signalStrength)):0
+    readonly property int wifiDots:Math.ceil(wifiStrength*4)
+    readonly property string batteryText:SystemInfo.hasBattery?"Laptop battery "+Math.round(SystemInfo.batteryPercent)+"%"+(SystemInfo.charging?", charging":""):"Laptop battery unavailable"
+    readonly property string wifiText:!Wireless.available?"Wi-Fi unavailable":!SystemInfo.wifiEnabled?"Wi-Fi off":network?"Wi-Fi connected"+(Wireless.connectedName?" to "+Wireless.connectedName:"")+", "+Math.round(wifiStrength*100)+"% signal":"Wi-Fi disconnected"
+    readonly property string statusText:(deviceShown?DeviceStatus.name+(batteryKnown?", "+Math.round(DeviceStatus.battery*100)+"% battery"+(DeviceStatus.low?", low battery":""):", battery unavailable")+" · ":"")+batteryText+" · "+wifiText
     Behavior on level {NumberAnimation {duration:Tokens.reducedMotion?0:420;easing.type:Easing.OutCubic}}
     Shape {
         anchors.fill:parent
@@ -31,10 +36,11 @@ Item {
         model:[54,78,102,126]
         Rectangle {
             required property int modelData
+            required property int index
             width:1.8;height:1.8;radius:.9;antialiasing:true
             x:13+11.25*Math.cos(modelData*Math.PI/180)-width/2
             y:13+11.25*Math.sin(modelData*Math.PI/180)-height/2
-            color:Theme.withAlpha(Theme.text,root.levelKnown?.78:.3)
+            color:Theme.withAlpha(Theme.text,index>=4-root.wifiDots?.78:.3)
             Behavior on color {ColorAnimation {duration:Tokens.animMedium}}
         }
     }
@@ -53,7 +59,7 @@ Item {
             Behavior on y {NumberAnimation {duration:Tokens.reducedMotion?0:180;easing.type:Easing.OutCubic}}
         }
     }
-    HoverHandler {onHoveredChanged:{if(hovered)Hints.show(root,root.deviceShown?DeviceStatus.name+(DeviceStatus.batteryAvailable?DeviceStatus.low?" · Low battery":"":" · Battery unavailable"):Wireless.connectedName||"Control center");else Hints.hide(root);}}
+    HoverHandler {onHoveredChanged:{if(hovered)Hints.show(root,root.statusText);else Hints.hide(root);}}
     Accessible.role:Accessible.StaticText
-    Accessible.name:deviceShown?DeviceStatus.name+(batteryKnown?DeviceStatus.low?", low battery":"":", battery unavailable"):"Wi-Fi status"
+    Accessible.name:statusText
 }
