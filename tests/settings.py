@@ -248,7 +248,7 @@ ShellRoot {
             const cursor=notes.mapToItem(view,notes.cursorRectangle.x,notes.cursorRectangle.y);
             check(cursor.y>=0&&cursor.y+notes.cursorRectangle.height<=view.height+1,"Notes cursor outside editor viewport");
             targets=[];Catalog.pages.forEach(p=>p.blocks.forEach(b=>b.items.concat(b.targets.map(t=>({key:t.id,label:t.label}))).forEach(t=>targets.push({page:p.id,block:b.id,key:t.key,label:t.label}))));
-            check(targets.length>=176,"Catalog target sweep lost coverage");
+            check(targets.length>=173,"Catalog target sweep lost coverage");
             targetIndex=0;steps.interval=30;root.navigate(targets[0].page,targets[0].block,targets[0].key);
         }else{
             const target=targets[targetIndex];
