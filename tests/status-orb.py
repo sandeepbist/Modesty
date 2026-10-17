@@ -66,46 +66,48 @@ ShellRoot {
     Timer {interval:80;running:true;onTriggered:{try{
         const shape=orb.children.find(c=>"preferredRendererType" in c);
         const track=shape.data[0],fill=shape.data[1],arc=fill.pathElements[0];
-        near(track.pathElements[0].sweepAngle,240,"Track geometry");
+        near(track.pathElements[0].startAngle,170,"Track starts centered over top");
+        near(arc.startAngle,170,"Fill starts centered over top");
+        near(track.pathElements[0].sweepAngle,200,"Track geometry");
         near(track.strokeColor.a,.18,"Faint track");
-        near(arc.sweepAngle,156,"Laptop battery ring");dots(2);
+        near(arc.sweepAngle,130,"Laptop battery ring");dots(2);
         description(["Laptop battery 65%","Wi-Fi connected to Fixture","40% signal"]);
         for(const [strength,count] of [[0,0],[.001,1],[.25,1],[.2501,2],[.5,2],[.5001,3],[.75,3],[.7501,4],[1,4],[-.2,0],[1.2,4],[NaN,0],[Infinity,0],[-Infinity,0],[undefined,0],[null,0],[".5",0]]) {
-            signal(strength);dots(count);near(arc.sweepAngle,156,"Wi-Fi must not change ring");
+            signal(strength);dots(count);near(arc.sweepAngle,130,"Wi-Fi must not change ring");
         }
         signal(.6);
         for(const percent of [0,100]) {
             SystemInfo.batteryPercent=percent;test.wait(5);
-            near(arc.sweepAngle,percent*2.4,"Laptop battery bounds");dots(3);
+            near(arc.sweepAngle,percent*2,"Laptop battery bounds");dots(3);
         }
         SystemInfo.batteryPercent=20;test.wait(5);
-        near(arc.sweepAngle,48,"Low laptop ring");dots(3);
+        near(arc.sweepAngle,40,"Low laptop ring");dots(3);
         check(fill.strokeColor.toString()===Theme.red.toString(),"Laptop 20% red");
         SystemInfo.batteryPercent=21;test.wait(5);
         check(fill.strokeColor.toString()===Theme.text.toString(),"Laptop 21% normal text");dots(3);
         SystemInfo.batteryPercent=90;SystemInfo.charging=true;test.wait(5);
-        near(arc.sweepAngle,216,"Battery must not change dots");dots(3);
+        near(arc.sweepAngle,180,"Battery must not change dots");dots(3);
         description(["Laptop battery 90%","plugged in","60% signal"]);
         SystemInfo.hasBattery=false;test.wait(5);
         near(arc.sweepAngle,0,"Missing battery has no filled fallback");near(fill.strokeColor.a,0,"Missing battery hides fill");
         near(track.strokeColor.a,.18,"Missing battery preserves track");dots(3);
         description(["Laptop battery unavailable","60% signal"]);
         SystemInfo.hasBattery=true;SystemInfo.charging=false;SystemInfo.wifiEnabled=false;test.wait(5);
-        dots(0);near(arc.sweepAngle,216,"Wi-Fi off leaves battery");check(orb.glyph==="wifi_off","Wi-Fi off icon");
+        dots(0);near(arc.sweepAngle,180,"Wi-Fi off leaves battery");check(orb.glyph==="wifi_off","Wi-Fi off icon");
         description(["Wi-Fi off"]);
         SystemInfo.wifiEnabled=true;Wireless.available=false;test.wait(5);dots(0);description(["Wi-Fi unavailable"]);
         Wireless.available=true;Wireless.networks=[{connected:false,signalStrength:1}];test.wait(5);
         dots(0);description(["Wi-Fi disconnected"]);
         Wireless.networks=[];test.wait(5);dots(0);
         signal(.25);DeviceStatus.available=true;test.wait(5);
-        near(arc.sweepAngle,192,"Headphones battery ring");dots(1);check(orb.glyph==="headphones","Headphones icon");
+        near(arc.sweepAngle,160,"Headphones battery ring");dots(1);check(orb.glyph==="headphones","Headphones icon");
         description(["Fixture headphones","80% battery","Laptop battery 90%","25% signal"]);
-        signal(.9);near(arc.sweepAngle,192,"Overlay ring independent of Wi-Fi");dots(4);
+        signal(.9);near(arc.sweepAngle,160,"Overlay ring independent of Wi-Fi");dots(4);
         SystemInfo.batteryPercent=10;test.wait(5);
-        near(arc.sweepAngle,192,"Overlay ignores laptop ring");dots(4);
+        near(arc.sweepAngle,160,"Overlay ignores laptop ring");dots(4);
         check(fill.strokeColor.toString()===Theme.text.toString(),"Overlay ignores laptop low color");
         DeviceStatus.battery=.1;DeviceStatus.low=true;DeviceStatus.icon="earbuds";test.wait(5);
-        near(arc.sweepAngle,24,"Earbuds battery ring");dots(4);check(orb.glyph==="earbuds","Earbuds icon");
+        near(arc.sweepAngle,20,"Earbuds battery ring");dots(4);check(orb.glyph==="earbuds","Earbuds icon");
         check(fill.strokeColor.toString()===Theme.red.toString(),"Peripheral low battery red");
         description(["Fixture headphones","10% battery","low battery","Laptop battery 10%"]);
         DeviceStatus.batteryAvailable=false;test.wait(5);
@@ -113,12 +115,12 @@ ShellRoot {
         description(["Fixture headphones, battery unavailable","90% signal"]);
         DeviceStatus.available=false;SystemInfo.batteryPercent=40;test.wait(5);
         Tokens.reducedMotion=false;SystemInfo.batteryPercent=80;signal(.25);test.wait(40);
-        check(arc.sweepAngle>96&&arc.sweepAngle<192,"Normal ring animates");
+        check(arc.sweepAngle>80&&arc.sweepAngle<160,"Normal ring animates");
         const left=orb.children.filter(c=>"modelData" in c&&typeof c.modelData==="number").sort((a,b)=>a.x-b.x);
         check(left[1].color.a>.3&&left[1].color.a<.78,"Dot colors transition softly");
-        test.wait(450);near(arc.sweepAngle,192,"Animated ring settles");dots(1);
+        test.wait(450);near(arc.sweepAngle,160,"Animated ring settles");dots(1);
         Tokens.reducedMotion=true;SystemInfo.batteryPercent=50;signal(.75);
-        near(arc.sweepAngle,120,"Reduced motion ring changes immediately");dots(3);
+        near(arc.sweepAngle,100,"Reduced motion ring changes immediately");dots(3);
         check(orb.width===26&&orb.height===26,"Orb geometry");
         console.log("STATUS ORB PASS");Qt.quit();
     }catch(error){console.error(error);Qt.exit(1);}}}

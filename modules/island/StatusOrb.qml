@@ -24,11 +24,11 @@ Item {
         preferredRendererType:Shape.CurveRenderer
         ShapePath {
             strokeWidth:1.7;strokeColor:Theme.withAlpha(Theme.text,.18);fillColor:"transparent";capStyle:ShapePath.RoundCap
-            PathAngleArc {centerX:13;centerY:13;radiusX:11.25;radiusY:11.25;startAngle:150;sweepAngle:240}
+            PathAngleArc {centerX:13;centerY:13;radiusX:11.25;radiusY:11.25;startAngle:170;sweepAngle:200}
         }
         ShapePath {
             strokeWidth:1.7;strokeColor:root.levelKnown?root.ringColor:"transparent";fillColor:"transparent";capStyle:ShapePath.RoundCap
-            PathAngleArc {centerX:13;centerY:13;radiusX:11.25;radiusY:11.25;startAngle:150;sweepAngle:Math.max(0,Math.min(240,240*root.level))}
+            PathAngleArc {centerX:13;centerY:13;radiusX:11.25;radiusY:11.25;startAngle:170;sweepAngle:Math.max(0,Math.min(200,200*root.level))}
             Behavior on strokeColor {ColorAnimation {duration:Tokens.animMedium}}
         }
     }
