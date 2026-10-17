@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Effects
+import QtQuick.Layouts
 import Quickshell.Widgets
 import qs.components
 import qs.services
@@ -53,34 +54,55 @@ Item {
         }
     }
     Item {
-        id:footer;z:11
+        id:footer;objectName:"controlFooter";z:11
         opacity:!root.modal&&ControlLayout.footerShown&&root.apertureHeight>=root.overviewHeight+Preferences.innerPadding*2-2?1:0
         visible:opacity>0;enabled:!root.modal&&opacity>.7
         Behavior on opacity {NumberAnimation {duration:Tokens.animFast;easing.type:Easing.OutCubic}}
         readonly property bool showTray:Preferences.footerVisible&&Preferences.footerTray&&Tray.items.length>0
-        readonly property real dividerWidth:showTray&&footerButtons.width>0?21:0
-        width:footerButtons.width+dividerWidth+(showTray?footerTray.width:0);height:38
-        anchors.horizontalCenter:parent.horizontalCenter;y:root.overviewHeight-height
-        Row {
-            id:footerButtons;spacing:10;anchors.verticalCenter:parent.verticalCenter
-            IconButton {visible:ControlLayout.notesEntryShown;icon:"edit_note";label:"Quick Notes";size:19;implicitWidth:38;implicitHeight:38;color:Theme.accent;onClicked:{Tray.close();IslandState.openMenu("notes");}}
+        readonly property bool showActions:Preferences.footerVisible&&(Preferences.footerSettings||Preferences.footerPerformance)
+        readonly property real dividerWidth:showTray&&showActions?13:0
+        width:parent.width;height:38
+        y:root.overviewHeight-height
+        Rectangle {width:parent.width;height:1;y:-5;color:Theme.withAlpha(Theme.text,.06)}
+        RowLayout {
+            id:footerButtons;spacing:6;anchors.verticalCenter:parent.verticalCenter
+            width:footer.width-footer.dividerWidth-(footer.showTray?footerTray.width:0)
+            visible:footer.showActions
             Repeater {
-                model:[{key:"footerPerformance",icon:"monitoring",label:"Performance",panel:"performance"},{key:"footerThemes",icon:"palette",label:"Themes",panel:"themes"},{key:"footerWallpapers",icon:"wallpaper",label:"Wallpapers",panel:"wallpapers"},{key:"footerPower",icon:"power_settings_new",label:"Power",panel:"power"},{key:"footerSettings",icon:"settings",label:"Settings",panel:"settings"}]
-                IconButton {
+                model:[{key:"footerSettings",icon:"settings",label:"Settings",panel:"settings"},{key:"footerPerformance",icon:"monitoring",label:"Performance",panel:"performance"}]
+                ActionButton {
+                    id:action
                     required property var modelData
-                    visible:Preferences.footerVisible&&Preferences[modelData.key];icon:modelData.icon;label:modelData.label;size:19
-                    implicitWidth:38;implicitHeight:38;color:Theme.subtext
-                    background:"transparent"
+                    objectName:modelData.key
+                    visible:Preferences.footerVisible&&Preferences[modelData.key]
+                    Layout.fillWidth:true;Layout.preferredWidth:1;Layout.minimumWidth:0
+                    implicitHeight:38;text:modelData.label
+                    focusPolicy:Qt.StrongFocus
+                    Accessible.name:text
+                    Keys.onReturnPressed:clicked()
+                    Keys.onEnterPressed:clicked()
+                    contentItem:Item {
+                        Row {
+                            anchors.centerIn:parent;spacing:6
+                            Icon {icon:action.modelData.icon;size:17;color:Theme.subtext}
+                            PanelText {objectName:action.modelData.key+"Label";text:action.text;width:Math.min(implicitWidth,Math.max(0,action.availableWidth-23));font.pixelSize:11;color:Theme.subtext;anchors.verticalCenter:parent.verticalCenter}
+                        }
+                    }
+                    background:Rectangle {
+                        radius:10
+                        color:Theme.withAlpha(Theme.text,action.pressed?.1:action.hovered?.055:0)
+                        border.width:action.activeFocus?1:0;border.color:Theme.accent
+                    }
                     onClicked:{Tray.close();IslandState.openMenu(modelData.panel);}
                 }
             }
         }
-        Rectangle {x:footerButtons.width+10;anchors.verticalCenter:parent.verticalCenter;width:1;height:16;visible:footer.dividerWidth>0;color:Theme.withAlpha(Theme.text,.1)}
+        Rectangle {x:footerButtons.width+6;anchors.verticalCenter:parent.verticalCenter;width:1;height:16;visible:footer.dividerWidth>0;color:Theme.withAlpha(Theme.text,.1)}
         TrayIcons {
-            id:footerTray;inFooter:true
-            maximumWidth:Math.max(0,root.width-footerButtons.width-footer.dividerWidth)
+            id:footerTray;objectName:"footerTray";inFooter:true
+            maximumWidth:footer.showActions?Math.max(0,footer.width*.28):footer.width
             visible:footer.showTray
-            x:footerButtons.width+footer.dividerWidth;anchors.verticalCenter:parent.verticalCenter
+            anchors.right:parent.right;anchors.verticalCenter:parent.verticalCenter
         }
     }
     MouseArea {anchors.fill:parent;z:9;visible:Tray.open&&Tray.inFooter;onClicked:Tray.close();hoverEnabled:true;onWheel:event=>event.accepted=true}
