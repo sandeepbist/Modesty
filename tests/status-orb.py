@@ -61,7 +61,7 @@ ShellRoot {
         const text=orb.Accessible.name;
         for(const part of parts)check(text.includes(part),"Accessible description missing "+part+": "+text);
         test.mouseMove(window.contentItem,1,1);test.mouseMove(orb,13,13);test.wait(5);
-        check(Hints.text===text,"Tooltip matches accessibility");
+        check(Hints.text==="","Hovering orb shows no tooltip");
     }
     Timer {interval:80;running:true;onTriggered:{try{
         const shape=orb.children.find(c=>"preferredRendererType" in c);
