@@ -5,6 +5,7 @@ Singleton {
     id:root
     readonly property bool recording:Recorder.active&&!Recorder.selecting
     readonly property bool focus:FocusTimer.active
+    readonly property bool active:recording||focus
     readonly property bool dual:recording&&focus
     property string selected:"recording"
     readonly property string primary:recording&&(!focus||selected==="recording")?"recording":"focus"

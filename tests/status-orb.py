@@ -12,8 +12,8 @@ with tempfile.TemporaryDirectory(prefix='modesty-status-orb-') as temporary:
     workspace = Path(temporary)
     stubs = {
         'services': {
-            'SystemInfo': 'property bool hasBattery:true;property real batteryPercent:65;property bool charging:false;property bool wifiEnabled:true',
-            'Wireless': 'property bool available:true;property string connectedName:"Fixture";property var networks:[{connected:true,signalStrength:.4}]',
+            'SystemInfo': 'property bool hasBattery:true;property real batteryPercent:65;property bool charging:false;property bool wifiEnabled:true;property string batteryState:"known"',
+            'Wireless': 'property bool enabled:true;property bool available:true;property string connectedName:"Fixture";property var networks:[{connected:true,signalStrength:.4}]',
             'DeviceStatus': 'property bool available:false;property bool batteryAvailable:true;property real battery:.8;property bool low:false;property string icon:"headphones";property string name:"Fixture headphones"',
             'Hints': 'property string text:"";function show(owner,value):void{text=value;}function hide(owner):void{text="";}',
         },
@@ -30,12 +30,12 @@ with tempfile.TemporaryDirectory(prefix='modesty-status-orb-') as temporary:
         (workspace / directory / 'qmldir').write_text(''.join(
             f'singleton {name} 1.0 {name}.qml\n' for name in singletons))
     (workspace / 'components').mkdir()
-    for source in ('modules/island/StatusOrb.qml', 'components/Icon.qml', 'components/CompactGlyph.qml'):
+    for source in ('modules/island/StatusOrb.qml', 'modules/island/DockSignals.qml', 'components/Icon.qml', 'components/CompactGlyph.qml'):
         content = (ROOT / source).read_text()
         for module in ('services', 'theme', 'components'):
             relative = module if source.startswith('modules/') else '../' + module
             content = content.replace(f'import qs.{module}', f'import "{relative}"')
-        target = workspace / ('StatusOrb.qml' if source.startswith('modules/') else source)
+        target = workspace / (Path(source).name if source.startswith('modules/') else source)
         target.write_text(content)
     (workspace / 'components/ControlGlyphs.js').symlink_to(ROOT / 'components/ControlGlyphs.js')
     (workspace / 'shell.qml').write_text('''import QtQuick

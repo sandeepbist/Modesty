@@ -28,18 +28,27 @@ FocusScope {
             id: list; Layout.fillWidth: true; Layout.fillHeight: true; Layout.minimumHeight:0;implicitHeight:Math.max(112,contentHeight);clip: true; spacing: 8
             model: Wireless.enabled ? Wireless.networks : []
             ScrollBar.vertical: ScrollBar {}
-            delegate: Rectangle {
-                id: row; required property var modelData
-                width: list.width; height: 54; radius: 12
-                color: root.selected === modelData ? Theme.accentLow : mouse.containsMouse ? Theme.withAlpha(Theme.text,.085) : Theme.withAlpha(Theme.text,.035)
-                Behavior on color { ColorAnimation {duration:Tokens.animFast} }
+            delegate: AbstractButton {
+                id: row; required property var modelData; required property int index
+                width: list.width; height: 54; padding:0;hoverEnabled:true;focusPolicy:Qt.StrongFocus
+                onActiveFocusChanged:if(activeFocus)list.positionViewAtIndex(index,ListView.Contain)
+                Accessible.name:modelData.name
+                Accessible.description:status.text
+                Keys.onReturnPressed:clicked()
+                Keys.onEnterPressed:clicked()
+                onClicked:{root.select(modelData);if(!modelData.connected&&!Wireless.busy)Wireless.join(modelData,"");}
+                background:Rectangle {
+                    radius:12;color:root.selected===row.modelData?Theme.accentLow:row.hovered?Theme.withAlpha(Theme.text,.085):Theme.withAlpha(Theme.text,.035)
+                    border.width:row.activeFocus?1:0;border.color:Theme.accent
+                    Behavior on color {ColorAnimation {duration:Tokens.animFast}}
+                }
                 Icon { x: 12; anchors.verticalCenter: parent.verticalCenter; icon: row.modelData.connected ? "wifi" : row.modelData.signalStrength > .5 ? "network_wifi" : "network_wifi_1_bar"; size: 19; color: row.modelData.connected ? Theme.accent : Theme.subtext }
                 Column { x: 44; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 80; spacing: 3
                     PanelText { width: parent.width; text: row.modelData.name; font.pixelSize: 13; font.weight: Font.Medium }
-                    PanelText { width: parent.width; text: row.modelData.stateChanging ? "Connecting…" : row.modelData.connected ? "Connected" : row.modelData.known ? "Saved" : WifiSecurityType.toString(row.modelData.security); color: Theme.subtext; font.pixelSize: Tokens.captionSize }
+                    PanelText { id:status;width: parent.width; text: row.modelData.stateChanging ? "Connecting…" : row.modelData.connected ? "Connected" : row.modelData.known ? "Saved" : WifiSecurityType.toString(row.modelData.security); color: Theme.subtext; font.pixelSize: Tokens.captionSize }
                 }
                 Icon { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; icon: row.modelData.connected ? "check" : "chevron_right"; size: 16; color: Theme.accent }
-                MouseArea { id: mouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { root.select(row.modelData); if (!row.modelData.connected && !Wireless.busy) Wireless.join(row.modelData, ""); } }
+                HoverHandler {cursorShape:Qt.PointingHandCursor}
             }
             PanelText { parent:list;anchors.centerIn: parent; width:Math.max(0,parent.width-28);wrapMode:Text.WordWrap;horizontalAlignment:Text.AlignHCenter;visible: list.count === 0; text: Wireless.enabled ? "Looking for nearby networks…" : "Your saved networks will be here"; color: Theme.subtext; font.pixelSize: 11 }
         }

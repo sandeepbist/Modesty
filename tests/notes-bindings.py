@@ -41,23 +41,23 @@ else:
         return response
 
     response = restore()
-    assert response['bindings'] == {'notes': 'SUPER + ALT + N'}
+    assert response['bindings'] == {'notes': 'SUPER + ALT + N', 'dock': 'SUPER + ALT + D'}
     commands = (temporary / 'calls.jsonl').read_text()
     assert 'call island action notes' in commands
     assert 'SUPER + N' not in commands, 'Default replaced existing Super+N'
     response = restore({'reminder': 'SUPER + ALT + T'})
-    assert response['bindings'] == {'reminder': 'SUPER + ALT + T', 'notes': 'SUPER + ALT + N'}
+    assert response['bindings'] == {'reminder': 'SUPER + ALT + T', 'notes': 'SUPER + ALT + N', 'dock': 'SUPER + ALT + D'}
     response = restore({'notes': '', 'reminder': 'SUPER + ALT + T'})
     assert response['bindings']['notes'] == '', 'Explicitly disabled default was restored'
     response = restore({'notes': 'SUPER + SHIFT + N'})
     assert response['bindings']['notes'] == 'SUPER + SHIFT + N', 'Custom Notes shortcut was replaced'
     collision = live + [{'modmask': 72, 'key': 'N', 'description': 'Desktop action'}]
     response = restore(current=collision)
-    assert response['bindings'] == {} and 'already used' in response['defaultError']
-    assert not state.exists(), 'Colliding default changed saved bindings'
+    assert response['bindings'] == {'dock': 'SUPER + ALT + D'} and 'already used' in response['defaultError']
+    assert json.loads(state.read_text()) == {'dock': 'SUPER + ALT + D'}, 'Colliding Notes default persisted an opt-out'
     response = restore({'reminder': 'SUPER + ALT + T'}, collision)
-    assert response['bindings'] == {'reminder': 'SUPER + ALT + T'}
+    assert response['bindings'] == {'reminder': 'SUPER + ALT + T', 'dock': 'SUPER + ALT + D'}
     response = restore({'reminder': 'SUPER + ALT + N'})
-    assert response['bindings'] == {'reminder': 'SUPER + ALT + N'}
+    assert response['bindings'] == {'reminder': 'SUPER + ALT + N', 'dock': 'SUPER + ALT + D'}
     assert 'assigned more than once' in response['defaultError']
 print('PASS Notes bindings: default, collisions, custom chords, opt-out and preserved Super+N')

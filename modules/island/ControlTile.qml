@@ -9,6 +9,8 @@ Rectangle {
     property bool editing: false
     property bool interactive: true
     readonly property bool usable: interactive && !editing && enabled
+    property int heldKey:0
+    readonly property bool pressed:usable&&(tileTap.pressed||heldKey!==0)
     readonly property bool toggleTile:["focus","recorder","appearance","awake","peace","nightlight","wifi","bluetooth"].includes(kind)
     property color foreground:toggleTile&&selected?Theme.accentText:Theme.text
     readonly property bool level: kind === "display" || kind === "sound"
@@ -25,7 +27,7 @@ Rectangle {
     }
     antialiasing:true
     scale: pressMotion.value
-    FrameSpring { id:pressMotion;owner:root;targetValue:tileTap.pressed&&usable?.975:1;pressFeedback:true;positionTolerance:.0002 }
+    FrameSpring { id:pressMotion;owner:root;targetValue:root.pressed?.975:1;pressFeedback:true;positionTolerance:.0002 }
     border.width: 1; border.color: activeFocus ? Theme.accent : Theme.withAlpha(foreground, hover.hovered && usable ? .15 : Tokens.borderAlpha)
     Behavior on foreground { ColorAnimation { duration: Tokens.animFast } }
     Behavior on border.color { ColorAnimation { duration: Tokens.animFast } }
@@ -34,14 +36,31 @@ Rectangle {
     Rectangle {
         anchors.fill: parent; radius: root.radius; antialiasing: true
         color: root.foreground
-        opacity: tileTap.pressed && root.usable ? .085 : hover.hovered && root.usable && !root.level ? .035 : 0
+        opacity: root.pressed ? .085 : hover.hovered && root.usable && !root.level ? .035 : 0
         Behavior on opacity { NumberAnimation { duration: Tokens.animFast; easing.type: Easing.OutCubic } }
     }
     function activate(): void { if(!usable)return; if(["notes","focus","recorder","wifi","bluetooth","display","sound","power"].includes(kind))IslandState.openMenu(kind);else if(kind==="notifications")IslandState.openMenu("notifhistory");else if(kind==="appearance")Theme.toggleMode();else if(kind==="awake")KeepAwake.toggle();else if(kind==="peace")Notifications.dnd=!Notifications.dnd;else if(kind==="nightlight")Display.setNightLight(!Display.nightLight);else if(kind==="lock")Session.lock(false); }
     HoverHandler { id:hover;onHoveredChanged:{if(hovered&&root.usable)Hints.show(root,root.title+(root.width<=90?" · "+root.subtitle:""));else Hints.hide(root);} cursorShape: root.usable?Qt.PointingHandCursor:Qt.ArrowCursor }
-    Keys.onReturnPressed: activate()
-    Keys.onEnterPressed: activate()
-    Keys.onSpacePressed: activate()
+    function pressKey(event):void {
+        if(event.key===Qt.Key_Escape&&heldKey){heldKey=0;event.accepted=true;return;}
+        if(!activeFocus||!usable||![Qt.Key_Space,Qt.Key_Return,Qt.Key_Enter].includes(event.key))return;
+        event.accepted=true;
+        if(event.isAutoRepeat||heldKey)return;
+        heldKey=event.key;Hints.hide(root);
+        if(event.key!==Qt.Key_Space)activate();
+    }
+    function releaseKey(event):void {
+        if(event.isAutoRepeat){if(heldKey)event.accepted=true;return;}
+        const key=heldKey;heldKey=0;
+        if(!key||event.key!==key)return;
+        event.accepted=true;
+        if(key===Qt.Key_Space&&usable&&activeFocus)activate();
+    }
+    Keys.onPressed:event=>pressKey(event)
+    Keys.onReleased:event=>releaseKey(event)
+    onActiveFocusChanged:if(!activeFocus)heldKey=0
+    onUsableChanged:if(!usable)heldKey=0
+    onVisibleChanged:if(!visible)heldKey=0
     activeFocusOnTab: usable
     Accessible.role:root.toggleTile?Accessible.CheckBox:Accessible.Button
     Accessible.name:root.title
@@ -52,7 +71,7 @@ Rectangle {
         Icon {x:root.width>90?14:(parent.width-width)/2;anchors.verticalCenter:parent.verticalCenter;icon:root.icon;size:Preferences.controlIconSize;color:root.foreground}
         Column { x:Math.max(48,Preferences.controlIconSize+24); anchors.verticalCenter: parent.verticalCenter; width:Math.max(0,parent.width-x-14); spacing:3; visible:root.width>90
             PanelText { width:parent.width;visible:!["wifi","bluetooth"].includes(root.kind); text:root.title;color:root.foreground; font.pixelSize:12; font.weight:Font.DemiBold }
-            PanelText { width:parent.width; text:root.subtitle; font.pixelSize:["wifi","bluetooth"].includes(root.kind)?12:11; color:root.selected?Theme.withAlpha(Theme.bgSolid,.72):Theme.subtext; Behavior on color {ColorAnimation {duration:Tokens.animFast}} }
+            PanelText { width:parent.width; text:root.subtitle; font.pixelSize:["wifi","bluetooth"].includes(root.kind)?12:11; color:root.selected?Theme.accentText:Theme.subtext; Behavior on color {ColorAnimation {duration:Tokens.animFast}} }
         }
         TapHandler { id:tileTap; enabled:root.usable; onTapped:{Hints.hide(root);root.activate();} }
     }

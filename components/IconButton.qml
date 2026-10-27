@@ -11,6 +11,8 @@ Item {
     property real size: 16
     property color color: Theme.text
     property color background: "transparent"
+    property int heldKey: 0
+    readonly property bool pressed: enabled && (mouse.pressed || heldKey !== 0)
 
     signal clicked()
 
@@ -19,9 +21,26 @@ Item {
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
     Accessible.name: label || icon
-    Keys.onSpacePressed: clicked()
-    Keys.onReturnPressed: clicked()
-    Keys.onEnterPressed: clicked()
+    function pressKey(event): void {
+        if(event.key===Qt.Key_Escape&&heldKey){heldKey=0;event.accepted=true;return;}
+        if(!activeFocus||!enabled||![Qt.Key_Space,Qt.Key_Return,Qt.Key_Enter].includes(event.key))return;
+        event.accepted=true;
+        if(event.isAutoRepeat||heldKey)return;
+        heldKey=event.key;Hints.hide(root);
+        if(event.key!==Qt.Key_Space)clicked();
+    }
+    function releaseKey(event): void {
+        if(event.isAutoRepeat){if(heldKey)event.accepted=true;return;}
+        const key=heldKey;heldKey=0;
+        if(!key||event.key!==key)return;
+        event.accepted=true;
+        if(key===Qt.Key_Space&&enabled&&activeFocus)clicked();
+    }
+    Keys.onPressed:event=>pressKey(event)
+    Keys.onReleased:event=>releaseKey(event)
+    onActiveFocusChanged:if(!activeFocus)heldKey=0
+    onEnabledChanged:if(!enabled)heldKey=0
+    onVisibleChanged:if(!visible)heldKey=0
     opacity: enabled ? 1 : 0.35
 
     Rectangle {
@@ -36,7 +55,7 @@ Item {
             anchors.fill: parent
             antialiasing: true
             radius: parent.radius
-            color: Theme.withAlpha(root.color, mouse.pressed ? 0.13 : mouse.containsMouse ? 0.065 : 0)
+            color: Theme.withAlpha(root.color, root.pressed ? 0.13 : mouse.containsMouse ? 0.065 : 0)
             Behavior on color { ColorAnimation { duration: Tokens.animFast } }
         }
 
@@ -70,6 +89,6 @@ Item {
     }
 
     scale: pressMotion.value
-    FrameSpring { id:pressMotion;owner:root;targetValue:mouse.pressed ? 0.96 : 1;pressFeedback:true;positionTolerance:.0002 }
+    FrameSpring { id:pressMotion;owner:root;targetValue:root.pressed ? 0.96 : 1;pressFeedback:true;positionTolerance:.0002 }
 
 }
