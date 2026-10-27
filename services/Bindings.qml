@@ -11,7 +11,7 @@ Singleton {
     property string error:""
     property bool loaded:false
     readonly property bool busy:writer.running
-    readonly property var actions:[{id:"notes",label:"Quick Notes"},{id:"reminder",label:"New reminder"},{id:"focus",label:"Focus timer"},{id:"focuspause",label:"Pause / resume focus"},{id:"recorder",label:"Screen recorder"},{id:"recordstop",label:"Stop recording"},{id:"recordpause",label:"Pause / resume recording"},{id:"launcher",label:"Applications"},{id:"canvas",label:"Luma"},{id:"settings",label:"Settings"},{id:"quicksettings",label:"Control center"},{id:"media",label:"Media player"},{id:"calendar",label:"Calendar"},{id:"themes",label:"Themes"},{id:"wallpapers",label:"Wallpapers"},{id:"wifi",label:"Wi-Fi"},{id:"bluetooth",label:"Bluetooth"},{id:"display",label:"Display"},{id:"sound",label:"Sound"},{id:"notifhistory",label:"Notification history"},{id:"power",label:"Power menu"},{id:"appearance",label:"Light / dark"},{id:"awake",label:"Keep Awake"},{id:"peace",label:"Peace"},{id:"nightlight",label:"Night Light"},{id:"lock",label:"Lock"},{id:"playpause",label:"Play / pause"},{id:"next",label:"Next track"},{id:"previous",label:"Previous track"}]
+    readonly property var actions:[{id:"dock",label:"Toggle dock"},{id:"notes",label:"Quick Notes"},{id:"reminder",label:"New reminder"},{id:"focus",label:"Focus timer"},{id:"focuspause",label:"Pause / resume focus"},{id:"recorder",label:"Screen recorder"},{id:"recordstop",label:"Stop recording"},{id:"recordpause",label:"Pause / resume recording"},{id:"launcher",label:"Applications"},{id:"canvas",label:"Luma"},{id:"settings",label:"Settings"},{id:"quicksettings",label:"Control center"},{id:"media",label:"Media player"},{id:"calendar",label:"Calendar"},{id:"themes",label:"Themes"},{id:"wallpapers",label:"Wallpapers"},{id:"wifi",label:"Wi-Fi"},{id:"bluetooth",label:"Bluetooth"},{id:"display",label:"Display"},{id:"sound",label:"Sound"},{id:"notifhistory",label:"Notification history"},{id:"power",label:"Power menu"},{id:"appearance",label:"Light / dark"},{id:"awake",label:"Keep Awake"},{id:"peace",label:"Peace"},{id:"nightlight",label:"Night Light"},{id:"lock",label:"Lock"},{id:"playpause",label:"Play / pause"},{id:"next",label:"Next track"},{id:"previous",label:"Previous track"}]
     function set(action:string,chord:string):void {
         if(Preferences.preview||busy)return;
         const next=Object.assign({},assignments,{[action]:chord});error="";
@@ -31,7 +31,8 @@ Singleton {
     }
     function trigger(action:string):void {
         if(Preferences.preview||Session.isLocked())return;
-        if(action==="reminder")Reminders.compose();
+        if(action==="dock")IslandState.toggleDock();
+        else if(action==="reminder")Reminders.compose();
         else if(action==="focuspause")FocusTimer.pause();
         else if(action==="recordstop")Recorder.stop();
         else if(action==="recordpause")Recorder.pause();

@@ -30,21 +30,39 @@ FocusScope {
             section.property:"group";section.criteria:ViewSection.FullString
             section.delegate:PanelText {required property string section; width:list.width;height:26;verticalAlignment:Text.AlignVCenter;text:section;font.pixelSize:11;color:Theme.subtext}
             ScrollBar.vertical: ScrollBar {}
-            delegate: Rectangle {
-                id: row; required property var modelData
+            delegate: AbstractButton {
+                id: row; required property var modelData; required property int index
                 readonly property var device:modelData.device
-                width: list.width; height: 54; radius: 12
-                color: root.selected === row.device ? Theme.accentLow : mouse.containsMouse ? Theme.withAlpha(Theme.text,.085) : Theme.withAlpha(Theme.text,.035)
-                Behavior on color {ColorAnimation {duration:Tokens.animFast}}
+                width: list.width; height: 54; padding:0;hoverEnabled:true;focusPolicy:Qt.StrongFocus;enabled:Radio.enabled
+                onActiveFocusChanged:if(activeFocus)list.positionViewAtIndex(index,ListView.Contain)
+                Accessible.name:device.name
+                Accessible.description:status.text
+                Accessible.selected:root.selected===device
+                Connections {target:list;function onHeightChanged(){if(row.activeFocus||deviceAction.activeFocus)Qt.callLater(()=>list.positionViewAtIndex(row.index,ListView.Contain));}}
+                Keys.onReturnPressed:clicked()
+                Keys.onEnterPressed:clicked()
+                onClicked:{root.selected=device;root.confirmForget=false;Radio.error="";}
+                background:Rectangle {
+                    radius:12;color:root.selected===row.device?Theme.accentLow:row.hovered?Theme.withAlpha(Theme.text,.085):Theme.withAlpha(Theme.text,.035)
+                    border.width:row.activeFocus?1:0;border.color:Theme.accent
+                    Behavior on color {ColorAnimation {duration:Tokens.animFast}}
+                }
                 Rectangle {x:8;anchors.verticalCenter:parent.verticalCenter;width:27;height:27;radius:13.5;color:row.device.connected?Theme.accent:Theme.withAlpha(Theme.text,.05)
                     Icon {anchors.centerIn:parent;icon:root.deviceIcon(row.device);size:15;color:row.device.connected?Theme.accentText:Theme.subtext}
                 }
                 Column { x: 43; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 130; spacing: 3
                     PanelText { width: parent.width; text: row.device.name; font.pixelSize: 13; font.weight: Font.Medium }
-                    PanelText { width: parent.width; text: row.device.connected ? "Connected" + (row.device.batteryAvailable ? " · " + Math.round(row.device.battery * 100) + "% battery" : "") : row.device.pairing ? "Pairing…" : row.device.paired ? "Saved" : "Available to pair"; color: Theme.subtext; font.pixelSize: 11 }
+                    PanelText { id:status;width: parent.width; text: row.device.connected ? "Connected" + (row.device.batteryAvailable ? " · " + Math.round(row.device.battery * 100) + "% battery" : "") : row.device.pairing ? "Pairing…" : row.device.paired ? "Saved" : "Available to pair"; color: Theme.subtext; font.pixelSize: 11 }
                 }
-                MouseArea { id: mouse; anchors.fill: parent;enabled:Radio.enabled; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { root.selected = row.device; root.confirmForget = false; Radio.error = ""; } }
-                ActionButton { anchors.right:parent.right;anchors.rightMargin:8;anchors.verticalCenter:parent.verticalCenter;implicitWidth:76;implicitHeight:26;padding:4;text:row.device.connected?"Disconnect":row.device.paired?"Connect":"Pair";enabled:Radio.enabled&&!Radio.busy;onClicked:{root.selected=row.device;Radio.act(row.device,row.device.connected?"disconnect":row.device.paired?"connect":"pair");} }
+                HoverHandler {cursorShape:Qt.PointingHandCursor}
+                ActionButton {
+                    id:deviceAction
+                    anchors.right:parent.right;anchors.rightMargin:8;anchors.verticalCenter:parent.verticalCenter;implicitWidth:76;implicitHeight:26;padding:4;text:row.device.connected?"Disconnect":row.device.paired?"Connect":"Pair";enabled:Radio.enabled&&!Radio.busy
+                    onActiveFocusChanged:if(activeFocus)list.positionViewAtIndex(row.index,ListView.Contain)
+                    Keys.onReturnPressed:clicked()
+                    Keys.onEnterPressed:clicked()
+                    onClicked:{root.selected=row.device;Radio.act(row.device,row.device.connected?"disconnect":row.device.paired?"connect":"pair");}
+                }
 
             }
             PanelText { parent:list;anchors.centerIn: parent; visible: list.count === 0; width: parent.width - 28; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; text: Radio.enabled ? "Put your device in pairing mode to find it here." : "Turn on Bluetooth to connect your devices."; color: Theme.subtext; font.pixelSize: 11 }

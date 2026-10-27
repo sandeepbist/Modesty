@@ -55,8 +55,18 @@ FocusScope {
         Behavior on opacity {NumberAnimation {duration:Tokens.animFast}}
         RowLayout {Layout.fillWidth:true;Layout.minimumHeight:28;Layout.preferredHeight:28;Layout.maximumHeight:28;spacing:4
             IconButton {icon:"chevron_left";label:root.mode==="days"?"Previous month":"Previous years";size:12;background:Theme.surfaceSolid;onClicked:root.step(-1)}
-            PanelText {Layout.fillWidth:true;Layout.fillHeight:true;text:root.mode==="days"?Qt.formatDateTime(root.viewDate,"MMMM yyyy"):root.mode==="months"?String(root.year):root.yearBase+"–"+(root.yearBase+11);font.pixelSize:13;font.weight:Font.DemiBold;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter
-                MouseArea {anchors.fill:parent;cursorShape:Qt.PointingHandCursor;acceptedButtons:Qt.LeftButton|Qt.RightButton;onClicked:mouse=>{Reminders.calendarExpanded=false;if(mouse.button===Qt.RightButton)root.today();else root.navigate(root.year,root.month,root.mode==="days"?"months":root.mode==="months"?"years":"days");}}
+            AbstractButton {
+                id:chooser;Layout.fillWidth:true;Layout.fillHeight:true;padding:0;focusPolicy:Qt.StrongFocus
+                text:root.mode==="days"?Qt.formatDateTime(root.viewDate,"MMMM yyyy"):root.mode==="months"?String(root.year):root.yearBase+"–"+(root.yearBase+11)
+                Accessible.name:root.mode==="days"?"Choose month":root.mode==="months"?"Choose year":"Choose day"
+                Accessible.description:text
+                onClicked:{Reminders.calendarExpanded=false;root.navigate(root.year,root.month,root.mode==="days"?"months":root.mode==="months"?"years":"days");}
+                Keys.onReturnPressed:clicked()
+                Keys.onEnterPressed:clicked()
+                background:Rectangle {radius:8;color:"transparent";border.width:chooser.activeFocus?1:0;border.color:Theme.accent}
+                contentItem:PanelText {text:chooser.text;font.pixelSize:14;font.weight:Font.DemiBold;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter}
+                HoverHandler {cursorShape:Qt.PointingHandCursor}
+                MouseArea {anchors.fill:parent;acceptedButtons:Qt.RightButton;onClicked:root.today()}
             }
             IconButton {icon:"chevron_right";label:root.mode==="days"?"Next month":"Next years";size:12;background:Theme.surfaceSolid;onClicked:root.step(1)}
         }
@@ -64,7 +74,7 @@ FocusScope {
             id:calendarBody;Layout.fillWidth:true;Layout.minimumHeight:root.compactHeight-34;Layout.preferredHeight:root.compactHeight-34;Layout.maximumHeight:root.compactHeight-34
             GridLayout {
                 anchors.fill:parent;columns:7;rowSpacing:2;columnSpacing:2;visible:root.mode==="days"
-                Repeater {model:["S","M","T","W","T","F","S"];PanelText {required property string modelData;Layout.fillWidth:true;Layout.preferredHeight:20;text:modelData;font.pixelSize:10;color:Theme.subtext;horizontalAlignment:Text.AlignHCenter}}
+                Repeater {model:["S","M","T","W","T","F","S"];PanelText {required property string modelData;Layout.fillWidth:true;Layout.preferredHeight:20;text:modelData;font.pixelSize:11;font.weight:Font.Medium;color:Theme.subtext;horizontalAlignment:Text.AlignHCenter}}
                 Repeater {model:42
                     AbstractButton {
                         id:cell;required property int index
@@ -75,9 +85,9 @@ FocusScope {
                         Layout.fillWidth:true;Layout.fillHeight:true;hoverEnabled:true
                         onClicked:root.toggleDate(key)
                         Accessible.name:Qt.formatDateTime(day,"dddd, d MMMM yyyy")
-                        background:Rectangle {anchors.centerIn:parent;width:23;height:23;radius:12;color:cell.today?Theme.accent:cell.pressed?Theme.withAlpha(Theme.text,.1):cell.hovered?Theme.withAlpha(Theme.text,.055):"transparent";border.width:cell.selected?1:0;border.color:Theme.accent;Behavior on color {ColorAnimation {duration:Tokens.animFast}}}
+                        background:Rectangle {anchors.centerIn:parent;width:26;height:26;radius:13;color:cell.today?Theme.accent:cell.pressed?Theme.withAlpha(Theme.text,.1):cell.hovered?Theme.withAlpha(Theme.text,.055):"transparent";border.width:cell.selected?1:0;border.color:Theme.accent;Behavior on color {ColorAnimation {duration:Tokens.animFast}}}
                         contentItem:Item {
-                            PanelText {anchors.centerIn:parent;text:cell.day.getDate();font.pixelSize:12;font.weight:cell.today?Font.Medium:Font.Normal;font.features:({tnum:1});color:cell.today?Theme.accentText:cell.selected?Theme.accent:Theme.text;opacity:cell.day.getMonth()===root.month?1:.3}
+                            PanelText {anchors.centerIn:parent;text:cell.day.getDate();font.pixelSize:13;font.weight:Font.Medium;font.features:({tnum:1});color:cell.today?Theme.accentText:cell.selected?Theme.accent:Theme.text;opacity:cell.day.getMonth()===root.month?1:.3}
                             Rectangle {anchors.horizontalCenter:parent.horizontalCenter;y:parent.height-4;width:3;height:3;radius:1.5;color:Theme.accent;visible:Reminders.hasDate(cell.key)}
                         }
                         HoverHandler {cursorShape:Qt.PointingHandCursor}

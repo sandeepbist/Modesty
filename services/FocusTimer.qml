@@ -73,7 +73,7 @@ Singleton {
         save();
     }
     function cancel():void {if(!loaded||Preferences.preview||Session.isLocked())return;phase="idle";deadline=0;remaining=duration;save();}
-    Timer {interval:1000;running:root.loaded&&root.phase==="running";repeat:true;onTriggered:root.update()}
+    Timer {interval:100;running:root.loaded&&root.phase==="running";repeat:true;onTriggered:root.update()}
     Timer {id:saveDelay;interval:80;onTriggered:{if(writer.running){restart();return;}writer.command=["python3",root.script,JSON.stringify(root.snapshot())];writer.running=true;}}
     Process {id:writer;onExited:code=>root.error=code===0?"":"Could not save the timer"}
     Process {

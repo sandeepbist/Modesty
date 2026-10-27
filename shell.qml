@@ -21,9 +21,9 @@ ShellRoot {
     LazyLoader { active: Preferences.companionEnabled && !Preferences.preview; Companion.Companion {} }
     Canvas.CommandCanvas {
         id: commandCanvas
-        originItem: island.surface.clockStage.capsule
+        originItem: island.surface.clockOrigin
         originScreenName: island.screen?.name ?? ""
-        originAvailable: !island.hiddenByFullscreen && island.surface.visible && island.surface.clockStage.nearRest
+        originAvailable: !island.hiddenByFullscreen && island.surface.visible && island.surface.clockAvailable
     }
     Shortcuts {}
     SessionIntegration {}

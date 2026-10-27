@@ -53,7 +53,8 @@ Singleton {
     // The installed 0.3.1 service exposes expireTimeout in milliseconds (verified via D-Bus).
     function track(notification): void {
         notification.tracked = true;
-        const record = recordComponent.createObject(root, { serial:++root.nextSerial, notification, appName: notification.appName, appIcon:notification.appIcon, summary: notification.summary, body: notification.body, popup: !dnd, timeout: notification.expireTimeout === 0 ? 0 : notification.expireTimeout > 0 ? Math.round(notification.expireTimeout) : Preferences.notificationDuration });
+        const record = recordComponent.createObject(root, { serial:++root.nextSerial, notification, popup: !dnd });
+        record.refreshNative();
         add(record);
     }
     Loader {
@@ -89,13 +90,38 @@ Singleton {
             property int removalDelay: 0
             property int timeout: 6000
             readonly property var actions: notification?.actions ?? localActions
+            function refreshNative(): void {
+                if (!notification) return;
+                appName = notification.appName;
+                appIcon = notification.appIcon;
+                summary = notification.summary;
+                body = notification.body;
+                timeout = notification.expireTimeout === 0 ? 0 : notification.expireTimeout > 0 ? Math.round(notification.expireTimeout) : Preferences.notificationDuration;
+                if (popup && !popupClosing && !closing && !popupHovered && timeout > 0) expiry.restart();
+            }
             function invokeAction(identifier: string): void { const a = actions.find(a => a.identifier === identifier); if (a) a.invoke(); }
             readonly property Timer expiry: Timer { interval: record.timeout; running: record.popup && !record.popupClosing && !record.popupHovered && record.timeout > 0; onTriggered: root.dismiss(record,true) }
             readonly property Timer popupExit: Timer {interval:Tokens.animMedium;onTriggered:{record.popup=false;if(record.notification){if(record.expired)record.notification.expire();else record.notification.dismiss();}}}
             readonly property Timer removal: Timer {interval:Tokens.animMedium+record.removalDelay+16;onTriggered:root.removeRecord(record)}
             readonly property Connections connection: Connections {
                 target: record.notification
-                function onClosed() { root.dismiss(record); record.notification = null; }
+                // Native replacement assigns several properties in one delivery. Copy its final values once.
+                function onAppNameChanged() { Qt.callLater(record.refreshNative); }
+                function onAppIconChanged() { Qt.callLater(record.refreshNative); }
+                function onSummaryChanged() { Qt.callLater(record.refreshNative); }
+                function onBodyChanged() { Qt.callLater(record.refreshNative); }
+                function onExpireTimeoutChanged() { Qt.callLater(record.refreshNative); }
+                function onActionsChanged() { Qt.callLater(record.refreshNative); }
+                function onHintsChanged() { Qt.callLater(record.refreshNative); }
+                function onUrgencyChanged() { Qt.callLater(record.refreshNative); }
+                function onHasActionIconsChanged() { Qt.callLater(record.refreshNative); }
+                function onResidentChanged() { Qt.callLater(record.refreshNative); }
+                function onTransientChanged() { Qt.callLater(record.refreshNative); }
+                function onDesktopEntryChanged() { Qt.callLater(record.refreshNative); }
+                function onImageChanged() { Qt.callLater(record.refreshNative); }
+                function onHasInlineReplyChanged() { Qt.callLater(record.refreshNative); }
+                function onInlineReplyPlaceholderChanged() { Qt.callLater(record.refreshNative); }
+                function onClosed() { root.dismiss(record); record.refreshNative(); record.notification = null; }
             }
         }
     }

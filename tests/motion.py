@@ -66,3 +66,55 @@ ShellRoot {
     }catch(error){console.error(error);Qt.exit(1);}}}
 }
 ''', 'MOTION CHECK PASS: fluid/gentle speeds, rebound, bounds, input geometry, retargeting, reduced motion and continuous aperture', timeout=40)
+
+run('''import QtQuick
+import Quickshell
+import "modules/island" as Island
+import qs.components
+import qs.services
+ShellRoot {
+    property int phase:0
+    FloatingWindow {visible:true;implicitWidth:1000;implicitHeight:300
+        Island.IslandSurface {id:surface;availableWidth:1000}
+        RollingText {id:marquee;y:60;width:80;height:30;marquee:true;text:"A long media title that needs horizontal scrolling"}
+        RollingText {id:label;y:100;width:120;height:30;text:"Alpha"}
+        SlidingDigits {id:digits;y:140;width:120;height:40;text:"09"}
+    }
+    function check(ok,message):void {if(!ok)throw new Error(message+" phase="+phase);}
+    function walk(item) {let items=[item];for(const child of item.children||[])items=items.concat(walk(child));return items;}
+    Component.onCompleted:Preferences.motion="fluid"
+    Timer {id:steps;interval:950;running:true;onTriggered:{try {
+        if(phase===0) {
+            check(marquee.scrollOffset>0,"Marquee fixture did not start");
+            label.text="Beta";digits.text="10";Context.show("welcome","Hello","",0);steps.interval=70;
+        } else if(phase===1) {
+            check(label.travel<1&&!!label.outgoingText,"Rolling label fixture did not animate");
+            check(walk(digits).some(item=>item.progress!==undefined&&item.progress<1),"Digit fixture did not animate");
+            check(surface.diagnostics().welcomeProgress>0&&surface.diagnostics().welcomeProgress<1,"Welcome fixture did not animate");
+            Preferences.motion="instant";steps.interval=10;
+        } else if(phase===2) {
+            check(marquee.scrollOffset===0&&marquee.outgoingOffset===0,"Instant mode retains marquee offset");
+            check(label.travel===1&&label.outgoingText===""&&label.currentText==="Beta","Instant mode leaves active rolling text");
+            for(const item of walk(digits).filter(item=>item.progress!==undefined))check(item.progress===1&&item.outgoing===""&&item.shown===item.value,"Instant mode leaves active digit motion");
+            const viewport=walk(surface).find(item=>item.welcomeAmount!==undefined);
+            const overlay=walk(viewport).find(item=>item instanceof WelcomeWord).parent;
+            check(viewport.welcomeAmount===1&&overlay.reveal===1,"Instant mode leaves welcome partly drawn");
+            label.text="Gamma";digits.text="23";steps.interval=800;
+        } else if(phase===3) {
+            check(label.currentText==="Gamma"&&label.travel===1,"Instant update rolls new text");
+            check(marquee.scrollOffset===0,"Instant mode restarts marquee timer");
+            for(const item of walk(digits).filter(item=>item.progress!==undefined))check(item.progress===1&&item.outgoing===""&&item.shown===item.value,"Instant digit update animates");
+            const viewport=walk(surface).find(item=>item.welcomeAmount!==undefined);
+            check(viewport.welcomeAmount===1&&walk(viewport).find(item=>item instanceof WelcomeWord).parent.reveal===1,"Stopped welcome changes after instant selection");
+            Context.clear();steps.interval=10;
+        } else if(phase===4) {
+            check(surface.diagnostics().welcomeProgress===0,"Instant welcome exit leaves overlay");
+            Preferences.motion="fluid";steps.interval=900;
+        } else if(phase===5) {
+            check(marquee.scrollOffset>0,"Fluid mode does not resume marquee");
+            console.log("INSTANT TEXT CHECK PASS");Qt.quit();return;
+        }
+        phase++;steps.restart();
+    }catch(error){console.error(error);Qt.exit(1);}}}
+}
+''', 'INSTANT TEXT CHECK PASS')

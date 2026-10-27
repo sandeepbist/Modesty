@@ -2,7 +2,7 @@
 """Apply additional Modesty shortcuts without replacing existing Hyprland binds."""
 import json,os,re,subprocess,sys
 from pathlib import Path
-ACTIONS=('notes','reminder','focus','focuspause','recorder','recordstop','recordpause','launcher','canvas','settings','quicksettings','media','calendar','themes','wallpapers','wifi','bluetooth','display','sound','notifhistory','power','appearance','awake','peace','nightlight','lock','playpause','next','previous')
+ACTIONS=('dock','notes','reminder','focus','focuspause','recorder','recordstop','recordpause','launcher','canvas','settings','quicksettings','media','calendar','themes','wallpapers','wifi','bluetooth','display','sound','notifhistory','power','appearance','awake','peace','nightlight','lock','playpause','next','previous')
 STATE=Path(os.environ.get('XDG_STATE_HOME',Path.home()/'.local/state'))/'modesty'/'bindings.json'
 SCRIPT=Path(__file__).resolve().parents[1]/'shell.qml'
 MODS={'SUPER':64,'CTRL':4,'ALT':8,'SHIFT':1}
@@ -51,12 +51,14 @@ if __name__=='__main__':
         if len(sys.argv)>1 and sys.argv[1]=="--clear-live":
             clear_live();print(json.dumps({"ok":True}));sys.exit(0)
         data=json.loads(sys.argv[1]) if len(sys.argv)>1 else json.loads(STATE.read_text()) if STATE.exists() else {}
-        default_error=''
-        if len(sys.argv)==1 and 'notes' not in data:
-            try: result=apply(dict(data,notes='SUPER + ALT + N'))
-            except Exception as error:
-                default_error='Quick Notes shortcut: '+str(error)
-                result=apply(data) if data else {}
-        else: result=apply(data) if data or len(sys.argv)>1 else {}
+        errors=[]
+        result=apply(data) if data or len(sys.argv)>1 else {}
+        if len(sys.argv)==1:
+            for action,label,chord in (('notes','Quick Notes','SUPER + ALT + N'),('dock','Dock','SUPER + ALT + D')):
+                if action in result:continue
+                try: result=apply(dict(result,**{action:chord}))
+                except Exception as error:
+                    errors.append(label+' shortcut: '+str(error))
+        default_error='; '.join(errors)
         print(json.dumps({'ok':True,'bindings':result,'defaultError':default_error}),flush=True)
     except Exception as e:print(json.dumps({'ok':False,'error':str(e)}),flush=True);sys.exit(1)

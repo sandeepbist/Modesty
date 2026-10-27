@@ -9,14 +9,20 @@ PanelWindow {
     id:root
     required property var sourceIsland
     readonly property var clock:sourceIsland.surface.clockStage
+    readonly property Item clockHit:sourceIsland.surface.clockHitRegion??clock
     property bool holding:false
     property bool completing:false
     property rect heldBox:Qt.rect(0,0,1,1)
     readonly property rect liveBox: {
-        clock.x;clock.width;clock.hoverLift;sourceIsland.surface.x;sourceIsland.surface.y;sourceIsland.surface.width;
-        const width=Math.max(root.interactive?clock.width:clock.restingWidth,IslandState.sizes.dropcue[0]);
-        const p=clock.mapToItem(sourceIsland.surface.parent,(clock.width-width)/2-6,clock.hoverLift);
+        clockHit.x;clockHit.width;clockHit.y;sourceIsland.surface.x;sourceIsland.surface.y;sourceIsland.surface.width;
+        const presentedWidth=root.interactive?clockHit.width:clock.restingWidth;
+        const width=Math.max(presentedWidth,(sourceIsland.surface.dockProgress??0)>0?clockHit.width:IslandState.sizes.dropcue[0]);
+        const p=clockHit.mapToItem(sourceIsland.surface.parent,(clockHit.width-width)/2-6,0);
         return Qt.rect(Math.floor(p.x),Math.floor(p.y),Math.ceil((width+12)*Preferences.uiScale),Math.ceil((Preferences.barHeight+7)*Preferences.uiScale));
+    }
+    function hold():void {
+        if(!holding&&!completing)heldBox=liveBox;
+        holding=true;
     }
     readonly property rect box:holding||completing?heldBox:liveBox
     screen:sourceIsland.screen
@@ -41,8 +47,8 @@ PanelWindow {
     onMaskChanged:root.updatesEnabled=true
     // Keep the native surface mapped; use an empty input region while another
     // panel is active so rapid drops do not race surface remapping.
-    visible:!Session.locked&&!Session.secure&&!sourceIsland.hiddenByFullscreen&&sourceIsland.surface.visible&&Startup.progress>.99
-    readonly property bool interactive:visible&&(holding||completing||(clock.panel==="idle"&&clock.nearRest)||clock.panel==="context")
+    visible:!Session.locked&&!Session.secure&&!!sourceIsland.screen&&!sourceIsland.hiddenByFullscreen&&sourceIsland.surface.visible&&Startup.progress>.99
+    readonly property bool interactive:visible&&(holding||completing||((sourceIsland.surface.dockProgress??0)>0)||(clock.panel==="idle"&&clock.nearRest)||clock.panel==="context")
     mask:Region {
         item:root.interactive?clockInput:null;radius:root.clock.capsule.radius*Preferences.uiScale
         onItemChanged:root.updatesEnabled=true
@@ -57,7 +63,7 @@ PanelWindow {
     Item {
         id:hit;anchors.fill:parent
         // Capture the visible clock, leaving neighbouring pill edges untouched.
-        Item {id:clockInput;x:(parent.width-width)/2;width:root.holding||root.completing?parent.width-12*Preferences.uiScale:root.clock.width*Preferences.uiScale;height:root.holding||root.completing?parent.height:Preferences.barHeight*Preferences.uiScale}
+        Item {id:clockInput;x:(parent.width-width)/2;width:root.holding||root.completing?parent.width-12*Preferences.uiScale:root.clockHit.width*Preferences.uiScale;height:root.holding||root.completing?parent.height:Preferences.barHeight*Preferences.uiScale}
         HoverHandler {enabled:root.interactive;onHoveredChanged:IslandState.hover("clock",hovered)}
         MouseArea {
             anchors.fill:parent;enabled:root.interactive;acceptedButtons:Qt.LeftButton|Qt.RightButton;cursorShape:Qt.PointingHandCursor
@@ -72,7 +78,7 @@ PanelWindow {
             onEnabledChanged:if(!enabled)Qt.callLater(()=>{if(!enabled){root.holding=false;IslandDrop.endDrag(root);}})
             onEntered:drag=>{
                 drag.accepted=drag.hasUrls&&!!(drag.supportedActions&Qt.CopyAction);
-                if(drag.accepted){root.heldBox=root.liveBox;root.holding=true;IslandDrop.beginDrag(root);drag.accept(Qt.CopyAction);}
+                if(drag.accepted){root.hold();IslandDrop.beginDrag(root);drag.accept(Qt.CopyAction);}
             }
             onExited:{root.holding=false;IslandDrop.endDrag(root);}
             onDropped:drop=>{

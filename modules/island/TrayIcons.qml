@@ -12,16 +12,40 @@ Rectangle {
     property bool inFooter:false
     visible:Tray.items.length>0
     Flickable {
+        id:viewport
         anchors.fill:parent;clip:true;contentWidth:icons.width+14;contentHeight:height
         boundsBehavior:Flickable.StopAtBounds;flickableDirection:Flickable.HorizontalFlick
         ScrollBar.horizontal:ScrollBar {policy:ScrollBar.AsNeeded}
     Row {id:icons;x:7;anchors.verticalCenter:parent.verticalCenter;spacing:Preferences.traySpacing
         Repeater {model:Tray.items
-            Item {
+            AbstractButton {
                 id:item;required property var modelData
+                padding:0;focusPolicy:Qt.StrongFocus
+                onActiveFocusChanged:if(activeFocus){
+                    const left=icons.x+x,right=left+width;
+                    if(left<viewport.contentX)viewport.contentX=left;
+                    else if(right>viewport.contentX+viewport.width)viewport.contentX=right-viewport.width;
+                }
+                Accessible.name:modelData.tooltipTitle||modelData.title||modelData.id
+                function activate(button):void {
+                    if(Preferences.preview)return;
+                    hoverDelay.stop();Hints.hide(item);
+                    if(button===Qt.RightButton||modelData.onlyMenu)Tray.show(modelData,root.inFooter);
+                    else if(button===Qt.MiddleButton)modelData.secondaryActivate();
+                    else{Tray.close();IslandState.closeMenu();modelData.activate();}
+                }
+                onClicked:activate(Qt.LeftButton)
+                Keys.onReturnPressed:clicked()
+                Keys.onEnterPressed:clicked()
+                Keys.onPressed:event=>{
+                    if(event.key===Qt.Key_Menu||event.key===Qt.Key_F10&&(event.modifiers&Qt.ShiftModifier)){
+                        activate(Qt.RightButton);event.accepted=true;
+                    }
+                }
                 width:Math.max(26,Preferences.trayIconSize+8);height:Math.min(Preferences.barHeight-4,width)
                 readonly property bool selected:Tray.selected===modelData
                 Component.onDestruction:Tray.exit(item)
+                background:Rectangle {radius:Math.min(10,height/2);color:"transparent";border.width:item.activeFocus?1:0;border.color:Theme.accent}
                 Rectangle {
                     anchors.fill:parent;radius:Math.min(10,height/2);antialiasing:true
                     color:Theme.text;opacity:item.selected?.1:mouse.pressed?.12:mouse.containsMouse?.055:0
@@ -46,7 +70,7 @@ Rectangle {
                     id:mouse;anchors.fill:parent;hoverEnabled:true;acceptedButtons:Qt.LeftButton|Qt.RightButton|Qt.MiddleButton;cursorShape:Qt.PointingHandCursor
                     onEntered:{Tray.enter(item);hoverDelay.restart();Hints.show(item,item.modelData.tooltipTitle||item.modelData.title||item.modelData.id);}
                     onExited:{hoverDelay.stop();Tray.exit(item);Hints.hide(item);}
-                    onClicked:event=>{if(Preferences.preview)return;hoverDelay.stop();Hints.hide(item);if(event.button===Qt.RightButton||item.modelData.onlyMenu)Tray.show(item.modelData,root.inFooter);else if(event.button===Qt.MiddleButton)item.modelData.secondaryActivate();else{Tray.close();IslandState.closeMenu();item.modelData.activate();}}
+                    onClicked:event=>item.activate(event.button)
                     onWheel:event=>{if(!Preferences.preview)item.modelData.scroll(event.angleDelta.y||event.angleDelta.x,event.angleDelta.y===0);}
                 }
             }

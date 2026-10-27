@@ -38,8 +38,14 @@ Singleton {
     property var wallpapers: []
     property string error: ""
     readonly property bool busy: actionProc.running
-    readonly property bool hasBattery: UPower.displayDevice.isLaptopBattery
-    readonly property real batteryPercent: hasBattery ? UPower.displayDevice.percentage * 100 : 0
+    function batteryStatus(device):string {
+        if(!device?.ready)return "unknown";
+        if(!device.isPresent||!device.isLaptopBattery)return "absent";
+        return Number.isFinite(device.percentage)?"known":"unknown";
+    }
+    readonly property string batteryState: batteryStatus(UPower.displayDevice)
+    readonly property bool hasBattery: batteryState==="known"
+    readonly property real batteryPercent: hasBattery ? Math.max(0,Math.min(100,UPower.displayDevice.percentage*100)) : NaN
     readonly property bool charging: hasBattery && !UPower.onBattery
     readonly property string script: Qt.resolvedUrl("../scripts/system.py").toString().replace("file://", "")
     property var queue: []

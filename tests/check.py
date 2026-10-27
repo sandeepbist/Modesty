@@ -31,9 +31,17 @@ commands = [
     *[['dbus-run-session', '--', sys.executable, f'tests/{name}.py'] for name in
       ('bluetooth', 'notifications', 'session-events')],
 ]
+island_tests = (
+    'activity-header-ui', 'dock-balance-ui', 'dock-bindings', 'dock-contour-gl',
+    'dock-corrections', 'dock-data', 'dock-identity', 'dock-input', 'dock-media',
+    'dock-order-ui', 'dock-ui', 'focus-countdown-ui', 'island-controls-ui',
+    'island-geometry-ui', 'island-polish-ui', 'provider-privacy-ui', 'tray-hover-ui',
+)
+island_commands = [[sys.executable, f'tests/{name}.py'] for name in island_tests]
+commands.extend(island_commands)
 for command in commands:
     print('CHECK ' + ' '.join(command), flush=True)
-    subprocess.run(command, cwd=ROOT, check=True, timeout=60)
+    subprocess.run(command, cwd=ROOT, check=True, timeout=180 if command in island_commands else 60)
 spec = importlib.util.spec_from_file_location('session_control', ROOT / 'scripts/session-control.py')
 session = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(session)
