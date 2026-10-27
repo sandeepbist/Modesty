@@ -24,7 +24,7 @@ ShellRoot {
   }
  }
  Component.onCompleted:{Preferences.motion="instant";Preferences.shadows=true;}
- Timer {interval:60;repeat:true;running:true;onTriggered:canvas.grabToImage(function(result){result.saveToFile("OUTPUT/"+frame+".png");frame++;if(frame===cases.length){console.log("DOCK CONTOUR GL PASS");Qt.quit();}})}
+ Timer {id:captureTimer;interval:60;repeat:false;running:true;onTriggered:canvas.grabToImage(function(result){result.saveToFile("OUTPUT/"+frame+".png");frame++;if(frame===cases.length){console.log("DOCK CONTOUR GL PASS");Qt.quit();}else captureTimer.restart();})}
 }
 '''
 with tempfile.TemporaryDirectory(prefix='modesty-contour-pixels-') as d:
