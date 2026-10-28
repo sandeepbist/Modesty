@@ -71,7 +71,9 @@ jobs:
         run: |
           cat > "$RUNNER_TEMP/modesty-arch-check.sh" <<'CHECK'
             set -euo pipefail
-            pacman -Syu --noconfirm --needed git nodejs python dbus lua mesa xorg-server-xvfb xorg-xauth
+            # Keep the complete package set within runtime-requirements.json's Hyprland 0.56 range.
+            printf '%s\n' 'Server = https://archive.archlinux.org/repos/2026/10/27/$repo/os/$arch' > /etc/pacman.d/mirrorlist
+            pacman -Syyuu --noconfirm --needed git nodejs python dbus lua mesa xorg-server-xvfb xorg-xauth
             # Install the installer's actual required set so packaging omissions
             # fail here, before a user's first login. Optional AUR apps stay out.
             mapfile -t desktop_packages < <(python3 -c 'import install; print("\n".join(install.CORE))')
