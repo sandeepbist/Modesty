@@ -122,7 +122,10 @@ ShellRoot {
             check(Notes.read("popup-fixture").note.status === "active", "Pointer Trash restore ignored");
             child("notesActions").forceActiveFocus(); driver.keyClick(Qt.Key_Space);
             driver.tryVerify(() => menu().opened, 1000, "Keyboard did not open menu");
-            driver.keyClick(Qt.Key_Down); driver.keyClick(Qt.Key_Return); settle();
+            for (let i = 0; i < menu().count && !action("Pin note").highlighted; i++)
+                driver.keyClick(menu().currentIndex < 0 ? Qt.Key_Down : Qt.Key_Up);
+            check(action("Pin note").highlighted, "Keyboard did not select Pin note");
+            driver.keyClick(Qt.Key_Return); settle();
             check(Notes.read("popup-fixture").note.pinned, "Keyboard pin ignored");
             open(); driver.keyClick(Qt.Key_Escape);
             driver.tryVerify(() => !menu().visible, 1000, "Escape failed to close dropdown");
