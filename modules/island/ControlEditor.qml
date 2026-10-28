@@ -108,8 +108,16 @@ FocusScope {
             }
             // Stable identifiers preserve pointer grabs and allow neighbors to animate.
             Repeater {model:Object.keys(ControlLayout.shapes)
-                Item {
+                AbstractButton {
                     id:tile;required property string modelData
+                    padding:0;focusPolicy:Qt.StrongFocus
+                    Accessible.name:"Select "+(content.item?.title||modelData)
+                    Accessible.description:"Arrow keys move. Shift+arrow keys resize. Delete removes."
+                    function select():void {root.selected=modelData;}
+                    onActiveFocusChanged:if(activeFocus)select()
+                    onClicked:select()
+                    Keys.onReturnPressed:clicked()
+                    Keys.onEnterPressed:clicked()
                     readonly property var entry:root.viewItems.find(a=>a.id===modelData)
                     readonly property bool following:root.selected===modelData&&root.dragging&&root.gesture==="move"
                     visible:!!entry
@@ -121,11 +129,11 @@ FocusScope {
                     Behavior on y {enabled:!tile.following;NumberAnimation {duration:Tokens.animMedium;easing.type:Easing.OutCubic}}
                     Behavior on width {NumberAnimation {duration:Tokens.animFast;easing.type:Easing.OutCubic}}
                     Behavior on height {NumberAnimation {duration:Tokens.animFast;easing.type:Easing.OutCubic}}
-                    Loader {anchors.fill:parent;active:!!tile.entry;sourceComponent:ControlTile {kind:tile.modelData;editing:true;opacity:root.removing&&tile.following?.45:1}}
+                    Loader {id:content;anchors.fill:parent;active:!!tile.entry;sourceComponent:ControlTile {kind:tile.modelData;editing:true;opacity:root.removing&&tile.following?.45:1}}
                     Rectangle {anchors.fill:parent;anchors.margins:-2;radius:Preferences.controlRadius+2;color:"transparent";border.width:root.selected===tile.modelData?1.5:0;border.color:Theme.accent}
                     MouseArea {
                         anchors.fill:parent;preventStealing:true;hoverEnabled:true;cursorShape:tile.following?Qt.ClosedHandCursor:Qt.OpenHandCursor;acceptedButtons:Qt.LeftButton|Qt.RightButton
-                        onPressed:mouse=>{root.selected=tile.modelData;root.forceActiveFocus();if(mouse.button===Qt.RightButton)sizes.popup();else root.begin(tile.modelData,"move",mapToItem(grid,mouse.x,mouse.y));}
+                        onPressed:mouse=>{tile.select();root.forceActiveFocus();if(mouse.button===Qt.RightButton)sizes.popup();else root.begin(tile.modelData,"move",mapToItem(grid,mouse.x,mouse.y));}
                         onPositionChanged:mouse=>{if(pressed&&root.gesture==="move"){const p=mapToItem(grid,mouse.x,mouse.y);root.trackPointer(p);root.update(p);}}
                         onReleased:if(root.gesture==="move")root.finish(false)
                         onCanceled:root.finish(true)

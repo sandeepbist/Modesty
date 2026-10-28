@@ -11,6 +11,8 @@ FocusScope {
     objectName: "notesPanel"
     visible: !Session.isLocked()
     readonly property bool interactive: enabled && visible && !Session.isLocked()
+    readonly property real viewportHeight:Math.min(height,parent?.viewportHeight??height)
+    readonly property bool shortViewport:viewportHeight<240
     readonly property bool compact: width + Preferences.innerPadding * 2 < 580
     readonly property bool listVisible: Notes.libraryOpen && (!compact || !showEditor)
     readonly property bool editorVisible: !Notes.libraryOpen || !compact || showEditor
@@ -160,9 +162,10 @@ FocusScope {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: Math.max(0, 24 - Preferences.innerPadding)
+        anchors.margins: Math.max(0, (root.shortViewport?12:24) - Preferences.innerPadding)
+        anchors.bottomMargin:root.height-root.viewportHeight+anchors.margins
         enabled: !root.deleteId
-        spacing: 16
+        spacing: root.shortViewport?8:16
         RowLayout {
             Layout.fillWidth: true; spacing: 8
             PanelText {Layout.fillWidth: true; text: Notes.libraryOpen ? "Notes library" : "Quick Notes"; font.pixelSize: 15; font.weight: Font.DemiBold}
@@ -266,7 +269,7 @@ FocusScope {
             Item {
                 id: editorPane
                 Layout.fillWidth: true; Layout.fillHeight: true; visible: root.editorVisible; enabled: visible && root.interactive && !root.deleteId
-                ColumnLayout {anchors.fill: parent; spacing: 16
+                ColumnLayout {anchors.fill: parent; spacing: root.shortViewport?8:16
                     TextField {
                         id: titleField; objectName: "notesTitle"; Layout.fillWidth: true; implicitHeight: 32
                         cursorDelegate:InputCaret {editor:titleField}
@@ -327,7 +330,7 @@ FocusScope {
         popupType: Popup.Item
         scale: Preferences.uiScale
         x: Math.max(0, root.width - Math.max(0, 24 - Preferences.innerPadding) - width); y: Math.max(0, 24 - Preferences.innerPadding) + 40; width: Math.min(210, root.width)
-        height: Math.min(implicitHeight, Math.max(64, root.height - y))
+        height: Math.min(implicitHeight, Math.max(64, root.viewportHeight - y))
         modal: true; closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         background: Rectangle {radius: 12; color: Theme.surfaceSolid; border.width: 1; border.color: Theme.withAlpha(Theme.text, .1)}
         NoteAction {text: root.active?.pinned ? "Unpin note" : "Pin note"; enabled: !!root.active && root.active.status === "active"; onTriggered: Notes.setPinned(Notes.activeId, !root.active.pinned)}

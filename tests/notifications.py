@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run with dbus-run-session -- python3 tests/notifications.py."""
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -18,11 +19,13 @@ ShellRoot {
     property var notifications: Notifications.list
     IpcHandler {
         target: "check"
-        function debug(): string { return JSON.stringify(Notifications.list.map(n => ({ popup: n.popup, timeout: n.timeout, summary: n.summary }))); }
+        function debug(): string { return JSON.stringify(Notifications.list.map(n => ({ serial:n.serial, popup:n.popup, closing:n.popupClosing, hovered:n.popupHovered, source:!!n.notification, timeout:n.timeout, appName:n.appName, appIcon:n.appIcon, summary:n.summary, body:n.body, sameHistory:Notifications.historyModel.get(0).record===n }))); }
         function count(): int { return Notifications.list.length; }
         function popups(): int { return Notifications.popups.length; }
         function dnd(): void { Notifications.dnd = true; }
         function invoke(): void { Notifications.list[0].invokeAction("default"); }
+        function hover(): void { Notifications.list[0].popupHovered = true; }
+        function unhover(): void { Notifications.list[0].popupHovered = false; }
         function burst(): void {
             for (let i = 0; i < 80; i++) Notifications.remind("burst-" + i, "Burst " + i, "", () => {}, () => {});
         }
@@ -59,13 +62,53 @@ with tempfile.TemporaryDirectory(prefix='modesty-notifications-') as tmp:
             closed, actions = [], []
             service.connect_to_signal('NotificationClosed', lambda ident, reason: closed.append((int(ident), int(reason))))
             service.connect_to_signal('ActionInvoked', lambda ident, action: actions.append(str(action)))
-            def notify(title, timeout, with_action=False):
-                return int(service.Notify('Modesty test', dbus.UInt32(0), '', title, 'Isolated test bus', dbus.Array(['default', 'Open'] if with_action else [], signature='s'), dbus.Dictionary({}, signature='sv'), dbus.Int32(timeout)))
+            def notify(title, timeout, with_action=False, replace=0, app='Modesty test', icon='', body='Isolated test bus', hints=None):
+                return int(service.Notify(app, dbus.UInt32(replace), icon, title, body, dbus.Array(['default', 'Open'] if with_action else [], signature='s'), dbus.Dictionary(hints or {}, signature='sv'), dbus.Int32(timeout)))
+            def newest():
+                return json.loads(call('debug'))[0]
+            ident = notify('Original', 0)
+            wait_for(lambda: call('count') == '1')
+            serial = newest()['serial']
+            assert notify('Updated', 700, replace=ident, app='Updated app', icon='dialog-information', body='Updated body') == ident
+            wait_for(lambda: newest()['summary'] == 'Updated')
+            updated = newest()
+            assert (updated['appName'], updated['appIcon'], updated['body'], updated['timeout']) == ('Updated app', 'dialog-information', 'Updated body', 700), updated
+            assert updated['serial'] == serial and updated['sameHistory'] and call('count') == '1'
+            wait_for(lambda: (ident, 1) in closed)
+            assert newest()['summary'] == 'Updated' and newest()['body'] == 'Updated body' and not newest()['source']
+            print('PASS replacement updates retained metadata, deadline, identity and final history')
+            ident = notify('Renew me', 1200)
+            wait_for(lambda: call('popups') == '1')
+            time.sleep(.75)
+            assert notify('Renewed title', 1200, replace=ident) == ident
+            wait_for(lambda: newest()['summary'] == 'Renewed title')
+            time.sleep(.65)
+            assert newest()['popup'] and not newest()['closing'], newest()
+            time.sleep(.15)
+            notify('Renewed title', 1200, replace=ident, hints={'urgency': dbus.Byte(2)})
+            time.sleep(.65)
+            assert newest()['popup'] and not newest()['closing'], newest()
+            call('hover')
+            notify('Hovered replacement', 700, replace=ident)
+            wait_for(lambda: newest()['summary'] == 'Hovered replacement')
+            time.sleep(.9)
+            assert newest()['hovered'] and newest()['popup'] and not newest()['closing'], newest()
+            call('unhover')
+            wait_for(lambda: (ident, 1) in closed)
+            print('PASS unchanged-timeout metadata and hints renew expiry; hover still pauses')
+            ident = notify('Final before close', 0)
+            wait_for(lambda: call('popups') == '1')
+            notify('Final at close', 0, replace=ident, body='Final body')
+            service.CloseNotification(dbus.UInt32(ident))
+            wait_for(lambda: not newest()['source'])
+            assert newest()['summary'] == 'Final at close' and newest()['body'] == 'Final body', newest()
+            wait_for(lambda: call('popups') == '0')
+            print('PASS immediate sender close preserves final replacement snapshot')
             ident = notify('Expiry check', 700)
             wait_for(lambda: call('popups') == '1')
             wait_for(lambda: (ident, 1) in closed)
             assert call('popups') == '0'
-            assert call('count') == '1'
+            assert call('count') == '4'
             print('PASS real D-Bus delivery, expiry signal, history retained')
             notify('Action check', 0, True)
             wait_for(lambda: call('popups') == '1')
@@ -73,8 +116,12 @@ with tempfile.TemporaryDirectory(prefix='modesty-notifications-') as tmp:
             wait_for(lambda: 'default' in actions)
             print('PASS real notification action reaches sender')
             call('dnd')
-            notify('Quiet notification', 1000)
-            wait_for(lambda: call('count') == '3')
+            ident = notify('Quiet notification', 1000)
+            wait_for(lambda: call('count') == '6')
+            quiet = newest()
+            notify('Quiet replacement', 700, replace=ident)
+            wait_for(lambda: newest()['summary'] == 'Quiet replacement')
+            assert not newest()['popup'] and not newest()['closing'] and newest()['serial'] == quiet['serial'], newest()
             wait_for(lambda: call('popups') == '0')
             print('PASS DND stores history without showing a popup')
             call('burst')

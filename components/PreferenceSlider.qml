@@ -83,6 +83,8 @@ Rectangle {
             radius: 6
             color: Theme.accent
             antialiasing: true
+            border.width: control.activeFocus ? 2 : 0
+            border.color: Theme.text
             scale: control.pressed ? 1.15 : control.hovered ? 1.08 : 1
 
             Behavior on scale {

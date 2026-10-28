@@ -18,6 +18,7 @@ ShellRoot {
         visible:true;implicitWidth:700;implicitHeight:600
         Item {id:host;x:20;y:20;width:TEST_WIDTH;height:240}
         NotificationCard {id:history;x:390;y:20;width:280;height:implicitHeight;onToggleExpanded:expanded=!expanded;onDismissed:Notifications.close(notification)}
+        TextInput {id:focusGuard;x:400;y:500;width:100;height:30;text:"Keep focus"}
     }
     Component {id:stackComponent;Island.ToastStack {width:host.width;height:host.height}}
     TestCase {id:input;when:false}
@@ -37,9 +38,17 @@ ShellRoot {
     function settle() {input.wait(70);}
     function clickText(item,name) {const label=child(item,name);input.mouseClick(label,label.width/2,label.height/2);}
     function exercise() {
+        focusGuard.forceActiveFocus();
         const first=record("First message");history.notification=first;
         stack=stackComponent.createObject(host);settle();
+        check(focusGuard.activeFocus,"Toast arrival steals keyboard focus");
         const popup=card(),scroll=child(stack,"notificationScroll");
+        for(const toggle of [false,true]) {
+            IslandState.openMenu("calendar");
+            check(IslandState.state==="calendar"&&first.popup&&!first.popupClosing,"Hidden toast setup failed");
+            if(toggle)IslandState.toggle("calendar");else IslandState.dismissCurrent();
+            check(IslandState.menu==="none"&&first.popup&&!first.popupClosing,"Menu dismissal also dismisses hidden toast");
+        }
         check(Theme.mode==="TEST_MODE","Requested color mode not active");
         check(popup.notification===first&&popup.interactive,"Newest popup not shown");
         near(popup.opacity,1,"Reduced motion did not settle immediately");
@@ -54,6 +63,14 @@ ShellRoot {
         check(summary.font.pixelSize===14&&body.font.pixelSize===12,"Message type hierarchy changed");
         check(!child(popup,"notificationTimestamp").visible,"Popup adds a timestamp");
         check(buttons(popup).length===1&&buttons(popup)[0].text==="Reply","Default action duplicated");
+        const primary=child(popup,"notificationActivate");
+        dismiss.forceActiveFocus();
+        for(let i=0;i<12&&!primary.activeFocus;i++)input.keyClick(Qt.Key_Tab);
+        check(primary.activeFocus&&primary.activeFocusOnTab&&primary.background.border.width===1,"Primary message lacks Tab or visible focus");
+        for(const key of [Qt.Key_Return,Qt.Key_Enter,Qt.Key_Space]) {
+            const before=delivered.length;input.keyClick(key);
+            check(delivered.length===before+1&&delivered.pop()==="default","Primary key does not invoke default exactly once "+key);
+        }
         clickText(popup,"notificationAppName");clickText(popup,"notificationSummary");clickText(popup,"notificationBody");
         check(delivered.join()==="default,default,default","Header/message default action lost");
         const reply=buttons(popup)[0];input.mouseClick(reply);check(delivered.pop()==="reply"&&delivered.length===3,"Secondary click also activates default");
@@ -83,6 +100,8 @@ ShellRoot {
         near(popup.implicitHeight,summary.mapToItem(popup,0,0).y+summary.height+14,"Empty actions reserve trailing spacing");
         first.localActions=[];IslandState.menu="idle";clickText(popup,"notificationSummary");
         check(IslandState.menu==="notifhistory","No-default message does not open history");
+        IslandState.closeMenu();primary.forceActiveFocus();input.keyClick(Qt.Key_Return);
+        check(IslandState.menu==="notifhistory","No-default keyboard message does not open history");IslandState.closeMenu();
         first.localActions=Array.from({length:8},(_,i)=>({identifier:"action"+i,text:"Action "+i+" with a very long unbroken label ABCDEFGHIJKLMNOPQRSTUVWXYZ",invoke:()=>test.delivered.push("action"+i)}));settle();
         check(scroll.contentHeight>scroll.height&&scroll.clip,"Busy popup is not bounded and scrollable");
         for(const button of buttons(popup)) {
@@ -115,6 +134,7 @@ ShellRoot {
         check(!Notifications.list.includes(third),"History dismiss retains record");
         const fourth=record("Destroy hovered stack");settle();input.mouseMove(popup,80,35);settle();check(fourth.popupHovered,"Destruction setup is not hovered");
         stack.destroy();settle();check(!fourth.popupHovered,"Destroyed stack retains hover pause");
+        IslandState.closeMenu();IslandState.dismissCurrent();check(fourth.popupClosing,"Visible toast dismissal misses current record");
     }
     Component.onCompleted: {Preferences.motion="instant";Preferences.notificationBody=true;Theme.setMode("TEST_MODE");}
     Timer {interval:180;running:true;onTriggered:{try {

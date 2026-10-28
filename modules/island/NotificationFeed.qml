@@ -12,6 +12,7 @@ Item {
     property int expandedId:-1
     readonly property bool compact:height<95||width<160
     readonly property bool headerVisible:showHeader&&!compact&&(showTitle||Notifications.list.length>0)
+    readonly property real feedInset:showHeader?8:0
     Item {
         x:14;y:9;width:parent.width-28;height:26;visible:root.headerVisible
         PanelText {anchors.left:parent.left;anchors.verticalCenter:parent.verticalCenter;width:Math.max(0,parent.width-headerControls.width-8);visible:root.showTitle;text:"Notifications"+(Notifications.list.length?"  ·  "+Notifications.list.length:"");font.pixelSize:12;font.weight:Font.Medium}
@@ -22,7 +23,7 @@ Item {
         }
     }
     Item {
-        id:viewport;x:8;y:root.headerVisible?42:0;width:parent.width-16;height:Math.max(0,parent.height-y-8);clip:true
+        id:viewport;x:root.feedInset;y:root.headerVisible?42:0;width:Math.max(0,parent.width-2*root.feedInset);height:Math.max(0,parent.height-y-root.feedInset);clip:true
         Column {
             anchors.centerIn:parent;spacing:8
             visible:!Notifications.list.length||root.compact||root.collapsed

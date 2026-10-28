@@ -71,7 +71,9 @@ jobs:
         run: |
           cat > "$RUNNER_TEMP/modesty-arch-check.sh" <<'CHECK'
             set -euo pipefail
-            pacman -Syu --noconfirm --needed git nodejs python dbus lua
+            # Keep the complete package set within runtime-requirements.json's Hyprland 0.56 range.
+            printf '%s\n' 'Server = https://archive.archlinux.org/repos/2026/10/27/$repo/os/$arch' > /etc/pacman.d/mirrorlist
+            pacman -Syyuu --noconfirm --needed git nodejs python dbus lua mesa xorg-server-xvfb xorg-xauth
             # Install the installer's actual required set so packaging omissions
             # fail here, before a user's first login. Optional AUR apps stay out.
             mapfile -t desktop_packages < <(python3 -c 'import install; print("\n".join(install.CORE))')
@@ -96,7 +98,7 @@ jobs:
             dbus-daemon --system --fork
             printf "[keyfile]\nunmanaged-devices=interface-name:*\n" > /tmp/modesty-ci-nm.conf
             NetworkManager --no-daemon --config /tmp/modesty-ci-nm.conf >/tmp/modesty-ci-nm.log 2>&1 &
-            dbus-run-session -- bash -lc "pipewire >/tmp/modesty-ci-pipewire.log 2>&1 & python3 tests/check.py"
+            LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1920x1080x24" dbus-run-session -- bash -lc "pipewire >/tmp/modesty-ci-pipewire.log 2>&1 & python3 tests/check.py"
             # File-based enablement in this disposable container; no host units.
             systemctl enable NetworkManager bluetooth
             useradd -m desktopcheck

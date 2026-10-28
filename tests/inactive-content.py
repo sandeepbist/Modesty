@@ -72,7 +72,7 @@ ShellRoot {
             check(Date.now() < deadline, "Timed out"); ticks++;
             if (phase === 0) {
                 panes = walk(stage, item => "outgoingScale" in item);
-                if (panes.length !== 17 || !pane("clock").item || !pane("launcher").item) return;
+                if (!["clock", "launcher"].every(name => pane(name)?.status === Loader.Ready && pane(name).item)) return;
                 check(welcome.length > 0 && welcome.inkBounds.width > 0, "Hidden welcome lost metrics");
                 welcomePaints = 0;
                 launcherItem = pane("launcher").item;
@@ -90,12 +90,15 @@ ShellRoot {
             } else if (phase === 2) {
                 near(pane("clock").transform[0].xScale, .7, "Outgoing scale followed closing bounds");
                 check(pane("clock").opacity > 0 && pane("clock").opacity < closeOpacity, "Outgoing fade lost");
-                stage.panel = "clock"; next();
+                const scale=pane("clock").transform[0].xScale,opacity=pane("clock").opacity;
+                stage.panel = "clock";
+                near(pane("clock").transform[0].xScale,scale,"Reactivation jumps retained scale");
+                near(pane("clock").opacity,opacity,"Reactivation jumps retained opacity");next();
             } else if (phase === 3 && ticks === 1) geometry(.85);
-            else if (phase === 3 && ticks > 6) {
-                near(pane("clock").visibleScale, .85, "Reactivation retained outgoing scale");
+            else if (phase === 3 && ticks > 20) {
+                near(pane("clock").visibleScale, 1, "Reactivation did not finish sampled resumption");
                 stage.panel = "idle";
-                near(pane("clock").outgoingScale, .85, "Second interrupted close snapshot");
+                near(pane("clock").outgoingScale, 1, "Second interrupted close snapshot");
                 next();
             } else if (phase === 4) {
                 stage.panel = "clock"; geometry(1); next();

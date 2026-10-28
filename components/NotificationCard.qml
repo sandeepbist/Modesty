@@ -59,10 +59,18 @@ Rectangle {
             }
         }
     }
-    MouseArea {
+    AbstractButton {
+        id:activate
         objectName:"notificationActivate"
         x:0;y:0;width:root.popup?parent.width:parent.width-38;height:root.popup?(actions.visible?content.y+actions.y-6:content.y+content.implicitHeight):content.y+summary.height+24
-        enabled:root.interactive;cursorShape:Qt.PointingHandCursor
+        enabled:root.interactive;focusPolicy:Qt.StrongFocus
+        Accessible.name:[root.notification?.appName,root.notification?.summary].filter(Boolean).join(". ")
+        Accessible.description:root.popup?(root.notification?.actions.find(a=>a.identifier==="default")?.text||"Open notification history"):root.expanded?"Collapse message":"Expand message"
+        Keys.onReturnPressed:clicked()
+        Keys.onEnterPressed:clicked()
+        HoverHandler {cursorShape:Qt.PointingHandCursor}
+        background:Rectangle {radius:root.radius;color:"transparent";border.width:activate.activeFocus?1:0;border.color:Theme.accent}
+        contentItem:Item {}
         onClicked:{if(root.popup){const action=root.notification?.actions.find(a=>a.identifier==="default");if(action)root.notification.invokeAction(action.identifier);else IslandState.openMenu("notifhistory");}else if(root.canExpand)root.toggleExpanded();}
     }
     IconButton {objectName:"notificationDismiss";anchors.right:parent.right;anchors.rightMargin:5;y:root.popup?8:7;width:root.popup?32:implicitWidth;height:root.popup?32:implicitHeight;icon:"close";label:"Dismiss notification";size:12;color:root.popup?Theme.subtext:Theme.text;enabled:root.interactive;onClicked:root.dismissed()}
