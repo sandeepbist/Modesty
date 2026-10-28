@@ -12,8 +12,7 @@ Singleton {
     readonly property var shapes: Grid.shapes
     readonly property int rows: Math.max(1,...items.map(a=>a.y+a.h))
     readonly property real cell: (Preferences.controlsWidth-Preferences.innerPadding*2-(columns-1)*Preferences.controlGap)/columns
-    readonly property bool notesEntryShown: !items.some(a=>a.id==="notes")
-    readonly property bool footerShown:notesEntryShown||Preferences.footerVisible&&(Preferences.footerPerformance||Preferences.footerThemes||Preferences.footerWallpapers||Preferences.footerPower||Preferences.footerSettings||(Preferences.footerTray&&Tray.items.length>0))
+    readonly property bool footerShown:Preferences.footerVisible&&(Preferences.footerPerformance||Preferences.footerSettings||(Preferences.footerTray&&Tray.items.length>0))
     readonly property int panelHeight: Math.ceil(rows*(cell+Preferences.controlGap)-Preferences.controlGap+Preferences.innerPadding*2+(footerShown?48:0))
     function snapshot(): var { return {version:2,columns,items}; }
     function commit(next: var, count: int): bool {
