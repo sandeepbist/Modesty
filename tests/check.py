@@ -20,6 +20,7 @@ commands = [
     [sys.executable, 'tests/notes-qml.py'],
     [sys.executable, 'tests/notes-ui.py'],
     [sys.executable, 'tests/control-center-ui.py'],
+    [sys.executable, 'tests/notification-popup-ui.py'],
     [sys.executable, 'tests/notes-popup.py'],
     [sys.executable, 'tests/notes-bindings.py'],
     [sys.executable, 'tests/reminders.py'],
