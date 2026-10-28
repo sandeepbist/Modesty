@@ -26,6 +26,8 @@ commands = [
     [sys.executable, 'tests/reminders.py'],
     [sys.executable, 'tests/reminders-qml.py'],
     [sys.executable, 'tests/luma-native-qml.py'],
+    [sys.executable, 'tests/luma-capture-loader.py'],
+    [sys.executable, 'tests/luma-capture-settings.py'],
     [sys.executable, 'tests/inactive-content.py'],
     [sys.executable, 'tests/palette-cache.py'],
     *[['dbus-run-session', '--', sys.executable, f'tests/{name}.py'] for name in

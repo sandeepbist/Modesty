@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Generate real GTK palettes and parse the shipped Thunar CSS without a display."""
 import json
+from itertools import product
 import os
 from pathlib import Path
 import subprocess
@@ -44,8 +45,8 @@ profiles = [
                    text='#242a38', subtext='#5a6374', green='#35683b', yellow='#7e611f', red='#aa3856')),
 ]
 for mode, colors in profiles:
-    for source in ('midnight', 'wallpaper'):
-        fixture = ROOT/'tests/fixtures'/('thunar-solid.css' if source == 'wallpaper' else 'thunar-legacy.css')
+    for source, revision in product(('midnight', 'wallpaper'), ('legacy', 'solid', 'inset', 'pass1')):
+        fixture = ROOT/'tests/fixtures'/f'thunar-{revision}.css'
         with tempfile.TemporaryDirectory(prefix='modesty-gtk-check-') as temporary:
             directory = Path(temporary)
             config = directory/'config'
@@ -64,6 +65,7 @@ for mode, colors in profiles:
                          'on_surface_variant':'subtext', 'outline':'subtext', 'outline_variant':'subtext',
                          'shadow':'bg', 'secondary':'yellow', 'tertiary':'green', 'error':'red'}
                 data['wallpaperData'] = {'colors':{role:{mode:{'color':colors[key]}} for role, key in roles.items()}}
+                data['wallpaperData']['colors']['surface_container_lowest'][mode]['color'] = '#09090c' if mode == 'dark' else '#ffffff'
             with patch.dict(os.environ, XDG_CONFIG_HOME=str(config)), patch.object(appearance.subprocess, 'run', side_effect=isolated_run):
                 appearance.apply(data, directory/'state')
             generated = json.loads((directory/'state/matugen/input.json').read_text())
@@ -80,12 +82,14 @@ for mode, colors in profiles:
                 provider = Gtk.CssProvider()
                 provider.connect('parsing-error', lambda provider, section, error: errors.append(str(error)))
                 provider.load_from_path(str(gtk/'gtk.css'))
-                assert not errors, (mode, source, errors)
+                assert not errors, (mode, source, revision, errors)
                 assert (gtk/'gtk.css').read_text().count('modesty-generated.css') == 1
             if '--live' in sys.argv:
                 # Query actual GTK style resolution, not a CSS substring. No
                 # window is shown and no desktop settings or state are changed.
                 from gi.repository import Gdk
+                def hex_color(rgba):
+                    return '#'+''.join(f'{round(channel*255):02x}' for channel in (rgba.red,rgba.green,rgba.blue))
                 Gtk.init([])
                 settings = Gtk.Settings.get_default()
                 settings.props.gtk_enable_animations = False
@@ -96,7 +100,9 @@ for mode, colors in profiles:
                 border = rubberband.get_style_context().get_border_color(Gtk.StateFlags.NORMAL)
                 assert border.alpha == 1, 'Drag-selection border became translucent'
                 window.remove(rubberband)
-                frame = Gtk.ScrolledWindow(); frame.get_style_context().add_class('standard-view'); window.add(frame)
+                frame = Gtk.ScrolledWindow(); frame.get_style_context().add_class('standard-view'); frame.get_style_context().add_class('frame'); window.add(frame)
+                background = frame.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
+                assert background.alpha == 1 and hex_color(background) == colors['bg'], (mode, source, background.to_string())
                 for kind in (Gtk.IconView, Gtk.TreeView):
                     view = kind(); view.get_style_context().add_class('view'); frame.add(view)
                     # ExoIconView adds the cell class while painting each item.
@@ -113,8 +119,6 @@ for mode, colors in profiles:
                         context.set_state(state)
                         text = context.get_color(state)
                         background = context.get_background_color(state)
-                        def hex_color(rgba):
-                            return '#'+''.join(f'{round(channel*255):02x}' for channel in (rgba.red,rgba.green,rgba.blue))
                         assert hex_color(text) == colors['text'], (mode, kind, state, text.to_string())
                         assert hex_color(background) == colors['accent'] and abs(background.alpha-.18)<.001, (mode, kind, state, background.to_string())
                         rgb = [int(colors['bg'][i:i+2],16) for i in (1,3,5)]
@@ -125,12 +129,13 @@ for mode, colors in profiles:
                 sidebar = Gtk.Box(); sidebar.get_style_context().add_class('sidebar'); window.add(sidebar)
                 tree = Gtk.TreeView(); tree.get_style_context().add_class('view'); sidebar.add(tree)
                 context = tree.get_style_context(); context.set_state(Gtk.StateFlags.SELECTED)
-                assert hex_color(context.get_color(Gtk.StateFlags.SELECTED)) == colors['text']
+                text = context.get_color(Gtk.StateFlags.SELECTED)
+                assert text.alpha == 1 and hex_color(text) == colors['accent']
                 background = context.get_background_color(Gtk.StateFlags.SELECTED)
-                for base in (colors['bg'], colors['surface']):
-                    rgb = [int(base[i:i+2],16) for i in (1,3,5)]
-                    blended = '#'+''.join(f'{round(c*255*background.alpha+b*(1-background.alpha)):02x}' for c,b in zip((background.red,background.green,background.blue),rgb))
-                    assert contrast(colors['text'], blended) >= 4.5
+                base = sidebar.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
+                assert base.alpha == 1 and hex_color(base) == generated['colors']['surface_container_lowest']['default']['color']
+                blended = '#'+''.join(f'{round((c*background.alpha+b*(1-background.alpha))*255):02x}' for c,b in zip((background.red,background.green,background.blue),(base.red,base.green,base.blue)))
+                assert contrast(hex_color(text), blended) >= 4.5, (mode, source, hex_color(text), blended)
                 window.destroy()
                 Gtk.StyleContext.remove_provider_for_screen(Gdk.Screen.get_default(), provider)
             # A user-modified stylesheet must survive subsequent palette changes.
@@ -149,4 +154,4 @@ for mode, colors in profiles:
             with patch.dict(os.environ, XDG_CONFIG_HOME=str(config)), patch.object(appearance.subprocess, 'run', side_effect=isolated_run):
                 appearance.apply(data, directory/'state')
             assert custom.is_symlink() and linked.read_bytes() == original
-print('PASS GTK palette generation, named/wallpaper selection foreground, dark/light contrast and Thunar CSS parsing'+('; native icon/list selection states' if '--live' in sys.argv else ''))
+print('PASS GTK palette generation, named/wallpaper selection foreground, dark/light contrast, legacy/solid/inset/pass1 migrations and Thunar CSS parsing'+('; native icon/list selection states and sidebar contrast' if '--live' in sys.argv else ''))
