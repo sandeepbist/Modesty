@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Verify opt-in persistence without contacting Hyprland or compiling a plugin."""
 import contextlib
 import importlib.util
 import io
@@ -22,16 +21,16 @@ real_run = subprocess.run
 checks = 0
 
 
-def check(condition):
+def check(condition, message=''):
     global checks
-    assert condition
+    assert condition, message
     checks += 1
 
 
 def fails(action, text):
     try:
         action()
-    except RuntimeError as error:
+    except (OSError, subprocess.SubprocessError, RuntimeError) as error:
         check(text in str(error))
     else:
         raise AssertionError('Expected failure: '+text)
@@ -55,6 +54,8 @@ with tempfile.TemporaryDirectory(prefix='luma-loader-check-') as temporary:
         version = loader.SUPPORTED_BUILD
         load_error = None
         reload_error = None
+        unload_error = None
+        unload_completed = False
 
         def output(command, **kwargs):
             calls.append(command)
@@ -67,7 +68,6 @@ with tempfile.TemporaryDirectory(prefix='luma-loader-check-') as temporary:
             if command == ['hyprctl', 'plugin', 'list', '-j']:
                 return json.dumps([{'name': 'luma-capture'}] if active else [])
             if command[:3] == ['hyprctl', 'plugin', 'load']:
-                # All persistent writes must follow a confirmed successful load.
                 if not marker.exists():
                     check(not marker.exists() and not script.exists())
                     check(execs.read_bytes() == original)
@@ -80,6 +80,12 @@ with tempfile.TemporaryDirectory(prefix='luma-loader-check-') as temporary:
             if command == ['hyprctl', 'reload']:
                 return reload_error or 'ok'
             if command[:3] == ['hyprctl', 'plugin', 'unload']:
+                if unload_error:
+                    if unload_completed:
+                        active.discard(command[3])
+                    if isinstance(unload_error, BaseException):
+                        raise unload_error
+                    return unload_error
                 if command[3] not in active:
                     return 'plugin not loaded'
                 active.remove(command[3])
@@ -94,7 +100,6 @@ with tempfile.TemporaryDirectory(prefix='luma-loader-check-') as temporary:
 
         with patch.object(subprocess, 'check_output', side_effect=output), \
                 patch.object(subprocess, 'run', side_effect=compile_plugin):
-            # Missing/ambiguous anchors fail before any subprocess or config write.
             for invalid in (b'-- no anchor\n', (loader.ANCHOR+'\n').encode()*2):
                 execs.write_bytes(invalid)
                 before = list(calls)
@@ -150,7 +155,6 @@ with tempfile.TemporaryDirectory(prefix='luma-loader-check-') as temporary:
             for contents in (loader.ANCHOR.encode(), loader.ANCHOR.encode()+b'\n'):
                 check(loader.register(loader.register(contents, script), script) == loader.register(contents, script))
 
-            # Restore failures leave the enabled marker and safe fallback intact.
             version = 'unsupported'
             before = len(calls)
             fails(loader.restore, 'supports only')
@@ -182,7 +186,6 @@ with tempfile.TemporaryDirectory(prefix='luma-loader-check-') as temporary:
                         run.assert_not_called()
                     check(True)
 
-            # Check actual Lua syntax and enabled/disabled semantics with a stub hl.
             def check_lua(enabled):
                 luac, lua = shutil.which('luac'), shutil.which('lua')
                 if luac:
@@ -212,7 +215,6 @@ assert(callback); callback()
                     check(shlex.split(result.stdout) == expected)
                 return bool(luac), bool(lua)
 
-            # Also round-trip a helper path containing shell and Lua metacharacters.
             with patch.object(loader, '__file__', str(root/'helper $() "quote" é\n.py')):
                 script.write_bytes(loader.bootstrap(marker))
                 lua_checks = check_lua(True)
@@ -224,7 +226,6 @@ assert(callback); callback()
             fails(loader.enable, 'different Luma capture build')
             check(before == len([call for call in calls if call[:3] == ['hyprctl', 'plugin', 'load']]))
             check(snapshot == [path.read_bytes() for path in (marker, script, execs)])
-            # A fresh session rebuilds changed source and records the new loaded path.
             active.clear()
             loader.SOURCE.write_text('// changed fake compiler input\n')
             previous_marker = marker.read_bytes()
@@ -244,16 +245,42 @@ assert(callback); callback()
             edited = execs.read_bytes()
             loader.disable()
             check(not marker.exists() and not active and execs.read_bytes() == edited)
-            check(calls[-1] == ['hyprctl', 'plugin', 'unload', str(plugin)])
+            check(calls[-2:] == [['hyprctl', 'plugin', 'unload', str(plugin)], ['hyprctl', 'reload']])
             check_lua(False)
             before = list(calls)
             check(loader.restore() is None)
             loader.disable()
-            check(calls == before)
+            check(calls == before + [['hyprctl', 'reload']])
+            for failure, detail, unload_completed in (
+                    ('unload rejected', 'unload rejected', False),
+                    (OSError('temporary IPC failure'), 'temporary IPC failure', False),
+                    (subprocess.TimeoutExpired('hyprctl', 20), 'timed out', False),
+                    (OSError('unload reply lost'), 'unload reply lost', True)):
+                marker.write_text(json.dumps({'plugin': str(plugin)}))
+                recorded = marker.read_bytes()
+                active.add(str(plugin))
+                unload_error = failure
+                before = len(calls)
+                fails(loader.disable, detail)
+                check(marker.exists() and marker.read_bytes() == recorded,
+                      'Failed unload discarded the recovery marker')
+                check((str(plugin) in active) is not unload_completed and execs.read_bytes() == edited)
+                check(calls[before:] == [['hyprctl', 'plugin', 'unload', str(plugin)]],
+                      'Native fallback changed before plugin unload succeeded')
+                if not unload_completed:
+                    check(loader.load(plugin) is False, 'Failed disable lost the recorded build identity')
+                unload_error = None
+                loader.disable()
+                check(not marker.exists() and not active and execs.read_bytes() == edited)
             marker.write_text(json.dumps({'plugin': str(plugin)}))
             active.add(str(plugin))
             reload_error = 'reload rejected'
             fails(loader.disable, 'reload rejected')
+            check(not marker.exists() and not active and execs.read_bytes() == edited)
+            reload_error = None
+            before = len(calls)
+            loader.disable()
+            check(calls[before:] == [['hyprctl', 'reload']], 'Disable retry skipped failed configuration reload')
             check(not marker.exists() and not active and execs.read_bytes() == edited)
 
 print(f'PASS {checks} checks; mocked build/load/reload/unload; Lua parse={lua_checks[0]}, runtime={lua_checks[1]}')

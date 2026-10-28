@@ -67,7 +67,6 @@ def bootstrap(marker):
 
 
 def register(contents, script):
-    # Preserve every existing byte, including CRLF and a missing final newline.
     matches = list(re.finditer(rb'^'+re.escape(ANCHOR.encode())+rb'(?=\r?$)', contents, re.M))
     if len(matches) != 1:
         raise RuntimeError('Installed execs.lua must contain exactly one '+ANCHOR)
@@ -138,7 +137,6 @@ def load_recorded(plugin, marker):
 
 def enable():
     marker, script, execs = paths()
-    # Preflight the anchor before building, loading, or touching persistent files.
     original = execs.read_bytes()
     registered = register(original, script)
     plugin = build()
@@ -159,8 +157,6 @@ def restore():
     marker, _, _ = paths()
     if enabled_plugin(marker) is None:
         return None
-    # build() checks the exact running compositor before invoking the compiler.
-    # Keep the marker and native fallback on any build or load failure.
     plugin = build()
     load_recorded(plugin, marker)
     return plugin
@@ -169,20 +165,13 @@ def restore():
 def disable():
     marker, _, _ = paths()
     plugin = enabled_plugin(marker)
-    if plugin is None:
-        return
-    marker.unlink()
-    errors = []
-    # Leave the guarded bootstrap installed; never rewrite unrelated Lua on disable.
-    for command in (['hyprctl', 'reload'], ['hyprctl', 'plugin', 'unload', str(plugin)]):
-        try:
-            reply = output(command)
-            if reply != 'ok' and not (command[1:3] == ['plugin', 'unload'] and reply == 'plugin not loaded'):
-                raise RuntimeError(shlex.join(command)+' failed: '+reply)
-        except (OSError, subprocess.SubprocessError, RuntimeError) as error:
-            errors.append(str(error))
-    if errors:
-        raise RuntimeError('; '.join(errors))
+    if plugin is not None:
+        command = ['hyprctl', 'plugin', 'unload', str(plugin)]
+        reply = output(command)
+        if reply not in ('ok', 'plugin not loaded'):
+            raise RuntimeError(shlex.join(command)+' failed: '+reply)
+        marker.unlink()
+    checked(['hyprctl', 'reload'])
 
 
 def main():

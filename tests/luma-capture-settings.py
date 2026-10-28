@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Exercise the production privacy toggle with an isolated helper process."""
 import json
 from pathlib import Path
 import tempfile

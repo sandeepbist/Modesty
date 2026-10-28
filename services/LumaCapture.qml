@@ -46,7 +46,6 @@ Singleton {
         const failed=code!==0||exitStatus!==0;
         if(command!=="status"){
             error=detail||(failed?"Could not "+command+" screen sharing privacy (exit "+code+").":"");
-            // Hold busy through the follow-up read, even when the editor is destroyed.
             operation="status";
             Qt.callLater(()=>root.start("status"));
             return;

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Exercise the actual unload body with native unique/weak ownership and completion ordering."""
 import os
 from pathlib import Path
 import shlex

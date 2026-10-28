@@ -51,6 +51,10 @@ later write or reload fails, the state file remains so `disable` can recover.
 Changes to the compiled plugin require disabling the old build before enabling
 the new one in the same session.
 
+A failed unload keeps the saved plugin path so `disable` can retry. If the final
+configuration reload fails after unloading, run `disable` again even when the
+saved setting is already off.
+
 ## Build and verify
 
 Run from this checkout:
