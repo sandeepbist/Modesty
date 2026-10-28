@@ -59,7 +59,6 @@ Item {
             Behavior on y {NumberAnimation {duration:Tokens.reducedMotion?0:180;easing.type:Easing.OutCubic}}
         }
     }
-    HoverHandler {onHoveredChanged:{if(hovered)Hints.show(root,root.statusText);else Hints.hide(root);}}
     Accessible.role:Accessible.StaticText
     Accessible.name:statusText
 }
