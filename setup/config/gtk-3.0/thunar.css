@@ -23,9 +23,8 @@
 
 /* Paned separator between sidebar and main view */
 .thunar paned > separator {
-    min-width: 4px;
-    margin-right: -7px;
-    margin-left: -7px;
+    min-width: 1px;
+    margin: 0;
     background: none;
     background-image: none;
     box-shadow: none;
@@ -34,13 +33,11 @@
 
 /* Main file view frame */
 .thunar .frame.standard-view {
-    padding: 10px;
-    margin: 10px 15px 0 0;
-    border-radius: 15px;
-    background-color: @view_bg_color;
-    animation: fading 400ms ease forwards;
-    opacity: 0;
-    animation-delay: 250ms;
+    padding: 4px;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background-color: @window_bg_color;
 }
 
 .thunar .standard-view .view:not(:selected):not(.rubberband),
@@ -66,16 +63,15 @@
 /*  Tabs */
 .thunar header.top {
     background: none;
-    padding: 0 10px 0 0;
-    margin: 3px 0 -3px -2px;
+    padding: 0 6px;
+    margin: 0;
 }
 
 .thunar header.top tabs .reorderable-page {
     margin: 0;
-    transition: all ease 300ms;
 }
 .thunar header.top tabs .reorderable-page + .reorderable-page {
-    margin: 0 0 0 10px;
+    margin-left: 4px;
 }
 
 .thunar header.top tabs .reorderable-page:hover {
@@ -93,18 +89,14 @@
    ============================================================================= */
 
 .thunar .sidebar {
-    padding: 0 20px;
-    background: none;
-    animation: fading 600ms ease forwards;
-    animation-delay: 100ms;
-    opacity: 0;
+    padding: 6px 8px;
+    background: @view_bg_color;
 }
 
 .thunar .sidebar .view {
-    padding: 8px 4px;
-    border-radius: 10px;
+    padding: 6px 4px;
+    border-radius: 4px;
     background: none;
-    transition: all ease 300ms;
 }
 
 .thunar .sidebar .view:hover {
@@ -112,58 +104,69 @@
 }
 
 .thunar .sidebar .view:selected {
-    background: alpha(@accent_color, 0.15);
-    color: @window_fg_color;
+    background: alpha(@accent_color, 0.10);
+    color: @accent_color;
 }
 
 /* =============================================================================
    Path Bar & Location Buttons
    ============================================================================= */
 
+.thunar .location-button,
 .thunar .path-bar-button {
+    min-height: 24px;
     margin: 0;
-    padding: 8px 5px;
-    transition: all ease 0.4s;
+    padding: 4px 8px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: alpha(@accent_color, 0.04);
+    box-shadow: none;
+}
+
+.thunar .location-button:hover,
+.thunar .path-bar-button:hover {
+    background: alpha(@accent_color, 0.08);
 }
 
 .thunar .location-button.toggle:checked,
 .thunar .path-bar-button.toggle:checked {
-    padding: 8px 25px;
     background: alpha(@accent_color, 0.15);
     color: @window_fg_color;
-    box-shadow: none;
-}
-
-.thunar .location-button.path-bar-button:not(:checked) {
-    background-color: @view_bg_color;
-}
-
-.thunar .location-button.path-bar-button:not(:checked):hover {
-    background: alpha(@accent_color, 0.08);
-    color: @window_fg_color;
-}
-
-.thunar .location-button.toggle+.location-button.toggle:checked {
-    margin-left: 0px;
-    padding: 0 25px;
 }
 
 .thunar .titlebar {
-    padding: 15px 0 5px 0;
+    padding: 6px 0 4px;
 }
 
 /* =============================================================================
-   Buttons
+   Toolbar
    ============================================================================= */
 
-.thunar button.toggle:checked {
-    color: @window_fg_color;
+.thunar toolbar {
+    padding: 4px 6px;
+    border: none;
+    background: @window_bg_color;
+    box-shadow: none;
 }
 
-.thunar .image-button {
-    padding: 8px;
-    margin: 0 0 0 8px;
-    transition: all ease 0.4s;
+.thunar toolbar button.image-button {
+    min-width: 24px;
+    min-height: 24px;
+    padding: 4px;
+    margin: 0;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: none;
+    box-shadow: none;
+}
+
+.thunar toolbar button.image-button:hover {
+    background: alpha(@accent_color, 0.08);
+}
+
+.thunar toolbar button.image-button:checked {
+    background: alpha(@accent_color, 0.15);
+    color: @window_fg_color;
 }
 
 /* =============================================================================
@@ -171,10 +174,10 @@
    ============================================================================= */
 
 .thunar statusbar {
-    background-color: @view_bg_color;
-    border-radius: 15px;
-    padding: 10px 10px;
-    margin: 15px 5px 15px -10px;
+    background-color: @window_bg_color;
+    border-radius: 0;
+    padding: 4px 8px;
+    margin: 0;
     color: @window_fg_color;
 }
 
@@ -187,13 +190,31 @@
     margin: 15px;
 }
 
+.thunar toolbar entry {
+    min-height: 30px;
+    margin: 0 8px;
+    padding: 2px 10px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: alpha(@window_fg_color, 0.07);
+    color: @window_fg_color;
+    box-shadow: none;
+}
 
-/* =============================================================================
-   Animation
-   ============================================================================= */
+.thunar toolbar entry:focus {
+    border-color: alpha(@accent_color, 0.65);
+}
 
-@keyframes fading {
-    to {
-        opacity: 1;
-    }
+.thunar .standard-view treeview.view {
+    font-size: 14px;
+}
+
+.thunar .standard-view treeview.view header button {
+    min-height: 24px;
+    padding: 0 8px;
+    border: none;
+    background: transparent;
+    color: alpha(@window_fg_color, 0.55);
+    box-shadow: none;
+    font-weight: normal;
 }

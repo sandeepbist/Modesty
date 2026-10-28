@@ -1,0 +1,191 @@
+/* Thunar theme */
+
+/* =============================================================================
+   Window & Background
+   ============================================================================= */
+
+.thunar.background {
+    background: @window_bg_color;
+    color: @window_fg_color;
+}
+
+.thunar .titlebar {
+    background: inherit;
+}
+
+.thunar .titlebutton.close {
+    margin: 0 15px 0 0;
+}
+
+/* =============================================================================
+   Layout Containers
+   ============================================================================= */
+
+/* Paned separator between sidebar and main view */
+.thunar paned > separator {
+    min-width: 1px;
+    margin: 0;
+    background: none;
+    background-image: none;
+    box-shadow: none;
+}
+
+
+/* Main file view frame */
+.thunar .frame.standard-view {
+    padding: 4px;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background-color: @view_bg_color;
+}
+
+.thunar .standard-view .view:not(:selected):not(.rubberband),
+.thunar .standard-view .view *:not(:selected):not(.rubberband):not(rubberband) {
+    background-color: transparent;
+}
+
+/* Keep labels opaque over a subtle palette tint in both icon and list views. */
+.thunar .standard-view iconview cell:selected,
+.thunar .standard-view .view:selected,
+.thunar .standard-view .view *:selected {
+    background-color: @theme_selected_bg_color;
+    color: @theme_selected_fg_color;
+}
+
+.thunar .rubberband,
+.thunar rubberband {
+    background-color: alpha(@accent_color, 0.15);
+    border: 1px solid @accent_color;
+}
+
+
+/*  Tabs */
+.thunar header.top {
+    background: none;
+    padding: 0 6px;
+    margin: 0;
+}
+
+.thunar header.top tabs .reorderable-page {
+    margin: 0;
+}
+.thunar header.top tabs .reorderable-page + .reorderable-page {
+    margin-left: 4px;
+}
+
+.thunar header.top tabs .reorderable-page:hover {
+    background-color: alpha(@accent_color, 0.08);
+
+}
+.thunar header.top tabs .reorderable-page:checked {
+    color: @window_fg_color;
+    background-color: alpha(@accent_color, 0.15);
+
+}
+
+/* =============================================================================
+   Sidebar Navigation
+   ============================================================================= */
+
+.thunar .sidebar {
+    padding: 0 6px;
+    background: none;
+}
+
+.thunar .sidebar .view {
+    padding: 5px 4px;
+    border-radius: 6px;
+    background: none;
+}
+
+.thunar .sidebar .view:hover {
+    background: alpha(@window_fg_color, 0.1);
+}
+
+.thunar .sidebar .view:selected {
+    background: alpha(@accent_color, 0.15);
+    color: @window_fg_color;
+}
+
+/* =============================================================================
+   Path Bar & Location Buttons
+   ============================================================================= */
+
+.thunar .location-button,
+.thunar .path-bar-button {
+    min-height: 24px;
+    margin: 0;
+    padding: 4px 8px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: alpha(@accent_color, 0.04);
+    box-shadow: none;
+}
+
+.thunar .location-button:hover,
+.thunar .path-bar-button:hover {
+    background: alpha(@accent_color, 0.08);
+}
+
+.thunar .location-button.toggle:checked,
+.thunar .path-bar-button.toggle:checked {
+    background: alpha(@accent_color, 0.15);
+    color: @window_fg_color;
+}
+
+.thunar .titlebar {
+    padding: 6px 0 4px;
+}
+
+/* =============================================================================
+   Toolbar
+   ============================================================================= */
+
+.thunar toolbar {
+    padding: 4px 6px;
+    border: none;
+    background: @window_bg_color;
+    box-shadow: none;
+}
+
+.thunar toolbar button.image-button {
+    min-width: 24px;
+    min-height: 24px;
+    padding: 4px;
+    margin: 0;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: none;
+    box-shadow: none;
+}
+
+.thunar toolbar button.image-button:hover {
+    background: alpha(@accent_color, 0.08);
+}
+
+.thunar toolbar button.image-button:checked {
+    background: alpha(@accent_color, 0.15);
+    color: @window_fg_color;
+}
+
+/* =============================================================================
+   Status Bar
+   ============================================================================= */
+
+.thunar statusbar {
+    background-color: @window_bg_color;
+    border-radius: 0;
+    padding: 4px 8px;
+    margin: 0;
+    color: @window_fg_color;
+}
+
+
+/* =============================================================================
+   Image preview
+   ============================================================================= */
+
+.thunar box.vertical .image {
+    margin: 15px;
+}
