@@ -7,7 +7,7 @@ def launch(identifier, terminal='foot'):
     import gi
     gi.require_version('Gio', '2.0')
     gi.require_version('GioUnix', '2.0')
-    from gi.repository import Gio, GioUnix
+    from gi.repository import Gio, GioUnix, GLib
     if os.environ.get('MODESTY_PREVIEW') == '1': raise ValueError('Launching is disabled in preview')
     env = clean_environment()
     os.environ.clear(); os.environ.update(env)
@@ -19,7 +19,6 @@ def launch(identifier, terminal='foot'):
         # desktop entry with an explicit terminal prefix, preserving Exec syntax.
         if terminal not in ('foot', 'kitty', 'alacritty', 'wezterm'): raise ValueError('Unsupported terminal')
         if not shutil.which(terminal): raise ValueError(terminal+' is not installed. Choose another terminal in Settings.')
-        from gi.repository import GLib
         keyfile = GLib.KeyFile()
         keyfile.load_from_file(entry.get_filename(), GLib.KeyFileFlags.NONE)
         prefix = {'foot':'foot -e ', 'kitty':'kitty ', 'alacritty':'alacritty -e ', 'wezterm':'wezterm start -- '}[terminal]
@@ -28,7 +27,11 @@ def launch(identifier, terminal='foot'):
         keyfile.set_boolean('Desktop Entry','DBusActivatable',False)
         entry = GioUnix.DesktopAppInfo.new_from_keyfile(keyfile)
     context = Gio.AppLaunchContext()
-    if not entry.launch([], context): raise RuntimeError('The application could not be started')
+    # App output must not retain or corrupt the launcher's JSON reply pipes.
+    with open(os.devnull, 'r+b', buffering=0) as streams:
+        if not entry.launch_uris_as_manager_with_fds([], context, GLib.SpawnFlags.SEARCH_PATH,
+                None, None, None, None, streams.fileno(), streams.fileno(), streams.fileno()):
+            raise RuntimeError('The application could not be started')
     return {'ok': True, 'id': identifier}
 
 def close_app(identifier):
