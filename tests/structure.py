@@ -6,7 +6,7 @@ import re
 ROOT = Path(__file__).resolve().parents[1]
 files = {path: path.read_text() for folder in ('components', 'modules', 'services', 'theme', 'tests')
          for path in (ROOT / folder).rglob('*.qml')}
-entries = [ROOT / name for name in ('shell.qml', 'preview.qml', 'typecheck.qml', 'layercheck.qml')]
+entries = [ROOT / name for name in ('shell.qml', 'preview.qml', 'typecheck.qml', 'layercheck.qml', 'tests/fixtures/luma-capture.qml')]
 files.update((path, path.read_text()) for path in entries)
 reachable = set(entries)
 while True:
