@@ -20,10 +20,11 @@ Item {
         width:parent.width;height:Math.min(stage.height,(Preferences.barHeight+clockLabel.weekOffset)*(1-dockProgress)+stage.height*dockProgress)
         clip:true
         readonly property int privacyGap:Preferences.privacyIndicatorGap
+        readonly property real restingPrivacyGap:Math.max(privacyGap,2*agentReveal)
         readonly property int privacyPadding:20
         readonly property real dockPrivacyMinimumWidth:privacyGap+(clockPrivacy.dotSize+clockPrivacy.width)/2
         readonly property real dockPrivacyWidth:Math.max(privacyGap+clockPrivacy.dotSize+Preferences.privacyIndicatorRightPadding,dockPrivacyMinimumWidth)
-        readonly property real privacyTail:privacyGap+clockPrivacy.dotSize+Preferences.privacyIndicatorRightPadding-(clockViewport.stage.baseRestingWidth-clockViewport.stage.restingLabelWidth)/2
+        readonly property real privacyTail:restingPrivacyGap+clockPrivacy.dotSize+Preferences.privacyIndicatorRightPadding-(clockViewport.stage.baseRestingWidth-clockViewport.stage.restingLabelWidth)/2
         function privacyContains(localX:real):bool {
             return (stage.privacySpace||dockProgress>0) && !!Audio.indicatorKind && localX>=clockPrivacy.x-stage.x && localX<=clockPrivacy.x-stage.x+clockPrivacy.width;
         }
@@ -90,7 +91,9 @@ Item {
     }
     PrivacyIndicator {
         id:clockPrivacy
-        x:clockViewport.width/2+clockViewport.presentedLabelWidth/2+clockViewport.privacyGap+(dotSize-width)/2
+        x:clockViewport.width/2+clockViewport.presentedLabelWidth/2
+            +clockViewport.restingPrivacyGap*(1-clockViewport.dockProgress)+clockViewport.privacyGap*clockViewport.dockProgress
+            +(dotSize-width)/2
         y:0;width:22;height:Preferences.barHeight
         kind:clockViewport.stage.privacySpace||clockViewport.dockProgress>0 ? Audio.indicatorKind : ""
         label:Audio.captureSummary
