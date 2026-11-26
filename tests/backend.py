@@ -24,6 +24,7 @@ with tempfile.TemporaryDirectory() as tmp:
     }
     untouched=json.dumps(data)
     with (patch.object(system,'WALLS',walls), patch.object(system,'STATE',state),
+          patch.object(system,'BUNDLED_WALLS',directory/'unavailable'),
           patch.object(system,'WALL_CACHE',directory/'wallpapers.json'),
           patch.object(system,'optional',return_value='[]'),
           patch.object(system.wallpaper_tools,'cached_image',side_effect=lambda path,*args:Path(path)) as images,
@@ -67,6 +68,24 @@ with tempfile.TemporaryDirectory() as tmp:
     assert not list(state.glob('.preferences-*'))
 print('PASS wallpaper path validation, no shell interpolation, brightness clamp, atomic preferences')
 print('PASS wallpaper palette JSON opt-in, full metadata, Unicode, object defaults, variants, image cache and palette keys')
+
+with tempfile.TemporaryDirectory() as tmp:
+    directory = Path(tmp)
+    bundled = Path(__file__).resolve().parents[1] / 'setup' / 'wallpapers'
+    with (patch.object(system, 'WALLS', directory / 'missing-library'),
+          patch.object(system, 'WALL_CACHE', directory / 'wallpapers.json'),
+          patch.object(system, 'STATE', directory / 'state'),
+          patch.object(system, 'optional', return_value='[]'),
+          patch.object(system.wallpaper_tools, 'cached_image', side_effect=lambda path, *_: path),
+          patch.object(system.wallpaper_tools, 'display_url', side_effect=lambda path: path.as_uri())):
+        presets = {row['theme']['label']: row for row in system.wallpapers()}
+        assert set(presets) == {'Blue Marble', 'Earth at Night'}
+        marble = presets['Blue Marble']
+        assert marble['theme']['palette'] == 'nord'
+        assert Path(marble['path']) == bundled / 'nasa-blue-marble.jpg'
+        system.action('wallpaper', json.dumps({'path': marble['path']}))
+        assert json.loads((system.STATE / 'wallpaper.json').read_text())['path'] == marble['path']
+print('PASS bundled theme wallpapers install without a personal wallpaper library')
 
 # A rounded snapshot must not generate an unsolicited brightness OSD on panel open.
 import os

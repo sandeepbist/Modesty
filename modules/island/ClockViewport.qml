@@ -75,10 +75,18 @@ Item {
         slideDigits: !compactStatus
         text: compactStatus?Context.label:Time.timeStr; font.pixelSize: clockViewport.stage.panel === "clock" ? 19+(Tokens.pillTextSize-19)*clockViewport.dockProgress : Tokens.pillTextSize; font.weight: compactStatus ? Tokens.pillTextWeight : Font.DemiBold
         horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
-        opacity: clockViewport.dockProgress>0 ? 1 : clockViewport.levelRequested||clockViewport.levelAmount>0||clockViewport.welcomeRequested || compactStatus || clockViewport.stage.panel === "clock" || (clockViewport.stage.panel === "idle"&&(clockViewport.stage.height<=Preferences.barHeight*1.1||returningFromWeek)) ? 1 : 0; visible: opacity > 0
+        property real clockVisibility: clockViewport.levelRequested || clockViewport.levelAmount > 0
+            || clockViewport.welcomeRequested || compactStatus || clockViewport.stage.panel === "clock"
+            || clockViewport.stage.panel === "idle" || clockViewport.stage.showingDisclosure ? 1 : 0
+        property real holdClock: clockViewport.stage.panel === "clock"
+            || (clockViewport.stage.panel === "idle" && returningFromWeek) ? 1 : 0
+        opacity: Math.max(clockViewport.dockProgress, clockVisibility * (1 - (1 - holdClock)
+            * Tokens.smoothStep((clockViewport.stage.height - Preferences.barHeight) / 112)))
+        visible: opacity > 0
         Behavior on weekOffset { NumberAnimation { duration: clockViewport.stage.expanded ? Tokens.morphDuration : Tokens.collapseDuration; easing.type: Easing.OutCubic } }
         Behavior on font.pixelSize { NumberAnimation { duration: Tokens.morphDuration; easing.type: Easing.InOutCubic } }
-        Behavior on opacity { NumberAnimation { duration: Tokens.animFast } }
+        Behavior on clockVisibility { NumberAnimation { duration: Tokens.animFast; easing.type: Easing.InOutQuad } }
+        Behavior on holdClock { NumberAnimation { duration: Tokens.animFast; easing.type: Easing.InOutQuad } }
     }
     PrivacyIndicator {
         id:clockPrivacy
@@ -109,7 +117,7 @@ Item {
         }
         WelcomeWord {id:helloWord;anchors.centerIn:parent;width:Math.max(0,parent.width-36);height:Math.max(16,Preferences.barHeight-14);progress:helloOverlay.reveal}
     }
-    TextMetrics {id:agentLabelMetrics;text:AgentWork.providerLabel;font.family:Tokens.font;font.pixelSize:13;font.weight:Font.DemiBold}
+    TextMetrics {id:agentLabelMetrics;text:AgentWork.providerLabel;font.family:Tokens.font;font.pixelSize:Tokens.textSize(13);font.weight:Font.DemiBold}
     Item {
         parent:clockViewport.stage.capsule.contentItem
         x:(clockViewport.width-width)/2-clockViewport.stage.x
@@ -128,9 +136,9 @@ Item {
         }
         RollingText {
             text:AgentWork.providerLabel
-            width:Math.max(18,Math.min(192,agentLabelMetrics.advanceWidth))
+            width:Math.max(18,Math.min(192,Math.ceil(agentLabelMetrics.advanceWidth)+1))
             height:parent.height
-            font.pixelSize:13;font.weight:Font.DemiBold
+            font:agentLabelMetrics.font
             horizontalAlignment:Text.AlignLeft
             verticalAlignment:Text.AlignVCenter
         }

@@ -1,4 +1,5 @@
 .pragma library
+.import "../../theme/Palette.js" as Palette
 // One catalog drives navigation, page content and individual-setting search.
 function toggle(key,label,description,extra) { return Object.assign({kind:"toggle",key:key,label:label,description:description||""},extra||{}); }
 function slider(key,label,min,max,step,unit,extra) { return Object.assign({kind:"slider",key:key,label:label,min:min,max:max,step:step,unit:unit||""},extra||{}); }
@@ -6,15 +7,15 @@ function choice(key,label,options,extra) { return Object.assign({kind:"choice",k
 function textInput(key,label,description) { return {kind:"text",key:key,label:label,description:description||""}; }
 function action(id,label,keywords) { return {kind:"action",key:id,label:label,keywords:keywords||""}; }
 function block(id,title,items,custom,keywords) { return {id:id,title:title,items:items||[],custom:custom||"",keywords:keywords||""}; }
-var groups=[{id:"island",title:"Island",icon:"web_asset"},{id:"personal",title:"Personalization",icon:"palette"},{id:"assistant",title:"Luma",icon:"luma"},{id:"apps",title:"Apps & workflow",icon:"apps"},{id:"system",title:"System",icon:"computer"}];
-var fonts=["Instrument Sans","Inter Variable","Adwaita Sans"];
+var groups=[{id:"island",title:"Island"},{id:"personal",title:"Personalization"},{id:"apps",title:"Apps & workflow"},{id:"assistant",title:"Luma"},{id:"system",title:"System"}];
+var fonts=["SF Compact Rounded","Instrument Sans","Inter Variable","Adwaita Sans"];
 var pages=[
  {id:"layout",group:"island",title:"Layout & spacing",icon:"web_asset",blocks:[
   block("pill","Pills",[slider("barHeight","Pill height",28,44,1," px"),slider("collapsedWidth","Clock width",72,150,1," px"),slider("clusterGap","Space between pills",6,28,1," px"),toggle("showAlbum","Media pill"),toggle("showStatus","Status pill")]),
   block("spacing","Screen & windows",[slider("topMargin","Gap from screen edge",0,32,1," px"),slider("windowGap","Window gap adjustment",-32,40,1," px")]),
-  block("panels","Panel proportions",[slider("innerPadding","Inner padding",6,16,1," px"),slider("expandedRadius","Corner radius",16,36,1," px"),slider("mediaWidth","Player width",300,440,5," px"),slider("controlsWidth","Control center width",340,440,5," px"),slider("calendarWidth","Calendar width",280,400,5," px")])]},
+  block("panels","Panel proportions",[slider("innerPadding","Inner padding",6,16,1," px"),slider("mediaWidth","Player width",300,440,5," px"),slider("controlsWidth","Control center width",340,440,5," px"),slider("calendarWidth","Calendar width",280,400,5," px")])]},
  {id:"clock",group:"island",title:"Clock & calendar",icon:"schedule",blocks:[
-  block("time","Time",[toggle("use24Hour","24-hour clock"),toggle("showSeconds","Show seconds"),choice("clockFontFamily","Clock font",fonts)]),
+  block("time","Time",[toggle("use24Hour","24-hour clock"),toggle("showSeconds","Show seconds")]),
   block("calendar","Calendar",[toggle("remindersEnabled","Calendar reminders"),action("calendar","Open calendar","dates year reminder advance")])]},
  {id:"music",group:"island",title:"Music & media",icon:"music_note",blocks:[
   block("capsule","Music capsule",[toggle("mediaAutoHide","Hide when unused","Appears for media playback. Paused tracks remain accessible."),toggle("liveMedia","Expand during playback"),toggle("mediaVisualizer","Visualizer"),toggle("mediaLyrics","Synced lyrics"),toggle("compactMissingLyrics","Compact when lyrics are unavailable","Hover to reveal the track title.")])]},
@@ -26,12 +27,25 @@ var pages=[
   block("editor","Tile layout",[],"controls","drag drop resize reorder tiles controls"),
   block("style","Tile appearance",[slider("controlGap","Space between tiles",4,16,1," px"),slider("controlRadius","Corner radius",8,24,1," px"),slider("controlIconSize","Icon size",18,30,1," px"),slider("sliderThickness","Slider thickness",4,14,1," px")]),
   block("footer","Footer & tray",[toggle("footerVisible","Show footer"),toggle("footerTray","Application tray"),toggle("footerPerformance","Performance shortcut"),toggle("footerSettings","Settings shortcut"),slider("trayIconSize","Tray icon size",16,24,1," px"),slider("traySpacing","Tray icon spacing",0,12,1," px")])]},
- {id:"appearance",group:"personal",title:"Colors & typography",icon:"palette",blocks:[
-  block("interface","Interface",[choice("themeMode","Color mode",[{value:"light",label:"Light"},{value:"dark",label:"Dark"}],{service:"Theme"}),choice("fontFamily","Interface font",fonts),slider("uiScale","Interface scale",.85,1.25,.05,"×"),toggle("crispText","Precise text rendering"),toggle("shadows","Soft shadows"),action("themes","Choose theme")]),
-  block("palette","Wallpaper palette",[toggle("wallpaperColors","Colors from wallpaper"),toggle("matugenAutomatic","Automatic palette","Faithful wallpaper tones with balanced contrast."),choice("matugenScheme","Color scheme",["tonal-spot","content","expressive","fidelity","fruit-salad","monochrome","neutral","rainbow","vibrant","smart"].map(s=>({value:"scheme-"+s,label:s.replace(/-/g," ")})),{when:"matugenAutomatic",values:[false]}),slider("matugenContrast","Contrast",-1,1,.1,"",{when:"matugenAutomatic",values:[false]}),choice("matugenSource","Source color",[0,1,2,3,4].map(n=>({value:n,label:n?"Color "+(n+1):"Recommended"})),{when:"matugenAutomatic",values:[false]})]),
+ {id:"appearance",group:"personal",title:"Appearance",icon:"palette",blocks:[
+  block("type","Type",[
+   slider("bodyFontSize","Body size",8,13,.25," pt"),
+   choice("fontFamily","Body font",fonts),
+   choice("clockFontFamily","Display font",[{value:"body",label:"Use body font"}].concat(fonts),{description:"Used by headings, clocks and timers.",keywords:"lock screen font typography"}),
+   toggle("crispText","Precise text rendering")]),
+  block("shape","Shape & depth",[
+   slider("spacingUnit","Spacing unit",3,5,1," px",{description:"Base gap used by panel headers and Settings."}),
+   slider("fieldRadius","Small radius",4,16,1," px",{description:"Text fields and small controls."}),
+   slider("surfaceRadius","Medium radius",8,24,1," px",{description:"Cards and previews."}),
+   slider("expandedRadius","Large radius",16,36,1," px",{description:"Expanded island panels."}),
+   toggle("shadows","Soft shadows")]),
+  block("interface","Interface",[choice("themeMode","Color mode",[{value:"light",label:"Light"},{value:"dark",label:"Dark"}],{service:"Theme"}),slider("uiScale","Interface scale",.85,1.25,.05,"×"),action("themes","Choose theme")])]},
+ {id:"themes",group:"personal",title:"Themes",icon:"colors",blocks:[
+  block("themes","Saved themes",[],"themes","create manage edit rename delete custom generated theme palette"),
+  block("palette","Wallpaper palette",[toggle("wallpaperColors","Colors from wallpaper"),toggle("matugenAutomatic","Automatic palette","Faithful wallpaper tones with balanced contrast."),choice("matugenScheme","Color scheme",Palette.schemeOptions,{when:"matugenAutomatic",values:[false]}),slider("matugenContrast","Contrast",-1,1,.1,"",{when:"matugenAutomatic",values:[false]}),choice("matugenSource","Source color",[0,1,2,3,4].map(n=>({value:n,label:n?"Color "+(n+1):"Recommended"})),{when:"matugenAutomatic",values:[false]})]),
   block("applications","Application colors",[toggle("themeGtk","GTK applications"),toggle("themeFolders","Palette folders","Match Adwaita or Papirus folders to the palette. Turning this off restores your original icons.",{when:"themeGtk",values:[true]}),toggle("themeQt","Qt applications"),toggle("themeFoot","Terminal colors","Foot and the optional Modesty Kitty profile."),toggle("themeSpotify","Spotify")])]},
  {id:"wallpaper",group:"personal",title:"Wallpaper",icon:"wallpaper",blocks:[
-  block("image","Wallpaper",[action("wallpapers","Choose wallpaper")]),
+  block("image","Wallpaper",[action("wallpapers","Choose wallpaper"),toggle("wallpaperLivePreview","Live desktop preview","Preview the focused image on the desktop while browsing.")]),
   block("transition","Transitions",[choice("wallpaperTransition","Effect",[{value:"fade",label:"Crossfade"},{value:"none",label:"Instant"}]),slider("wallpaperDuration","Duration",.2,.7,.05," s",{when:"wallpaperTransition",values:["fade"]})]) ]},
  {id:"motion",group:"personal",title:"Motion",icon:"motion_photos_on",blocks:[
   block("animation","Animation",[choice("motion","Style",[{value:"fluid",label:"Fluid"},{value:"gentle",label:"Gentle"},{value:"instant",label:"Reduced motion"}]),slider("motionSpeed","Animation speed",.65,1.5,.05,"×"),slider("hoverLift","Hover movement",0,10,1," px"),slider("tooltipDelay","Tooltip delay",150,1000,50," ms")])]},
@@ -68,14 +82,28 @@ var pages=[
   block("devices","Devices",[action("wifi","Wi-Fi"),action("bluetooth","Bluetooth"),action("display","Displays"),action("sound","Sound")]),
   block("comfort","Comfort & power",[toggle("awake","Keep awake","Prevent automatic locking, blanking and idle sleep.",{service:"KeepAwake"}),toggle("nightLight","Night light","",{service:"Display"}),slider("temperature","Color temperature",2000,6500,25," K",{service:"Display",when:"nightLight",values:[true],description:"Enable night light to adjust."}),action("power","Power menu")])]},
  {id:"lock",group:"system",title:"Lock screen & profile",icon:"lock",blocks:[
-  block("profile","Profile picture",[],"profile","avatar account image picture"),
-  block("lock","Lock screen",[slider("lockDuration","Transition duration",250,900,10," ms"),slider("lockBlur","Wallpaper blur",0,1,.05,""),slider("lockDim","Wallpaper dimming",0,.7,.05,""),choice("lockClockStyle","Clock style",[{value:"soft",label:"Soft"},{value:"sculpted",label:"Sculpted"},{value:"classic",label:"Classic"}]),slider("lockClockSize","Clock size",80,160,2," px")]),
-  block("security","Authentication",[action("unlockcheck","Verify unlock password","pam authentication"),action("locknow","Lock now")])]},
+  block("lock","Style",[
+   choice("lockScreenStyle","Lock screen style",[{value:"legacy",label:"Legacy"},{value:"modern",label:"Modern"}]),
+   action("lockpreview","Preview lock screen","preview test entry exit animation unlock wallpaper clock")]),
+  block("clock","Clock",[
+   slider("lockClockSize","Clock size",80,160,2,"%",{displayScale:100/124,description:"100% uses the default size for your display."}),
+   slider("lockFrost","Clock frost",0,100,5,"%",{when:"lockScreenStyle",values:["modern"],description:"Blurred wallpaper color inside the clock digits."}),
+   choice("lockClockStyle","Clock style",[{value:"soft",label:"Soft"},{value:"sculpted",label:"Sculpted"},{value:"classic",label:"Classic"}],{when:"lockScreenStyle",values:["legacy"]})]),
+  block("motion","Transitions",[
+   slider("modernLockDuration","Clock travel duration",220,650,10," ms",{when:"lockScreenStyle",values:["modern"],description:"Matches entry and exit. Follows the speed set in Motion."}),
+   toggle("lockRebound","Unlock rebound","A small bounce as the clock docks.",{when:"lockScreenStyle",values:["modern"]}),
+   slider("lockDuration","Legacy transition duration",250,900,10," ms",{when:"lockScreenStyle",values:["legacy"]})]),
+  block("wallpaper","Wallpaper",[
+   slider("lockDim","Wallpaper dimming",0,.7,.05,"%",{displayScale:100}),
+   slider("lockBlur","Wallpaper blur",0,1,.05,"%",{displayScale:100,when:"lockScreenStyle",values:["legacy"]})]),
+  block("security","Authentication",[action("unlockcheck","Verify unlock password","pam authentication"),action("locknow","Lock now")]),
+  block("profile","Profile picture",[],"profile","avatar account image picture")]},
  {id:"recording",group:"system",title:"Screen recording",icon:"videocam",blocks:[block("recording","Recording",[slider("recordCountdown","Countdown",0,5,1," s"),choice("recordFps","Frame rate",[30,60].map(n=>({value:n,label:n+" fps"}))),toggle("recordCursor","Include pointer"),action("recorder","Open recorder")])]},
  {id:"updates",group:"system",title:"Updates",icon:"download",blocks:[block("updates","Modesty updates",[],"updates","ota download install reload restart rollback version dependencies compatibility qt hyprland quickshell")]}];
 var legacy=["layout","clock","appearance","motion","launcher","notifications","controls","lock","connections","shortcuts"];
 function target(id,label,preferences,keywords) { return {id:id,label:label,preferences:preferences||[],keywords:keywords||""}; }
 var customTargets={
+ themes:[target("new-theme","New theme",[],"create save edit delete manage custom themes")],
  capture:[target("private-capture","Hide Luma from screen sharing",[],"screen share privacy invisible Google Meet Discord")],
  terminalEffects:[target("trail","Native cursor trail",[],"kitty animated animation cursor"),target("open","Open animated terminal",[],"kitty launch profile"),target("setup","Set up optional profile",[],"kitty install repair packages")],
  terminal:[target("show-artwork","Show artwork",["terminalGreeting"],"greeting visibility"),target("collection","Artwork collection",["terminalArtCollection"],"portraits action cards legends rotation"),target("pinned","Keep this artwork",["terminalArtPinned"],"pinned rotate collection"),target("favorites","Favorite artwork",["terminalArtFavorites"],"add remove favorite"),target("hidden","Hide artwork",["terminalArtHidden"],"hidden show rotation"),target("favorites-only","Favorites only",["terminalArtFavoritesOnly"]),target("minimal","Minimal greeting",["terminalArtMinimal"]),target("format","Artwork format",["terminalArtFormat"],"image ASCII"),target("palette","Artwork palette",["terminalArtMode"],"character colors monochrome ASCII"),target("size","Artwork size",["terminalArtSize"],"columns"),target("gallery","Browse artwork",[],"gallery find artwork")],
@@ -90,9 +118,14 @@ var customTargets={
 pages.forEach(p=>p.blocks.forEach(b=>{b.targets=customTargets[b.custom]||[];}));
 function page(id) { return pages.find(p=>p.id===(id==="media"?"music":id))||null; }
 function resolve(id,block,key) {
+ if(id==="lock"&&block==="lock"&&["lockClockSize","lockClockStyle","lockDuration","lockDim","lockBlur"].includes(key))block="";
+ if(id==="clock"&&key==="clockFontFamily"){id="appearance";block="type";}
+ if(id==="layout"&&key==="expandedRadius"){id="appearance";block="shape";}
+ if(id==="appearance"&&block==="interface"&&["fontFamily","crispText","shadows"].includes(key))block=key==="shadows"?"shape":"type";
  if(id==="launcher"&&block==="search"&&key==="terminal"){id="terminal";block="launch";}
  if(id==="media"){id="music";if(block==="pill")block="capsule";}
  if(key==="musicMode"){id="music";block="capsule";key="liveMedia";}
+ if(id==="appearance"&&(["themes","palette","applications"].includes(block)||(!block&&key&&page("themes").blocks.some(b=>b.items.some(s=>s.key===key)||b.targets.some(t=>t.id===key)))))id="themes";
  var p=page(id);if(!p)return null;
  if(!block&&key)block=p.blocks.find(b=>b.items.some(s=>s.key===key)||b.targets.some(t=>t.id===key))?.id;
  var b=block?p.blocks.find(b=>b.id===block):null;

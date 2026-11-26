@@ -5,6 +5,7 @@ from qml import ROOT, run
 island = (ROOT / 'modules/island/Island.qml').read_text()
 mask = re.search(r'    mask: Region \{.*?\n    \}', island, re.S)
 assert mask, 'Production Island input mask missing'
+guards = '\n'.join(re.findall(r'^    readonly property bool (?:sessionBlocked|inputAllowed):.*$', island, re.M))
 
 run('''import QtQuick
 import QtQuick.Controls
@@ -21,6 +22,7 @@ ShellRoot {
         id: root; visible: true; implicitWidth: 1100; implicitHeight: 700
         property bool captureActive: false
         property bool hiddenByFullscreen: false
+        PRODUCTION_GUARDS
         Island.IslandSurface {
             id: surface; anchors.horizontalCenter: parent.horizontalCenter; y: 45
             availableWidth: root.width; availableHeight: root.height - y
@@ -174,5 +176,5 @@ ShellRoot {
         phase++; steps.restart();
     } catch (error) {console.error(error); Qt.exit(1);}}}
 }
-'''.replace('PRODUCTION_MASK', mask.group(0)),
+'''.replace('PRODUCTION_GUARDS', guards).replace('PRODUCTION_MASK', mask.group(0)),
     'PASS Notes popup: pointer, keyboard, Escape, outside dismissal, scale, scroll, native mask geometry and lifecycle')

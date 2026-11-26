@@ -22,13 +22,13 @@ FocusScope {
             Toggle { text:"Bluetooth";checked:Radio.enabled;enabled:Radio.available&&!Radio.blocked&&!SystemInfo.busy&&!Radio.busy;onToggled:SystemInfo.action("bluetooth",String(checked)) }
         }
         RowLayout { Layout.fillWidth: true
-            PanelText { Layout.fillWidth: true; text: !Radio.enabled ? "Bluetooth is off" : Radio.scanRequested ? "Looking for nearby devices…" : "Your devices"; color: Theme.subtext; font.pixelSize: 11 }
+            PanelText { Layout.fillWidth: true; text: !Radio.enabled ? "Bluetooth is off" : Radio.scanRequested ? "Looking for nearby devices…" : "Your devices"; color: Theme.subtext; font.pixelSize: Tokens.textSize(11) }
             ActionButton { text: Radio.scanRequested ? "Stop" : "Scan"; implicitHeight:25;implicitWidth:48;padding:4; enabled: Radio.enabled && !Radio.busy; onClicked: Radio.scanRequested ? Radio.stopScan() : Radio.startScan() }
         }
         ListView {
             id: list; Layout.fillWidth: true; Layout.fillHeight: true;Layout.minimumHeight:0;implicitHeight:Math.max(112,contentHeight);clip: true; spacing: 8; model: root.groupedDevices
             section.property:"group";section.criteria:ViewSection.FullString
-            section.delegate:PanelText {required property string section; width:list.width;height:26;verticalAlignment:Text.AlignVCenter;text:section;font.pixelSize:11;color:Theme.subtext}
+            section.delegate:PanelText {required property string section; width:list.width;height:26;verticalAlignment:Text.AlignVCenter;text:section;font.pixelSize:Tokens.textSize(11);color:Theme.subtext}
             ScrollBar.vertical: ScrollBar {}
             delegate: AbstractButton {
                 id: row; required property var modelData; required property int index
@@ -51,8 +51,8 @@ FocusScope {
                     Icon {anchors.centerIn:parent;icon:root.deviceIcon(row.device);size:15;color:row.device.connected?Theme.accentText:Theme.subtext}
                 }
                 Column { x: 43; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 130; spacing: 3
-                    PanelText { width: parent.width; text: row.device.name; font.pixelSize: 13; font.weight: Font.Medium }
-                    PanelText { id:status;width: parent.width; text: row.device.connected ? "Connected" + (row.device.batteryAvailable ? " · " + Math.round(row.device.battery * 100) + "% battery" : "") : row.device.pairing ? "Pairing…" : row.device.paired ? "Saved" : "Available to pair"; color: Theme.subtext; font.pixelSize: 11 }
+                    PanelText { width: parent.width; text: row.device.name; font.pixelSize: Tokens.textSize(13); font.weight: Font.Medium }
+                    PanelText { id:status;width: parent.width; text: row.device.connected ? "Connected" + (row.device.batteryAvailable ? " · " + Math.round(row.device.battery * 100) + "% battery" : "") : row.device.pairing ? "Pairing…" : row.device.paired ? "Saved" : "Available to pair"; color: Theme.subtext; font.pixelSize: Tokens.textSize(11) }
                 }
                 HoverHandler {cursorShape:Qt.PointingHandCursor}
                 ActionButton {
@@ -65,7 +65,7 @@ FocusScope {
                 }
 
             }
-            PanelText { parent:list;anchors.centerIn: parent; visible: list.count === 0; width: parent.width - 28; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; text: Radio.enabled ? "Put your device in pairing mode to find it here." : "Turn on Bluetooth to connect your devices."; color: Theme.subtext; font.pixelSize: 11 }
+            PanelText { parent:list;anchors.centerIn: parent; visible: list.count === 0; width: parent.width - 28; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; text: Radio.enabled ? "Put your device in pairing mode to find it here." : "Turn on Bluetooth to connect your devices."; color: Theme.subtext; font.pixelSize: Tokens.textSize(11) }
         }
         RowLayout {
             visible: !!root.selected && !Radio.busy && Radio.enabled; Layout.fillWidth: true
@@ -75,8 +75,8 @@ FocusScope {
         }
         ColumnLayout {
             Layout.fillWidth: true; visible: Radio.busy; spacing: 8
-            PanelText { Layout.fillWidth: true; text: Radio.status; font.pixelSize: 11; font.weight: Font.Medium }
-            PanelText { Layout.fillWidth: true; visible: Radio.prompt.length > 0; text: Radio.prompt === "confirm" ? "Does this code match on " + Radio.deviceName + "?" : Radio.prompt === "display" ? "Type this code on your device, then press Enter." : Radio.prompt === "authorize" ? "Allow this device to pair?" : "Enter the code shown on your device."; wrapMode: Text.WordWrap; elide: Text.ElideNone; color: Theme.subtext; font.pixelSize: 11 }
+            PanelText { Layout.fillWidth: true; text: Radio.status; font.pixelSize: Tokens.textSize(11); font.weight: Font.Medium }
+            PanelText { Layout.fillWidth: true; visible: Radio.prompt.length > 0; text: Radio.prompt === "confirm" ? "Does this code match on " + Radio.deviceName + "?" : Radio.prompt === "display" ? "Type this code on your device, then press Enter." : Radio.prompt === "authorize" ? "Allow this device to pair?" : "Enter the code shown on your device."; wrapMode: Text.WordWrap; elide: Text.ElideNone; color: Theme.subtext; font.pixelSize: Tokens.textSize(11) }
             PanelText { Layout.alignment: Qt.AlignHCenter; visible: Radio.code.length > 0; text: Radio.code; font.pixelSize: 28; font.weight: Font.DemiBold; font.letterSpacing: 4 }
             EntryField { id: pin; objectName: "bluetoothPin"; Layout.fillWidth: true; visible: ["pin", "passkey"].includes(Radio.prompt); placeholderText: "Pairing code"; maximumLength: Radio.prompt === "passkey" ? 6 : 16; inputMethodHints: Radio.prompt === "passkey" ? Qt.ImhDigitsOnly : Qt.ImhNone; onAccepted: { Radio.respond(true, text); clear(); } }
             RowLayout {
@@ -85,7 +85,7 @@ FocusScope {
                 ActionButton { visible: Radio.prompt.length > 0 && Radio.prompt !== "display"; primary: true; text: Radio.prompt === "confirm" ? "Matches" : "Pair"; onClicked: { Radio.respond(true, pin.text); pin.clear(); } }
             }
         }
-        PanelText { Layout.fillWidth: true; visible: (Radio.error || SystemInfo.error).length > 0; text: Radio.error || SystemInfo.error; wrapMode: Text.WordWrap; elide: Text.ElideNone; color: Theme.red; font.pixelSize: 11 }
+        PanelText { Layout.fillWidth: true; visible: (Radio.error || SystemInfo.error).length > 0; text: Radio.error || SystemInfo.error; wrapMode: Text.WordWrap; elide: Text.ElideNone; color: Theme.red; font.pixelSize: Tokens.textSize(11) }
     }
     implicitHeight:body.implicitHeight
     Component.onDestruction: pin.clear()

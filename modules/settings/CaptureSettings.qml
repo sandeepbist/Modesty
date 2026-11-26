@@ -11,7 +11,7 @@ ColumnLayout {
     Component.onCompleted:LumaCapture.refresh()
     RowLayout {
         Layout.fillWidth:true;spacing:12
-        PanelText {Layout.fillWidth:true;text:"Hide Luma from screen sharing";font.pixelSize:13;font.weight:Font.Medium;wrapMode:Text.WordWrap}
+        PanelText {Layout.fillWidth:true;text:"Hide Luma from screen sharing";font.pixelSize:Tokens.textSize(13);font.weight:Font.Medium;wrapMode:Text.WordWrap}
         Toggle {
             id:privacyToggle;objectName:"custom-private-capture"
             implicitWidth:40;implicitHeight:32
@@ -28,13 +28,13 @@ ColumnLayout {
         activeFocusOnTab:!privacyToggle.enabled
         Accessible.name:text
         text:LumaCapture.status
-        font.pixelSize:12;color:Theme.subtext
+        font.pixelSize:Tokens.textSize(12);color:Theme.subtext
     }
     PanelText {
         objectName:"custom-private-capture-error"
         Layout.fillWidth:true;wrapMode:Text.WordWrap
         visible:!!LumaCapture.error;text:LumaCapture.error
-        font.pixelSize:12;color:Theme.red
+        font.pixelSize:Tokens.textSize(12);color:Theme.red
     }
     ActionButton {
         objectName:"custom-private-capture-refresh"
@@ -45,7 +45,7 @@ ColumnLayout {
     }
     PanelText {
         Layout.fillWidth:true;wrapMode:Text.WordWrap
-        text:"Also hides the entire island, dock, clock and shared cursor. Stop sharing before changing this setting. Experimental, for supported desktop captures only. Other capture methods may still show Luma; verify what viewers see."
-        font.pixelSize:12;color:Theme.subtext
+        text:"Also keeps browser focus while you type in Luma. Click elsewhere to return typing; Escape closes Luma. Drag its header handle to move it. Active input methods or conflicting grabs can close Luma for safety. Also hides the entire island, dock, clock and shared cursor. Stop sharing before changing this setting. Experimental, for supported desktop captures only. Other capture methods may still show Luma; verify what viewers see."
+        font.pixelSize:Tokens.textSize(12);color:Theme.subtext
     }
 }

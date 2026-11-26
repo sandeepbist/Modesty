@@ -19,7 +19,7 @@ FocusScope {
             title:"Wi-Fi"
             Toggle { text:"Wi-Fi";checked:Wireless.enabled;enabled:Wireless.available&&Wireless.hardwareEnabled&&!SystemInfo.busy;onToggled:SystemInfo.action("wifi",String(checked)) }
         }
-        PanelText { Layout.fillWidth:true;visible:!Wireless.available||!Wireless.hardwareEnabled;text:!Wireless.available?"No Wi-Fi adapter":"Blocked by the hardware switch";color:Theme.subtext;font.pixelSize:11 }
+        PanelText { Layout.fillWidth:true;visible:!Wireless.available||!Wireless.hardwareEnabled;text:!Wireless.available?"No Wi-Fi adapter":"Blocked by the hardware switch";color:Theme.subtext;font.pixelSize:Tokens.textSize(11) }
         RowLayout {
             visible: Wireless.adapters.length > 1; Layout.fillWidth: true
             Repeater { model: Wireless.adapters; ActionButton { required property var modelData; text: modelData.name; primary: Wireless.device === modelData; onClicked: { Wireless.adapterName = modelData.name; root.select(null); } } }
@@ -44,13 +44,13 @@ FocusScope {
                 }
                 Icon { x: 12; anchors.verticalCenter: parent.verticalCenter; icon: row.modelData.connected ? "wifi" : row.modelData.signalStrength > .5 ? "network_wifi" : "network_wifi_1_bar"; size: 19; color: row.modelData.connected ? Theme.accent : Theme.subtext }
                 Column { x: 44; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 80; spacing: 3
-                    PanelText { width: parent.width; text: row.modelData.name; font.pixelSize: 13; font.weight: Font.Medium }
+                    PanelText { width: parent.width; text: row.modelData.name; font.pixelSize: Tokens.textSize(13); font.weight: Font.Medium }
                     PanelText { id:status;width: parent.width; text: row.modelData.stateChanging ? "Connecting…" : row.modelData.connected ? "Connected" : row.modelData.known ? "Saved" : WifiSecurityType.toString(row.modelData.security); color: Theme.subtext; font.pixelSize: Tokens.captionSize }
                 }
                 Icon { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; icon: row.modelData.connected ? "check" : "chevron_right"; size: 16; color: Theme.accent }
                 HoverHandler {cursorShape:Qt.PointingHandCursor}
             }
-            PanelText { parent:list;anchors.centerIn: parent; width:Math.max(0,parent.width-28);wrapMode:Text.WordWrap;horizontalAlignment:Text.AlignHCenter;visible: list.count === 0; text: Wireless.enabled ? "Looking for nearby networks…" : "Your saved networks will be here"; color: Theme.subtext; font.pixelSize: 11 }
+            PanelText { parent:list;anchors.centerIn: parent; width:Math.max(0,parent.width-28);wrapMode:Text.WordWrap;horizontalAlignment:Text.AlignHCenter;visible: list.count === 0; text: Wireless.enabled ? "Looking for nearby networks…" : "Your saved networks will be here"; color: Theme.subtext; font.pixelSize: Tokens.textSize(11) }
         }
         ColumnLayout {
             visible: !!root.selected && Wireless.enabled; Layout.fillWidth: true; spacing: 8

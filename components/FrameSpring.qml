@@ -10,8 +10,8 @@ QtObject {
     property real value: targetValue
     property real velocity: 0
     property bool pressFeedback: false
-    readonly property real frequency: pressFeedback ? 7 : 4.8
-    readonly property real dampingRatio: Preferences.motion === "gentle" ? 1 : .75
+    property real frequency: pressFeedback ? 7 : 4.8
+    property real dampingRatio: Preferences.motion === "gentle" ? 1 : .75
     property real positionTolerance: .25
     readonly property real velocityTolerance: positionTolerance * 2 * Math.PI * frequency * Preferences.motionSpeed
     property real minimumValue: -Infinity

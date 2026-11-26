@@ -167,7 +167,7 @@ python3 install.py --install-voice
 
 Settings uses five categories with page tabs and remembers the last page in each category. Search individual controls with Ctrl+F, then use Up/Down and Enter. Unavailable controls stay visible and link to their prerequisite. Music and media share one page. Unsaved personal notes and provider key inputs remain in the current Settings window when you switch pages or search.
 
-For palette-matched folder icons, enable **Settings → Colors & typography → Palette folders**.
+For palette-matched folder icons, enable **Settings → Themes → Palette folders**.
 Adwaita and Papirus are supported; other icons keep your existing theme. This option starts off.
 Disabling it restores the original icon theme; uninstall also restores it.
 Thunar uses a translucent selection tint with opaque text; this is not a blur effect.
@@ -197,6 +197,14 @@ reinstall preserves a previous opt-in.
   confirmation in Review mode.
 - Full access allows broader automatic actions; enable it deliberately. Read
   [security and privacy](.github/SECURITY.md) before enabling AI context/tools.
+- With screen-sharing privacy enabled, Luma has a page-scan icon beside Send.
+  Click it to send the active application's visible image and supported exposed
+  document text to your configured AI provider. The draft stays intact and serves
+  as the instruction. Current-window permission and private interaction must be
+  available. Luma shows the actual capture scope. Unsupported document access
+  falls back to the visible window. Unloaded content and offscreen images may be
+  missing. This does not guarantee that websites or monitoring tools cannot
+  detect accessibility access or other system activity.
 - **Agent activity tracking currently works with T3 Code only.** Modesty reads
   task status metadata, not T3 prompts or credentials.
 - Standalone Codex, Claude Code and OpenCode CLI integration is planned and is

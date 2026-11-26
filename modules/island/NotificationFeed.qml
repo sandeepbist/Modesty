@@ -15,7 +15,7 @@ Item {
     readonly property real feedInset:showHeader?8:0
     Item {
         x:14;y:9;width:parent.width-28;height:26;visible:root.headerVisible
-        PanelText {anchors.left:parent.left;anchors.verticalCenter:parent.verticalCenter;width:Math.max(0,parent.width-headerControls.width-8);visible:root.showTitle;text:"Notifications"+(Notifications.list.length?"  ·  "+Notifications.list.length:"");font.pixelSize:12;font.weight:Font.Medium}
+        PanelText {anchors.left:parent.left;anchors.verticalCenter:parent.verticalCenter;width:Math.max(0,parent.width-headerControls.width-8);visible:root.showTitle;text:"Notifications"+(Notifications.list.length?"  ·  "+Notifications.list.length:"");font.pixelSize:Tokens.textSize(12);font.weight:Font.Medium}
         Icon {anchors.left:parent.left;anchors.verticalCenter:parent.verticalCenter;visible:!root.showTitle;icon:Notifications.dnd?"notifications_paused":"notifications_none";size:18;color:Theme.subtext}
         Row {id:headerControls;anchors.right:parent.right;anchors.verticalCenter:parent.verticalCenter;spacing:2
             IconButton {icon:"check";label:"Clear all notifications";size:14;visible:Notifications.list.length>0;enabled:root.interactive;onClicked:Notifications.clearAll()}
@@ -28,7 +28,7 @@ Item {
             anchors.centerIn:parent;spacing:8
             visible:!Notifications.list.length||root.compact||root.collapsed
             Icon {anchors.horizontalCenter:parent.horizontalCenter;icon:Notifications.dnd?"notifications_paused":"notifications_none";size:root.compact?22:26;color:Theme.subtext}
-            PanelText {anchors.horizontalCenter:parent.horizontalCenter;visible:root.width>90;text:Notifications.list.length?Notifications.list.length+" waiting":Notifications.dnd?"Peace is on":"You're all caught up";font.pixelSize:12;color:Theme.subtext}
+            PanelText {anchors.horizontalCenter:parent.horizontalCenter;visible:root.width>90;text:Notifications.list.length?Notifications.list.length+" waiting":Notifications.dnd?"Peace is on":"You're all caught up";font.pixelSize:Tokens.textSize(12);color:Theme.subtext}
         }
         MouseArea {anchors.fill:parent;enabled:root.interactive&&(root.compact||root.collapsed);cursorShape:Qt.PointingHandCursor;onClicked:if(root.compact)IslandState.openMenu("notifhistory");else root.collapsed=false}
         ListView {

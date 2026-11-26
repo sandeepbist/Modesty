@@ -6,8 +6,6 @@ import Quickshell.Hyprland
 import qs.services
 import "Palette.js" as Palette
 
-// Eight palettes, persisted to appearance.json. Components use these shared colors.
-
 Singleton {
     id: root
 
@@ -15,6 +13,10 @@ Singleton {
     property string mode: "dark"
     readonly property bool light: mode === "light"
     property string syncError: ""
+    property bool appearanceReady: Preferences.preview
+    property string appearanceLoadError: ""
+    property var customThemes: []
+    readonly property bool customThemeActive: customThemes.some(theme => theme.id === paletteName)
     property var wallpaperVariants: ({})
     property var wallpaperData:null
     property var previewWallpaperVariants:null
@@ -48,10 +50,67 @@ Singleton {
     }
     readonly property var pal: previewWallpaperVariants?.[mode] ? Palette.refine(previewWallpaperVariants[mode]) : resolvePalette(paletteName)
     function resolvePalette(name): var {
+        const saved = customThemes.find(theme => theme.id === name);
+        if (saved?.variants) return Palette.refine(saved.variants[mode]);
+        if (saved) name = saved.source;
         const base = palettes[name] ?? palettes.everblush;
         if (name === "wallpaper" && wallpaperVariants[mode]) return Palette.refine(wallpaperVariants[mode]);
         if (!light || name === "e-ink") return Palette.refine(base);
         return Palette.lightPalette(name) || Palette.refine(base);
+    }
+    function paletteLabel(name): string {
+        if (name === "wallpaper") return "Wallpaper colors";
+        if (name === "e-ink") return "E-Ink";
+        return name.charAt(0).toUpperCase() + name.slice(1);
+    }
+    function snapshotSource(source): bool {
+        return source === "wallpaper" || Palette.schemeOptions.some(option => option.value === source);
+    }
+    function validVariants(variants): bool {
+        return !!variants && validPalette(variants.dark) && validPalette(variants.light);
+    }
+    function validThemeSource(source, variants): bool {
+        return snapshotSource(source) ? validVariants(variants)
+            : Object.prototype.hasOwnProperty.call(palettes, source) && !variants;
+    }
+    function themeNameError(id: string, name: string): string {
+        const label = name.trim().toLowerCase();
+        if (!label) return "Enter a theme name.";
+        if (label === "wallpaper colors" || customThemes.some(theme => theme.id !== id && theme.label.toLowerCase() === label))
+            return "That theme name is already in use.";
+        return "";
+    }
+    function saveCustomTheme(id: string, name: string, source: string, variants): string {
+        if (!appearanceReady) return appearanceLoadError || "Appearance is still loading.";
+        const error = themeNameError(id, name);
+        if (error) return error;
+        if (!validThemeSource(source, variants)) return "Choose a valid palette.";
+        if (id && !customThemes.some(theme => theme.id === id)) return "This theme was deleted.";
+        if (!id) {
+            let stamp = Date.now();
+            while (customThemes.some(theme => theme.id === "custom-" + stamp)) stamp++;
+            id = "custom-" + stamp;
+        }
+        const entry = {id, label: name.trim(), source, variants: variants || null};
+        const index = customThemes.findIndex(theme => theme.id === id);
+        const next = customThemes.slice();
+        if (index < 0) next.push(entry);
+        else next[index] = entry;
+        customThemes = next;
+        scheduleSync();
+        return "";
+    }
+    function deleteCustomTheme(id: string): void {
+        if (!appearanceReady) return;
+        const next = customThemes.filter(theme => theme.id !== id);
+        if (next.length === customThemes.length) return;
+        if (paletteName === id) useWallpaperColors();
+        customThemes = next;
+        scheduleSync();
+    }
+    function useWallpaperColors(): void {
+        if (!Preferences.wallpaperColors) Preferences.set("wallpaperColors", true);
+        setPalette("wallpaper");
     }
     function setMode(value: string): void {
         if (!["dark", "light"].includes(value) || mode === value) return;
@@ -156,28 +215,46 @@ Singleton {
         return false;
     }
     function scheduleSync(): void {
+        if (!appearanceReady) return;
         if (previewWallpaperVariants) { previewSyncPending = true; return; }
-        if (Quickshell.env("MODESTY_PREVIEW") !== "1") syncDelay.restart();
+        if (!Preferences.preview) syncDelay.restart();
     }
     Timer { id: syncDelay; interval: 150; onTriggered: {
         if (root.previewWallpaperVariants) { root.previewSyncPending = true; return; }
         if (syncProc.running) { restart(); return; }
-        syncProc.command = ["python3", Qt.resolvedUrl("../scripts/appearance.py").toString().replace("file://", ""), JSON.stringify({paletteName:root.paletteName,mode:root.mode,wallpaperData:root.wallpaperData,wallpaperVariants:root.wallpaperVariants,targets:{gtk:Preferences.themeGtk,folders:Preferences.themeFolders,qt:Preferences.themeQt,foot:Preferences.themeFoot,spotify:Preferences.themeSpotify},colors:{accent:String(root.pal.accent),accentText:String(root.pal.accentText??root.pal.bgSolid),subtext:String(root.pal.subtext),bg:String(root.pal.bgSolid),surface:String(root.pal.surfaceSolid),text:String(root.pal.text),green:String(root.pal.green),yellow:String(root.pal.yellow),red:String(root.pal.red)}})];
+        syncProc.payload = JSON.stringify({
+            paletteName: root.paletteName, mode: root.mode, customThemes: root.customThemes,
+            wallpaperData: root.wallpaperData, wallpaperVariants: root.wallpaperVariants,
+            targets: {gtk: Preferences.themeGtk, folders: Preferences.themeFolders, qt: Preferences.themeQt,
+                foot: Preferences.themeFoot, spotify: Preferences.themeSpotify},
+            colors: {accent: String(root.pal.accent), accentText: String(root.pal.accentText ?? root.pal.bgSolid),
+                subtext: String(root.pal.subtext), bg: String(root.pal.bgSolid), surface: String(root.pal.surfaceSolid),
+                text: String(root.pal.text), green: String(root.pal.green), yellow: String(root.pal.yellow), red: String(root.pal.red)}
+        });
         syncProc.running = true;
     } }
-    Process { id:syncProc; stdout:StdioCollector {onStreamFinished:{try{root.syncError=JSON.parse(text).error||"";}catch(e){root.syncError="Couldn't synchronize desktop colors";}}} }
+    Process {
+        id: syncProc
+        property string payload
+        command: ["python3", Qt.resolvedUrl("../scripts/appearance.py").toString().replace("file://", ""), "--stdin"]
+        stdinEnabled: true
+        onStarted: { write(payload + "\n"); payload = ""; }
+        stdout: StdioCollector { onStreamFinished: {
+            try { root.syncError = JSON.parse(text).error || ""; }
+            catch (e) { root.syncError = "Couldn't save appearance or synchronize desktop colors."; }
+        } }
+    }
     Connections {target:Preferences;function onThemeGtkChanged(){root.scheduleSync();}function onThemeFoldersChanged(){root.scheduleSync();}function onThemeQtChanged(){root.scheduleSync();}function onThemeFootChanged(){root.scheduleSync();}function onThemeSpotifyChanged(){root.scheduleSync();}}
     FileView {path:Quickshell.env("MODESTY_PREVIEW")==="1"?"":root.stateDir+"/wallpaper-data.json";printErrors:false;onLoaded:{try{root.wallpaperData=JSON.parse(text());root.scheduleSync();}catch(e){}}}
     onPalChanged: if (!previewWallpaperVariants && !restoringPreview) scheduleSync()
     Connections { target:Hyprland; function onRawEvent(event) { if(event.name === "configreloaded") root.scheduleSync(); } }
-    Component.onCompleted: scheduleSync()
     FileView {
         path: Quickshell.env("MODESTY_PREVIEW") === "1" ? "" : root.stateDir + "/wallpaper-palette.json"
         printErrors: false
         onLoaded: { try { root.loadWallpaperPalette(JSON.parse(text())); } catch (e) {} }
     }
     function setPalette(name: string): void {
-        if (!palettes[name]) return;
+        if (!Object.prototype.hasOwnProperty.call(palettes, name) && !customThemes.some(theme => theme.id === name)) return;
         if(name!=="wallpaper")clearWallpaperPreview();
         paletteName = name;
         scheduleSync();
@@ -186,8 +263,32 @@ Singleton {
         path: Quickshell.env("MODESTY_PREVIEW") === "1" ? "" : root.stateDir + "/appearance.json"
         printErrors: false
         onLoaded: {
-            try { const data = JSON.parse(text()); if (root.palettes[data.paletteName]) root.paletteName = data.paletteName; if (["dark","light"].includes(data.mode)) root.mode=data.mode; }
-            catch (e) { console.warn("Could not read appearance settings"); }
+            try {
+                const data = JSON.parse(text());
+                const saved = data.customThemes ?? [];
+                const ids = new Set();
+                if (!Array.isArray(saved)) throw new Error("Invalid theme list");
+                for (const entry of saved) {
+                    if (!entry || typeof entry.id !== "string" || !/^custom-\d+$/.test(entry.id) || ids.has(entry.id)
+                        || typeof entry.label !== "string" || !entry.label.trim() || typeof entry.source !== "string"
+                        || !root.validThemeSource(entry.source, entry.variants)) throw new Error("Invalid saved theme");
+                    ids.add(entry.id);
+                }
+                root.customThemes = saved;
+                root.setPalette(ids.has(data.paletteName) || Object.prototype.hasOwnProperty.call(root.palettes, data.paletteName)
+                    ? data.paletteName : "wallpaper");
+                if (["dark", "light"].includes(data.mode)) root.mode = data.mode;
+                root.appearanceReady = true;
+                root.scheduleSync();
+            } catch (e) { root.appearanceLoadError = "Couldn't read saved appearance. Your file was kept."; }
+        }
+        onLoadFailed: error => {
+            if (error !== FileViewError.FileNotFound) {
+                root.appearanceLoadError = "Couldn't open saved appearance. Your file was kept.";
+                return;
+            }
+            root.appearanceReady = true;
+            root.scheduleSync();
         }
     }
 }

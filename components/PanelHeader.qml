@@ -10,7 +10,7 @@ RowLayout {
     default property alias controls: trailing.data
     Layout.fillWidth: true
     implicitHeight: Math.max(32, trailing.implicitHeight)
-    spacing: 8
+    spacing: 2 * Tokens.spacingUnit
     data: [IconButton {
         icon: "arrow_back"; size: 16
         label: root.backPanel === "quicksettings" ? "Control center" : "Back"
@@ -20,7 +20,8 @@ RowLayout {
         Layout.fillWidth: true
         Layout.alignment: Qt.AlignVCenter
         text: root.title
-        font.pixelSize: 15; font.weight: Font.Medium
+        font.family: Tokens.clockFont
+        font.pixelSize: Tokens.textSize(15); font.weight: Font.Medium
     },
-    RowLayout { id: trailing; spacing: 8 }]
+    RowLayout { id: trailing; spacing: 2 * Tokens.spacingUnit }]
 }

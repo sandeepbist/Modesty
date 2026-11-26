@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Verify handoff/rollback against temporary copies, without touching the session."""
 import importlib.util
+import json
 from pathlib import Path
+import shlex
 import tempfile
 import sys
 from unittest.mock import patch
@@ -146,3 +148,79 @@ with tempfile.TemporaryDirectory() as tmp, patch.object(mod,'STATE',Path(tmp)), 
             mod.stop_modesty()
             assert [call.args[0] for call in run.call_args_list]==[listing,flushing,killing]
 print('PASS missing health never skips Notes save; absent instances are a no-op; failed flush, status and instance listing preserve the live shell')
+
+import shell_renderer
+ready = {'locked':False, 'compatibility':True, 'preview':False, 'policyAgent':True}
+with tempfile.TemporaryDirectory() as tmp, patch.object(mod,'MARKER',Path(tmp)/'main-shell'), patch.object(mod,'run',return_value=CompletedProcess([],0,'ok\n','')) as run, patch.object(mod,'health',return_value=ready) as health, patch.object(shell_renderer,'run_shell') as render, patch.object(mod.time,'sleep'):
+    mod.MARKER.touch()
+    script = Path(tmp)/'Modesty \' " ; $(touch owned) `touch owned` & |\n'/'scripts/session-control.py'
+    with patch.object(mod,'__file__',str(script)):
+        mod.start()
+    assert run.call_count == 1, 'Shell startup bypassed compositor dispatch'
+    command = run.call_args.args[0]
+    assert command[:2] == ['hyprctl','eval']
+    prefix, suffix = 'hl.dispatch(hl.dsp.exec_cmd(', '))'
+    assert command[2].startswith(prefix) and command[2].endswith(suffix)
+    assert shlex.split(json.loads(command[2][len(prefix):-len(suffix)])) == ['python3',str(script.resolve()),'spawn-native']
+    render.assert_not_called()
+    print('PASS startup dispatches the native worker with metacharacter paths quoted as one argument')
+
+    for response in (CompletedProcess([],1,'','socket unavailable'), CompletedProcess([],0,'Error evaluating Lua',''), CompletedProcess([],0,'',''), CompletedProcess([],0,'ok\n','dispatch error')):
+        with patch.object(mod,'run',return_value=response), patch.object(mod,'health') as probe:
+            try: mod.start()
+            except RuntimeError as error:
+                assert (response.stdout+response.stderr).strip() in str(error)
+            else: raise AssertionError('Failed compositor dispatch was accepted')
+            probe.assert_not_called()
+    with patch.object(mod,'run',side_effect=TimeoutExpired(['hyprctl','eval'],12)):
+        try: mod.start()
+        except TimeoutExpired: pass
+        else: raise AssertionError('Compositor timeout was hidden')
+    print('PASS failed, empty, error and timed-out dispatch replies fail before readiness polling')
+
+    with patch.object(mod.time,'monotonic',side_effect=[0,0,39,99.9]), patch.object(mod,'health',side_effect=[None,dict(ready,policyAgent=False),ready]):
+        mod.start()
+    for state in (None,dict(ready,compatibility=False),dict(ready,preview=True),dict(ready,policyAgent=False)):
+        with patch.object(mod.time,'monotonic',side_effect=[0,0,100]), patch.object(mod,'health',return_value=state):
+            try: mod.start()
+            except RuntimeError as error: assert 'permission agent' in str(error)
+            else: raise AssertionError('Unready shell passed startup health checks')
+    with patch.object(mod,'assert_unlocked'), patch.object(mod,'validate_shell') as validate, patch.object(mod,'stop_modesty') as stop:
+        run.reset_mock()
+        mod.restart()
+        validate.assert_called_once(); stop.assert_called_once()
+        assert run.call_args.args[0][:2] == ['hyprctl','eval']
+    render.assert_not_called()
+    print('PASS startup waits through native setup and health budgets and requires compatibility, preview off and permission agent')
+
+    run.reset_mock(); health.reset_mock()
+    mod.MARKER.unlink()
+    mod.start()
+    run.assert_called_once_with(['caelestia','shell','-d'])
+    run.reset_mock()
+    try: mod.spawn_native()
+    except RuntimeError: pass
+    else: raise AssertionError('Native worker launched without main-shell selection')
+    run.assert_not_called(); health.assert_not_called(); render.assert_not_called()
+    mod.MARKER.touch()
+    with patch.object(mod,'health',return_value={'locked':True}):
+        try: mod.spawn_native()
+        except RuntimeError: pass
+        else: raise AssertionError('Native worker launched while locked')
+    run.assert_not_called(); render.assert_not_called()
+    print('PASS Caelestia fallback remains; native worker refuses missing marker and locked session')
+
+    environment = {'PATH':'/usr/bin', 'WAYLAND_DISPLAY':'wayland-test', 'ELECTRON_RUN_AS_NODE':'1', 'LD_LIBRARY_PATH':'/opt/t3code/lib:/usr/lib', 'MODESTY_COMPAT':'0', 'MODESTY_PREVIEW':'1'}
+    with patch.object(mod,'assert_unlocked') as unlocked, patch.dict(mod.os.environ,environment,clear=True):
+        mod.spawn_native()
+        unlocked.assert_called_once()
+        expected = {'PATH':'/usr/bin', 'WAYLAND_DISPLAY':'wayland-test', 'LD_LIBRARY_PATH':'/usr/lib', 'MODESTY_COMPAT':'1', 'MODESTY_PREVIEW':'0'}
+        render.assert_called_once_with(['quickshell','-d','--no-duplicate','-p',str(ROOT/'shell.qml')],expected)
+        assert dict(mod.os.environ) == environment
+        for failure in (RuntimeError('renderer failed'),TimeoutExpired(['quickshell'],12)):
+            with patch.object(shell_renderer,'run_shell',side_effect=failure):
+                try: mod.spawn_native()
+                except (RuntimeError,TimeoutExpired) as error: assert error is failure
+                else: raise AssertionError('Native worker hid renderer failure')
+    run.assert_not_called()
+    print('PASS native worker preserves renderer startup, cleans environment, forces main-shell modes and propagates failures without recursion')

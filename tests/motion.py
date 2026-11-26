@@ -16,6 +16,8 @@ ShellRoot {
     property int phase:0
     property double since:Date.now()
     property bool rebound:false
+    property real compressedWidth:90
+    property bool closeRebound:false
     function check(ok,label):void {if(!ok)throw new Error(label+" profile="+profile+" phase="+phase);}
     function next():void {phase++;since=Date.now();}
     function configure():void {
@@ -24,7 +26,7 @@ ShellRoot {
     }
     Timer {interval:16;running:true;repeat:true;onTriggered:{try {
         check(Number.isFinite(stage.width)&&Number.isFinite(stage.height),"Invalid geometry");
-        check(stage.width>=90&&stage.width<=550&&stage.height>=Preferences.barHeight,"Rebound escaped bounds");
+        check(stage.width>=84&&stage.width<=550&&stage.height>=Preferences.barHeight*.93,"Rebound escaped bounds");
         check(stage.inputRegion.width===stage.width+12&&stage.inputRegion.height===stage.height+7,"Input mask detached from surface");
         const elapsed=Date.now()-since;
         check(elapsed<4500,"Spring failed to settle");
@@ -33,7 +35,7 @@ ShellRoot {
             rebound=rebound||stage.width>stage.targetWidth+.2;
             if(elapsed>100&&!stage.resizing){
                 check(Math.abs(stage.width-460)<.01&&Math.abs(stage.height-320)<.01,"Open stopped away from target");
-                if(profiles[profile].style==="fluid"&&profiles[profile].speed===.65)check(rebound,"Fluid motion lost spring rebound");
+                check(rebound,"Opening lost spring rebound");
                 stage.targetWidth=300;stage.targetHeight=160;next();
             }
         }else if(phase===2&&elapsed>65){
@@ -42,12 +44,17 @@ ShellRoot {
             check(Math.abs(stage.width-width)<.01&&Math.abs(stage.height-height)<.01,"Retarget snapped surface");next();
         }else if(phase===3&&elapsed>100&&!stage.resizing){
             check(Math.abs(stage.width-540)<.01&&Math.abs(stage.height-410)<.01,"Interrupted spring missed target");
-            stage.panel="idle";stage.targetWidth=90;stage.targetHeight=Preferences.barHeight;next();
-        }else if(phase===4&&elapsed>100&&!stage.resizing){
-            check(stage.width===90&&stage.height===Preferences.barHeight,"Close missed resting size");
-            profile++;
-            if(profile<profiles.length){phase=0;configure();}
-            else {stage.panel="launcher";stage.targetWidth=460;stage.targetHeight=320;next();}
+            stage.panel="idle";stage.targetWidth=90;stage.targetHeight=Preferences.barHeight;compressedWidth=90;closeRebound=false;next();
+        }else if(phase===4){
+            compressedWidth=Math.min(compressedWidth,stage.width);
+            closeRebound=closeRebound||(compressedWidth<89.8&&stage.width>compressedWidth+.2);
+            if(elapsed>100&&!stage.resizing){
+                check(closeRebound,"Closing lost spring rebound");
+                check(stage.width===90&&stage.height===Preferences.barHeight,"Close missed resting size");
+                profile++;
+                if(profile<profiles.length){phase=0;configure();}
+                else {stage.panel="launcher";stage.targetWidth=460;stage.targetHeight=320;next();}
+            }
         }else if(phase===5&&elapsed>65){
             Preferences.motion="instant";next();
         }else if(phase===6&&elapsed>40){
@@ -118,3 +125,64 @@ ShellRoot {
     }catch(error){console.error(error);Qt.exit(1);}}}
 }
 ''', 'INSTANT TEXT CHECK PASS')
+
+run('''import QtQuick
+import QtTest
+import Quickshell
+import "modules/island" as Island
+import qs.services
+ShellRoot {
+    id: probe
+    property bool closing: false
+    property real minimumClearance: 0
+    FloatingWindow {
+        visible: true; implicitWidth: 1200; implicitHeight: 650
+        Island.IslandSurface {
+            id: surface
+            availableWidth: 1200; availableHeight: 650
+        }
+    }
+    TestCase { id: input; when: false }
+    FrameAnimation {
+        running: probe.closing
+        onTriggered: probe.minimumClearance = Math.min(probe.minimumClearance, surface.dockWidth - surface.dockRestWidth)
+    }
+    Component.onCompleted: {
+        Preferences.motionSpeed = .65;
+        IslandState.restingMode = IslandState.Dock;
+    }
+    Timer {
+        interval: 450; running: true
+        onTriggered: {
+            try {
+                for (const style of ["gentle", "fluid"]) {
+                    Preferences.motion = style;
+                    for (const width of [1920, 330]) {
+                        surface.availableWidth = width;
+                        input.wait(300);
+                        IslandState.openMenu("wallpapers");
+                        input.wait(550);
+                        if (surface.dockHeight < Preferences.barHeight + 100 || surface.dockWidth <= surface.dockRestWidth)
+                            throw new Error("Dock panel did not open at " + width + " px");
+                        probe.minimumClearance = 0;
+                        probe.closing = true;
+                        IslandState.closeMenu();
+                        input.wait(700);
+                        probe.closing = false;
+                        if (probe.minimumClearance < -.02)
+                            throw new Error(style + " dock at " + width + " px clips its header by "
+                                + (-probe.minimumClearance).toFixed(2) + " logical px");
+                        if (Math.abs(surface.dockWidth - surface.dockRestWidth) > .05)
+                            throw new Error("Dock did not settle at its header width");
+                    }
+                }
+                console.log("DOCK PANEL CLOSE PASS");
+                Qt.quit();
+            } catch (error) {
+                console.error(error);
+                Qt.exit(1);
+            }
+        }
+    }
+}
+''', 'DOCK PANEL CLOSE PASS')

@@ -1,4 +1,11 @@
 .pragma library
+
+var schemeOptions = ["tonal-spot", "content", "expressive", "fidelity", "fruit-salad",
+    "monochrome", "neutral", "rainbow", "vibrant", "smart"].map(name => ({
+        value: "scheme-" + name,
+        label: name[0].toUpperCase() + name.slice(1).replace(/-/g, " ")
+    }));
+
 // Contrast corrections move only as far as necessary, preserving hue.
 function rgb(hex) {return [1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255);}
 function luminance(hex) {return rgb(hex).map(v=>v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4)).reduce((s,v,i)=>s+v*[.2126,.7152,.0722][i],0);}

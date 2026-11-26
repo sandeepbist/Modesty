@@ -41,7 +41,7 @@ ColumnLayout {
             ActionButton {required property string modelData;text:modelData;primary:root.category===modelData&&!search.text;onClicked:{search.clear();root.editing="";root.category=modelData;}}
         }
     }
-    PanelText {Layout.fillWidth:true;visible:!!Bindings.error;text:Bindings.error;color:Theme.red;font.pixelSize:12;wrapMode:Text.Wrap;elide:Text.ElideNone}
+    PanelText {Layout.fillWidth:true;visible:!!Bindings.error;text:Bindings.error;color:Theme.red;font.pixelSize:Tokens.textSize(12);wrapMode:Text.Wrap;elide:Text.ElideNone}
     Repeater {model:root.rows
         Rectangle {
             id:row;required property var modelData
@@ -52,13 +52,13 @@ ColumnLayout {
             clip:true
             Behavior on implicitHeight {NumberAnimation {duration:Tokens.animFast;easing.type:Easing.OutCubic}}
             RowLayout {id:shortcutHeader;x:14;y:0;width:parent.width-28;height:Math.max(54,shortcutLabel.implicitHeight+20);spacing:12
-                PanelText {id:shortcutLabel;Layout.fillWidth:true;Layout.minimumWidth:0;text:row.modelData.label;font.pixelSize:13;font.weight:Font.Medium;wrapMode:Text.Wrap;elide:Text.ElideNone}
+                PanelText {id:shortcutLabel;Layout.fillWidth:true;Layout.minimumWidth:0;text:row.modelData.label;font.pixelSize:Tokens.textSize(13);font.weight:Font.Medium;wrapMode:Text.Wrap;elide:Text.ElideNone}
                 ActionButton {id:keycap;Layout.maximumWidth:Math.min(180,row.width*.5);text:root.displayChord(row.modelData.chord);implicitHeight:30;
                     background:Rectangle {radius:9;color:keycap.hovered?Theme.withAlpha(Theme.text,.08):Theme.bgSolid;border.width:1;border.color:Theme.withAlpha(Theme.text,keycap.activeFocus?.3:.09);Behavior on color {ColorAnimation {duration:Tokens.animFast}}}
                     onClicked:{const opening=!row.editing;root.editing=opening?row.modelData.key:"";if(opening)chord.forceActiveFocus();}}
             }
             RowLayout {x:14;y:shortcutHeader.height+4;width:parent.width-28;height:36;spacing:8;visible:row.editing
-                EntryField {id:chord;Layout.fillWidth:true;text:row.modelData.chord;placeholderText:"SUPER + ALT + T";font.pixelSize:12;onAccepted:save.clicked()}
+                EntryField {id:chord;Layout.fillWidth:true;text:row.modelData.chord;placeholderText:"SUPER + ALT + T";font.pixelSize:Tokens.textSize(12);onAccepted:save.clicked()}
                 ActionButton {id:save;text:"Save";enabled:!Bindings.busy;onClicked:{if(row.modelData.native)Bindings.setDesktop(row.modelData.id,chord.text);else Bindings.set(row.modelData.id,chord.text);}}
                 IconButton {icon:row.modelData.native?"restart_alt":"close";label:row.modelData.native?"Reset shortcut":"Remove shortcut";size:15;enabled:!Bindings.busy;onClicked:{if(row.modelData.native){chord.text=row.modelData.original;Bindings.setDesktop(row.modelData.id,chord.text);}else{chord.text="";Bindings.set(row.modelData.id,"");}}}
             }

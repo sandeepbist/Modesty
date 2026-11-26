@@ -26,7 +26,7 @@ Item {
                 }
                 PanelText {
                     width:parent.width;text:dayColumn.day.getDate();horizontalAlignment:Text.AlignHCenter
-                    font.pixelSize:12;font.features:({tnum:1});font.weight:dayColumn.distance===0?Font.DemiBold:Font.Normal
+                    font.pixelSize:Tokens.textSize(12);font.features:({tnum:1});font.weight:dayColumn.distance===0?Font.DemiBold:Font.Normal
                     color:dayColumn.distance===0?Theme.accent:Theme.text
                 }
             }

@@ -9,9 +9,12 @@ ScrollBar {
     visible: size < 1
     implicitWidth: 12
     minimumSize: .08
+    leftPadding: 4
+    rightPadding: 4
     contentItem: Rectangle {
         implicitWidth: 4
         radius: 2
-        color: Theme.withAlpha(Theme.text, parent.pressed ? .5 : parent.hovered ? .36 : .22)
+        color: Theme.withAlpha(Theme.text, parent.pressed ? .5 : parent.hovered ? .36 : .2)
+        Behavior on color { ColorAnimation { duration: Tokens.animFast } }
     }
 }

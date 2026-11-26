@@ -34,7 +34,8 @@ def clean_messages(messages):
              "presentation": presentation(m.get("presentation")) if m["role"] == "assistant" else {},
              "citations": clean_citations(m.get("citations")) if m["role"] == "assistant" else [],
              "execution": clean_execution(m.get("execution")) if m["role"] == "assistant" else [],
-             "failed": m.get("failed") is True} for m in messages[-16:]
+             "failed": m.get("failed") is True,
+             **({"requestKind": "analyze_page"} if m["role"] == "user" and m.get("requestKind") == "analyze_page" else {})} for m in messages[-16:]
             if isinstance(m, dict) and m.get("role") in {"user", "assistant"} and isinstance(m.get("text"), str)][:16]
 
 

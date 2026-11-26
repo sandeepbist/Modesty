@@ -50,17 +50,9 @@ Singleton {
     readonly property string script: Qt.resolvedUrl("../scripts/system.py").toString().replace("file://", "")
     property var queue: []
     function refresh(): void { if (!snapshotProc.running) snapshotProc.running = true; }
-    function applyWallpaper(path: string): void {
-        const selected = wallpapers.find(w => w.path === path);
-        if (!selected || preview) return;
-        paletteKey = ""; pendingPalette = null;
-        wallpaperDisplay = selected.displayUrl || selected.url;
-        wallpaperBackend = "native";
-        wallpaper = path;
-        clearWallpaperPreview();
-        if(Preferences.wallpaperColors)Theme.setPalette("wallpaper");
-        recolor();
-        action("wallpaper", JSON.stringify({path}));
+    function applyWallpaper(path, palette = ""): void {
+        if (preview || !wallpapers.some(w => w.path === path)) return;
+        action("wallpaper", JSON.stringify({path, palette}));
     }
     function paletteRequest(path: string): var {
         const image = wallpapers.find(w => w.path === path);
@@ -231,11 +223,16 @@ Singleton {
     Process {
         id: actionProc
         stdout: StdioCollector { onStreamFinished: { try { const data = JSON.parse(text); if (!data.ok) root.error = data.error;
-                    else if (data.wallpaper) {
+                    else if (data.wallpaper && actionProc.command[2] === "wallpaper") {
+                        const request = JSON.parse(actionProc.command[3]);
+                        root.paletteKey = ""; root.pendingPalette = null;
                         root.wallpaperDisplay = data.wallpaperDisplay;
                         root.wallpaperBackend = data.wallpaperBackend;
                         root.wallpaper = data.wallpaper;
                         root.wallpaperWarning = data.warning || "";
+                        if (root.previewWallpaperPath === data.wallpaper) root.clearWallpaperPreview();
+                        if (request.palette || (Preferences.wallpaperColors && !Theme.customThemeActive))
+                            Theme.setPalette(request.palette || "wallpaper");
                         root.recolor();
                     } } catch (e) { root.error = "The command did not complete"; } } }
         onExited: { root.refresh(); Qt.callLater(root.nextAction); }

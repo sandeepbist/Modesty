@@ -45,7 +45,7 @@ Item {
         ShapePath {strokeColor:"transparent";fillColor:root.wifiState==="known"?Theme.text:Theme.withAlpha(Theme.text,.25);PathSvg {path:"M12 18 A1 1 0 1 1 10 18 A1 1 0 1 1 12 18"}}
         ShapePath {strokeWidth:1.5;strokeColor:["off","unavailable"].includes(root.wifiState)?Theme.text:"transparent";fillColor:"transparent";PathSvg {path:"M3 3 L19 19"}}
     }
-    Text {id:badge;x:20;y:0;text:root.wifiState==="unknown"?"?":root.wifiState==="disconnected"?"×":root.wifiState==="unavailable"?"−":"";font.pixelSize:10;color:Theme.text}
+    Text {font.family:Tokens.font;id:badge;x:20;y:0;text:root.wifiState==="unknown"?"?":root.wifiState==="disconnected"?"×":root.wifiState==="unavailable"?"−":"";font.pixelSize:10;color:Theme.text}
     }
     Rectangle {
         objectName:"statusBattery"
@@ -53,7 +53,7 @@ Item {
         opacity:root.dockProgress
         Rectangle {x:17;y:2.5;width:2;height:3;radius:.75;color:Theme.withAlpha(Theme.text,.6)}
         Rectangle {x:2;y:2;height:4;radius:.75;width:SystemInfo.hasBattery?13*Math.max(0,Math.min(1,SystemInfo.batteryPercent/100)):0;color:SystemInfo.batteryPercent<=20&&!SystemInfo.charging?Theme.red:Theme.text}
-        Text {x:(parent.width-width)/2;y:(parent.height-height)/2;text:SystemInfo.hasBattery?(SystemInfo.charging?"ϟ":""):SystemInfo.batteryState==="absent"?"−":"?";font.pixelSize:8;color:Theme.text}
+        Text {font.family:Tokens.font;x:(parent.width-width)/2;y:(parent.height-height)/2;text:SystemInfo.hasBattery?(SystemInfo.charging?"ϟ":""):SystemInfo.batteryState==="absent"?"−":"?";font.pixelSize:8;color:Theme.text}
     }
     Accessible.role:Accessible.StaticText
     Accessible.name:wifiText+" · "+batteryText

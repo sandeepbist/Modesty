@@ -64,7 +64,7 @@ FocusScope {
                 Keys.onReturnPressed:clicked()
                 Keys.onEnterPressed:clicked()
                 background:Rectangle {radius:8;color:"transparent";border.width:chooser.activeFocus?1:0;border.color:Theme.accent}
-                contentItem:PanelText {text:chooser.text;font.pixelSize:14;font.weight:Font.DemiBold;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter}
+                contentItem:PanelText {text:chooser.text;font.pixelSize:Tokens.textSize(14);font.weight:Font.DemiBold;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter}
                 HoverHandler {cursorShape:Qt.PointingHandCursor}
                 MouseArea {anchors.fill:parent;acceptedButtons:Qt.RightButton;onClicked:root.today()}
             }
@@ -74,7 +74,7 @@ FocusScope {
             id:calendarBody;Layout.fillWidth:true;Layout.minimumHeight:root.compactHeight-34;Layout.preferredHeight:root.compactHeight-34;Layout.maximumHeight:root.compactHeight-34
             GridLayout {
                 anchors.fill:parent;columns:7;rowSpacing:2;columnSpacing:2;visible:root.mode==="days"
-                Repeater {model:["S","M","T","W","T","F","S"];PanelText {required property string modelData;Layout.fillWidth:true;Layout.preferredHeight:20;text:modelData;font.pixelSize:11;font.weight:Font.Medium;color:Theme.subtext;horizontalAlignment:Text.AlignHCenter}}
+                Repeater {model:["S","M","T","W","T","F","S"];PanelText {required property string modelData;Layout.fillWidth:true;Layout.preferredHeight:20;text:modelData;font.pixelSize:Tokens.textSize(11);font.weight:Font.Medium;color:Theme.subtext;horizontalAlignment:Text.AlignHCenter}}
                 Repeater {model:42
                     AbstractButton {
                         id:cell;required property int index
@@ -87,7 +87,7 @@ FocusScope {
                         Accessible.name:Qt.formatDateTime(day,"dddd, d MMMM yyyy")
                         background:Rectangle {anchors.centerIn:parent;width:26;height:26;radius:13;color:cell.today?Theme.accent:cell.pressed?Theme.withAlpha(Theme.text,.1):cell.hovered?Theme.withAlpha(Theme.text,.055):"transparent";border.width:cell.selected?1:0;border.color:Theme.accent;Behavior on color {ColorAnimation {duration:Tokens.animFast}}}
                         contentItem:Item {
-                            PanelText {anchors.centerIn:parent;text:cell.day.getDate();font.pixelSize:13;font.weight:Font.Medium;font.features:({tnum:1});color:cell.today?Theme.accentText:cell.selected?Theme.accent:Theme.text;opacity:cell.day.getMonth()===root.month?1:.3}
+                            PanelText {anchors.centerIn:parent;text:cell.day.getDate();font.pixelSize:Tokens.textSize(13);font.weight:Font.Medium;font.features:({tnum:1});color:cell.today?Theme.accentText:cell.selected?Theme.accent:Theme.text;opacity:cell.day.getMonth()===root.month?1:.3}
                             Rectangle {anchors.horizontalCenter:parent.horizontalCenter;y:parent.height-4;width:3;height:3;radius:1.5;color:Theme.accent;visible:Reminders.hasDate(cell.key)}
                         }
                         HoverHandler {cursorShape:Qt.PointingHandCursor}
@@ -107,7 +107,7 @@ FocusScope {
         Behavior on opacity {NumberAnimation {duration:Tokens.animFast}}
         Rectangle {Layout.fillWidth:true;Layout.preferredHeight:1;color:Theme.withAlpha(Theme.text,.07)}
         RowLayout {Layout.fillWidth:true
-            PanelText {Layout.fillWidth:true;text:root.upcoming?"All reminders":Qt.formatDateTime(Dates.parse(root.selectedDate),"ddd, d MMM");font.pixelSize:12;font.weight:Font.Medium}
+            PanelText {Layout.fillWidth:true;text:root.upcoming?"All reminders":Qt.formatDateTime(Dates.parse(root.selectedDate),"ddd, d MMM");font.pixelSize:Tokens.textSize(12);font.weight:Font.Medium}
             IconButton {icon:"notifications";label:root.upcoming?"Selected date":"All reminders";size:16;color:root.upcoming?Theme.accent:Theme.subtext;onClicked:root.upcoming=!root.upcoming}
             IconButton {icon:"add";label:"Add reminder";size:18;enabled:Reminders.loaded&&root.selectedDate>=Dates.key(Time.date);onClicked:root.edit(null)}
         }
@@ -121,12 +121,12 @@ FocusScope {
                 id:row;required property var entry;width:agenda.width-4;height:48;radius:12;color:Theme.surfaceSolid
                 IconButton {x:5;anchors.verticalCenter:parent.verticalCenter;icon:row.entry.done?"check_circle":"radio_button_unchecked";label:row.entry.projected?"Future occurrence":row.entry.done?"Mark incomplete":"Mark complete";enabled:!row.entry.projected;size:17;color:row.entry.done?Theme.accent:Theme.subtext;onClicked:Reminders.complete(row.entry.id,!row.entry.done,row.entry.date+"T"+row.entry.time,row.entry.revision)}
                 Column {x:43;anchors.verticalCenter:parent.verticalCenter;width:parent.width-54;spacing:4
-                    PanelText {width:parent.width;text:row.entry.title;font.pixelSize:12;font.strikeout:row.entry.done;opacity:row.entry.done?.5:1}
+                    PanelText {width:parent.width;text:row.entry.title;font.pixelSize:Tokens.textSize(12);font.strikeout:row.entry.done;opacity:row.entry.done?.5:1}
                     PanelText {width:parent.width;text:(root.upcoming?Qt.formatDateTime(Dates.parse(row.entry.date),"d MMM")+" · ":"")+row.entry.time+(Dates.repeatLabel(row.entry)?" · "+Dates.repeatLabel(row.entry):"");font.pixelSize:10;color:Theme.subtext}
                 }
                 MouseArea {x:40;width:parent.width-40;height:parent.height;cursorShape:Qt.PointingHandCursor;onClicked:{root.selectedDate=row.entry.date;root.edit(row.entry);}}
             }
-            PanelText {anchors.centerIn:parent;width:parent.width-24;text:Reminders.error||(!Preferences.remindersEnabled?"Reminder notifications are paused":root.upcoming?"No pending reminders":"No reminders for this day");visible:agenda.count===0;horizontalAlignment:Text.AlignHCenter;font.pixelSize:11;color:Reminders.error?Theme.red:Theme.subtext;wrapMode:Text.Wrap;elide:Text.ElideNone}
+            PanelText {anchors.centerIn:parent;width:parent.width-24;text:Reminders.error||(!Preferences.remindersEnabled?"Reminder notifications are paused":root.upcoming?"No pending reminders":"No reminders for this day");visible:agenda.count===0;horizontalAlignment:Text.AlignHCenter;font.pixelSize:Tokens.textSize(11);color:Reminders.error?Theme.red:Theme.subtext;wrapMode:Text.Wrap;elide:Text.ElideNone}
         }
         PanelText {Layout.fillWidth:true;visible:agenda.count>0&&!!Reminders.error;text:Reminders.error;font.pixelSize:10;color:Theme.red;wrapMode:Text.Wrap;elide:Text.ElideNone}
     }

@@ -37,7 +37,7 @@ Rectangle {
                 onImplicitHeightChanged:if(level.visible)root.activeHeight=implicitHeight+16
                 RowLayout {Layout.fillWidth:true;Layout.preferredHeight:34
                     IconButton {icon:"arrow_back";label:"Back";size:12;visible:level.index>0;onClicked:Tray.back()}
-                    PanelText {Layout.fillWidth:true;Layout.leftMargin:8;text:level.modelData.title;font.pixelSize:13;font.weight:Font.Medium}
+                    PanelText {Layout.fillWidth:true;Layout.leftMargin:8;text:level.modelData.title;font.pixelSize:Tokens.textSize(13);font.weight:Font.Medium}
                     IconButton {icon:"close";label:"Close menu";size:12;onClicked:Tray.close()}
                 }
                 Repeater {
@@ -49,12 +49,12 @@ Rectangle {
                         background:Rectangle {radius:9;color:entry.hovered?Theme.withAlpha(Theme.text,.085):"transparent";Behavior on color {ColorAnimation {duration:Tokens.animFast}}Rectangle {anchors.centerIn:parent;width:parent.width-12;height:1;color:Theme.withAlpha(Theme.text,.08);visible:entry.modelData.isSeparator}}
                         contentItem:RowLayout {visible:!entry.modelData.isSeparator;spacing:10
                             Icon {icon:entry.modelData.checkState===Qt.Checked?"check":"";size:14;color:Theme.accent}
-                            PanelText {Layout.fillWidth:true;text:entry.text;font.pixelSize:12;color:entry.enabled?Theme.text:Theme.subtext}
+                            PanelText {Layout.fillWidth:true;text:entry.text;font.pixelSize:Tokens.textSize(12);color:entry.enabled?Theme.text:Theme.subtext}
                             Icon {icon:"chevron_right";size:14;color:Theme.subtext;visible:entry.modelData.hasChildren}
                         }
                     }
                 }
-                PanelText {visible:!opener.children.values.length;Layout.margins:8;text:"Loading menu…";font.pixelSize:11;color:Theme.subtext}
+                PanelText {visible:!opener.children.values.length;Layout.margins:8;text:"Loading menu…";font.pixelSize:Tokens.textSize(11);color:Theme.subtext}
             }
             }
         }

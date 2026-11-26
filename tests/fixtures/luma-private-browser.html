@@ -1,0 +1,16 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Luma private browser probe</title>
+<style>body{margin:0;background:#ececec;font:18px sans-serif}textarea{position:absolute;left:16px;top:40px;width:180px;height:100px;caret-color:transparent}pre{position:absolute;left:16px;top:180px;width:180px;white-space:pre-wrap}</style>
+<div style="position:absolute;top:1400px">LUMA BELOW-FOLD DOCUMENT MARKER 7319</div>
+<p style="position:absolute;top:1200px">LUMA MIXED PARAGRAPH START <a href="#">INLINE LINK</a> MIXED PARAGRAPH END</p>
+<input type="password" value="LUMA PASSWORD MUST NOT SHARE" style="position:absolute;top:1600px">
+<div hidden>LUMA HIDDEN MUST NOT SHARE</div>
+<textarea id="editor" autofocus></textarea><pre id="status"></pre>
+<script>
+window.events=[];
+for (const type of ['blur','focus','visibilitychange','scroll','keydown','keyup'])
+  (['visibilitychange','scroll'].includes(type)?document:window).addEventListener(type,event=>events.push({type,key:event.key,focus:document.hasFocus(),visibility:document.visibilityState}));
+window.snapshot=()=>({focus:document.hasFocus(),visibility:document.visibilityState,text:editor.value,scrollY,events:[...events]});
+setInterval(()=>status.textContent=JSON.stringify(snapshot(),null,2),200);
+</script>

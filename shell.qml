@@ -13,7 +13,8 @@ import "modules/canvas" as Canvas
 import qs.services
 ShellRoot {
     LazyLoader { active: IslandState.settingsOpen; Settings.SettingsWindow {} }
-    Component.onCompleted: Quickshell.watchFiles = Quickshell.env("MODESTY_PREVIEW") === "1"
+    Component.onCompleted: {Quickshell.watchFiles = Quickshell.env("MODESTY_PREVIEW") === "1";LumaCapture.refresh();}
+    Component.onDestruction:CanvasState.close("shutdown")
     readonly property bool bindingsReady:Bindings.loaded
     readonly property bool voiceReady:Voice.ready
     readonly property bool remindersReady:Reminders.loaded
@@ -23,7 +24,7 @@ ShellRoot {
         id: commandCanvas
         originItem: island.surface.clockOrigin
         originScreenName: island.screen?.name ?? ""
-        originAvailable: !island.hiddenByFullscreen && island.surface.visible && island.surface.clockAvailable
+        originAvailable: island.inputAllowed && island.surface.clockAvailable
     }
     Shortcuts {}
     SessionIntegration {}

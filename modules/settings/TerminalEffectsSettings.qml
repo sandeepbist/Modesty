@@ -79,7 +79,7 @@ ColumnLayout {
         wrapMode: Text.WordWrap
         elide: Text.ElideNone
         text: root.error || root.message
-        font.pixelSize: 12
+        font.pixelSize: Tokens.textSize(12)
         color: root.error ? Theme.red : Theme.subtext
     }
     Flow {
@@ -105,7 +105,7 @@ ColumnLayout {
         wrapMode: Text.WordWrap
         elide: Text.ElideNone
         text: Preferences.preview ? "Preview session actions are disabled." : Session.locked ? "Unlock to change or launch the optional profile." : "Setup asks separately for Kitty packages and file changes. Foot, Super+T and ordinary Kitty stay unchanged."
-        font.pixelSize: 12
+        font.pixelSize: Tokens.textSize(12)
         color: Theme.subtext
     }
 }

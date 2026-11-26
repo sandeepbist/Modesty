@@ -124,18 +124,24 @@ ShellRoot {
             check(Catalog.resolve("music","capsule","musicMode").key==="liveMedia","Music adapter alias failed");
             check(root.pageId==="music","Initial media page alias failed");
             check(Catalog.resolve("launcher","search","terminal").page==="terminal","Launcher terminal reveal alias failed");
+            check(Catalog.resolve("appearance","themes","new-theme").page==="themes","Saved themes reveal alias failed");
+            check(Catalog.resolve("appearance","","matugenScheme").page==="themes","Wallpaper palette reveal alias failed");
             check(Catalog.resolve("missing")===null,"Unknown page accepted");
             check(Catalog.legacy.join(",")==="layout,clock,appearance,motion,launcher,notifications,controls,lock,connections,shortcuts","Legacy sections changed");
             const title=child("settings-page-title"),titleX=title.x;
-            root.navigate("appearance");child("page-motion").forceActiveFocus();input.keyClick(Qt.Key_Space);check(root.pageId==="motion","Keyboard page tab failed");root.navigate("music");
-            input.mouseClick(child("category-personal"));check(root.pageId==="motion","Category did not remember page");
-            input.mouseClick(child("category-island"));check(root.pageId==="music","Island did not remember page");
-            root.lastPages=Object.assign({},root.lastPages,{system:"missing"});
-            const system=child("category-system");system.forceActiveFocus();input.keyClick(Qt.Key_Space);
-            check(root.pageId==="connections","Invalid remembered page did not fall back");
+            input.mouseClick(child("page-appearance"));check(root.pageId==="appearance","Direct sidebar entry failed");
+            const fontSize=child("control-bodyFontSize"),setting=child("setting-bodyFontSize");
+            check(fontSize.width>=setting.width-1&&fontSize.mapToItem(setting,0,0).y>0,"Font size slider is not below its label");
+            child("page-themes").forceActiveFocus();input.keyClick(Qt.Key_Space);
+            check(root.pageId==="themes","Keyboard sidebar entry failed");
+            const system=child("page-connections"),sidebar=child("settings-navigation");
+            system.forceActiveFocus();
+            const sidebarY=system.mapToItem(sidebar,0,0).y;
+            check(sidebarY>=0&&sidebarY+system.height<=sidebar.height+1,"Keyboard focus remained outside sidebar");
+            input.keyClick(Qt.Key_Space);check(root.pageId==="connections","Direct cross-group navigation failed");
+            input.mouseClick(child("settings-back"));check(root.pageId==="themes","Back did not restore previous page");
+            input.mouseClick(child("settings-forward"));check(root.pageId==="connections","Forward did not restore next page");
             check(title.x===titleX,"History buttons shifted title");
-            root.navigate("music");
-            check(child("page-music").visible&&!input.findChild(settings.contentItem,"page-motion"),"Tabs include another category");
             input.findChild(settings,"settings-ipc").reveal("media","pill","mediaLyrics");
         }else if(phase===1){
             check(root.pageId==="music"&&child("control-mediaLyrics").activeFocus,"Alias target lacks focus");
@@ -247,6 +253,30 @@ ShellRoot {
             input.tryVerify(()=>view.contentY>0,1000,"Notes did not scroll to keyboard cursor");
             const cursor=notes.mapToItem(view,notes.cursorRectangle.x,notes.cursorRectangle.y);
             check(cursor.y>=0&&cursor.y+notes.cursorRectangle.height<=view.height+1,"Notes cursor outside editor viewport");
+            root.navigate("lock","lock","lockpreview");
+        }else if(phase===24){
+            const action=child("setting-lockpreview");
+            check(action.activeFocus,"Lock preview action lacks keyboard focus");
+            input.keyClick(Qt.Key_Return);
+            const preview=root.lockPreviewPopup;
+            input.tryVerify(()=>preview.opened,1000,"Lock preview did not open");
+            const scene=input.findChild(preview.contentItem,"settings-lock-scene");
+            check(scene?.preview && !scene.enabled && !Session.locked,"Lock preview did not isolate authentication");
+            input.tryVerify(()=>scene.departure===1,1400,"Lock preview did not show the unlock");
+            input.keyClick(Qt.Key_Return);
+            const replay=input.findChild(preview.contentItem,"settings-lock-scene");
+            check(replay&&replay.departure===0,"Replay did not restart the preview");
+            input.keyClick(Qt.Key_Escape);
+            check(!preview.visible&&IslandState.settingsOpen,"Closing preview dismissed Settings");
+            Preferences.set("lockScreenStyle","modern");
+            searchFor("Clock travel duration");
+        }else if(phase===25){
+            const duration=child("control-modernLockDuration");
+            check(duration.activeFocus&&!child("setting-lockDuration").visible,"Clock travel search or style filtering failed");
+            reachable(duration);
+            const before=Preferences.modernLockDuration;
+            input.keyClick(Qt.Key_Right);
+            check(Preferences.modernLockDuration===before+10,"Clock travel duration did not write");
             targets=[];Catalog.pages.forEach(p=>p.blocks.forEach(b=>b.items.concat(b.targets.map(t=>({key:t.id,label:t.label}))).forEach(t=>targets.push({page:p.id,block:b.id,key:t.key,label:t.label}))));
             check(targets.length>=173,"Catalog target sweep lost coverage");
             targetIndex=0;steps.interval=30;root.navigate(targets[0].page,targets[0].block,targets[0].key);
@@ -304,6 +334,12 @@ ShellRoot {
         for(let i=0;i<value.length;i++)input.keyClick(value[i]);
         check(child(name).text===value,"Native edit failed "+name);
     }
+    function clickPage(id) {
+        const button=child("page-"+id);
+        root.keepPageVisible(button);
+        input.mouseClick(button);
+        check(root.pageId===id,"Sidebar did not open "+id);
+    }
     function keyButton(provider,label) {return child("custom-"+provider).parent.children.find(item=>item.text===label);}
     function clickKey(provider,label) {
         const button=keyButton(provider,label);
@@ -336,25 +372,25 @@ ShellRoot {
             edit("custom-jev","modesty-jev-draft-sentinel");
             for(const value of ["modesty-unsaved-notes-sentinel","modesty-gemini-draft-sentinel","modesty-jev-draft-sentinel"])
                 check(Catalog.search(value).length===0,"Editor draft entered search");
-            input.mouseClick(child("page-luma-knowledge"));
+            clickPage("luma-knowledge");
         }else if(phase===1){
-            input.mouseClick(child("page-luma-providers"));
+            clickPage("luma-providers");
         }else if(phase===2){
             retained("modesty-unsaved-notes-sentinel","modesty-gemini-draft-sentinel","modesty-jev-draft-sentinel");
-            input.mouseClick(child("category-personal"));
+            clickPage("appearance");
         }else if(phase===3){
-            input.mouseClick(child("category-assistant"));
+            clickPage("luma-providers");
         }else if(phase===4){
             retained("modesty-unsaved-notes-sentinel","modesty-gemini-draft-sentinel","modesty-jev-draft-sentinel");
             Luma.memory="later-backend-note-sentinel";
             check(child("custom-notes").text==="modesty-unsaved-notes-sentinel","Backend update overwrote note draft");
             edit("custom-notes","");Luma.memory="saved-memory-that-must-not-return";
             check(child("custom-notes").text==="","Backend update replaced intentional empty draft");
-            input.mouseClick(child("page-luma-knowledge"));
+            clickPage("luma-knowledge");
         }else if(phase===5){
-            input.mouseClick(child("category-apps"));
+            clickPage("launcher");
         }else if(phase===6){
-            input.mouseClick(child("category-assistant"));input.mouseClick(child("page-luma-providers"));
+            clickPage("luma-providers");
         }else if(phase===7){
             retained("","modesty-gemini-draft-sentinel","modesty-jev-draft-sentinel");
             const search=child("settings-search");search.text="modesty-gemini-draft-sentinel";search.forceActiveFocus();
@@ -363,9 +399,9 @@ ShellRoot {
             retained("","modesty-gemini-draft-sentinel","modesty-jev-draft-sentinel");
             clickKey("gemini","Save");
             check(child("custom-gemini").text===""&&child("custom-jev").text==="modesty-jev-draft-sentinel","Save cleared wrong provider draft");
-            input.mouseClick(child("page-luma-knowledge"));
+            clickPage("luma-knowledge");
         }else if(phase===9){
-            input.mouseClick(child("page-luma-providers"));
+            clickPage("luma-providers");
         }else if(phase===10){
             retained("","","modesty-jev-draft-sentinel");
             edit("custom-gemini","modesty-gemini-remove-sentinel");clickKey("gemini","Remove");
@@ -373,9 +409,9 @@ ShellRoot {
             edit("custom-notes","notes-to-save-sentinel");
             root.focusTarget(child("custom-save-notes"));input.keyClick(Qt.Key_Space);
             check(Luma.memory==="notes-to-save-sentinel","Explicit note Save failed");
-            input.mouseClick(child("page-luma-knowledge"));
+            clickPage("luma-knowledge");
         }else if(phase===11){
-            input.mouseClick(child("page-luma-providers"));
+            clickPage("luma-providers");
         }else if(phase===12){
             retained("notes-to-save-sentinel","","modesty-jev-draft-sentinel");
             Luma.memory="after-save-backend-note-sentinel";
@@ -386,9 +422,9 @@ ShellRoot {
             edit("custom-notes","notes-to-clear-sentinel");
             root.focusTarget(child("custom-clear-notes"));input.keyClick(Qt.Key_Space);
             check(Luma.memory===""&&child("custom-notes").text==="","Explicit note Clear failed");
-            input.mouseClick(child("page-luma-knowledge"));
+            clickPage("luma-knowledge");
         }else if(phase===13){
-            input.mouseClick(child("page-luma-providers"));
+            clickPage("luma-providers");
         }else if(phase===14){
             retained("","modesty-window-gemini-sentinel","");
             Luma.memory="new-backend-note-sentinel";
@@ -532,13 +568,18 @@ def main():
             run(directory, environment, source, 'SETTINGS UI PASS')
     with tempfile.TemporaryDirectory(prefix='modesty-settings-persistence-') as directory:
         environment = workspace(directory, preview=False)
-        source = PERSISTENCE.replace('ACTION', 'row.reveal().forceActiveFocus();input.keyClick(Qt.Key_Right);').replace(
+        source = PERSISTENCE.replace('ACTION', 'row.reveal().forceActiveFocus();input.keyClick(Qt.Key_Right);Preferences.set("lockScreenStyle","modern");'
+            'Preferences.set("modernLockDuration",380);Preferences.set("lockFrost",65);Preferences.set("lockRebound",false);').replace(
             'ASSERTION', 'if(Preferences.privacyIndicatorGap!==26||Preferences.saveError)throw new Error("Real writer failed");').replace('MARKER', 'SETTINGS WRITE PASS')
         run(directory, environment, source, 'SETTINGS WRITE PASS')
         stored = Path(environment['XDG_STATE_HOME']) / 'modesty/preferences.json'
-        assert json.loads(stored.read_text())['privacyIndicatorGap'] == 26
+        data = json.loads(stored.read_text())
+        assert data['privacyIndicatorGap'] == 26
+        assert data['lockScreenStyle'] == 'modern'
+        assert (data['modernLockDuration'], data['lockFrost'], data['lockRebound']) == (380, 65, False)
         source = PERSISTENCE.replace('ACTION', '').replace('ASSERTION',
-            'if(Preferences.privacyIndicatorGap!==26)throw new Error("Restart did not restore saved value");').replace('MARKER', 'SETTINGS RESTART PASS')
+            'if(Preferences.privacyIndicatorGap!==26||Preferences.lockScreenStyle!=="modern"||Preferences.modernLockDuration!==380'
+            '||Preferences.lockFrost!==65||Preferences.lockRebound)throw new Error("Restart did not restore saved values");').replace('MARKER', 'SETTINGS RESTART PASS')
         run(directory, environment, source, 'SETTINGS RESTART PASS')
         environment['MODESTY_TEST_SAVE_FAIL'] = '1'
         source = PERSISTENCE.replace('ACTION', 'row.reveal().forceActiveFocus();input.keyClick(Qt.Key_Right);').replace(

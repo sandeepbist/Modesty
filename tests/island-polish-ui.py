@@ -87,7 +87,7 @@ ShellRoot {
             geometry(fit);stage.panel="clock";next("opening");
         } else if(phase==="opening"&&elapsed>300) {
             near(p.visibleScale,fit,"Fresh entrance scale");
-            if(fit<1)check(p.opacity>0&&p.opacity<.7&&!p.enabled,"Partial fixture must be visible below input threshold");
+            if(fit<1)check(p.opacity>0&&p.opacity<1&&!p.enabled,"Partial opening must be visible without accepting input");
             opening=sample();stage.panel="idle";check(!p.enabled,"Outgoing pane accepts input");geometry(.4);next("closing");
         } else if(phase==="closing"&&elapsed>=20) {
             near(opening.scale,p.transform[0].xScale,"Outgoing transform not frozen");reselect("Retained");next("resuming");

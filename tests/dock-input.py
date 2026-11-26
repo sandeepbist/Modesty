@@ -6,7 +6,10 @@ import qml
 ROOT=qml.ROOT
 source=(ROOT/'modules/island/IslandDropTarget.qml').read_text().replace('PanelWindow {','FloatingWindow {',1)
 source='\n'.join(line for line in source.splitlines() if not line.strip().startswith(('exclusionMode:','anchors {','margins {','WlrLayershell.')))
-mask=re.search(r'    mask: Region \{.*?\n    \}',(ROOT/'modules/island/Island.qml').read_text(),re.S).group()
+island=(ROOT/'modules/island/Island.qml').read_text()
+mask=re.search(r'    mask: Region \{.*?\n    \}',island,re.S).group()
+guards='\n'.join(re.findall(r'^    readonly property bool (?:sessionBlocked|preparingUnlock|inputAllowed):.*$',island,re.M))
+visibility=re.search(r'visible: !!root.screen && .*',island).group().replace('!!root.screen','true')
 SOURCE='''import QtQuick
 import QtTest
 import Quickshell
@@ -19,8 +22,10 @@ ShellRoot {
   id:root;visible:true;implicitWidth:1000;implicitHeight:700
   property alias surface:surface
   property bool captureActive:false
-  property bool hiddenByFullscreen:false
-  Island.IslandSurface {id:surface;availableWidth:1000;availableHeight:700;visible:!root.hiddenByFullscreen&&!root.captureActive&&!Session.locked&&!Session.secure}
+  property bool fullscreen:false
+  readonly property bool hiddenByFullscreen:captureActive || fullscreen
+  GUARDS
+  Island.IslandSurface {id:surface;availableWidth:1000;availableHeight:700;SURFACE_VISIBLE}
   MASK
  }
  Native.DropTarget {id:drop;sourceIsland:root;visible:!Session.locked&&!Session.secure&&!root.hiddenByFullscreen&&surface.visible}
@@ -40,8 +45,8 @@ ShellRoot {
   }else if(phase===1){
    const embedded=walk(surface).find(c=>c.offer!==undefined&&c.heldBox!==undefined);check(!!embedded,"Embedded drop path missing");embedded.heldBox=embedded.liveBox;embedded.holding=true;const embeddedBox=JSON.stringify(embedded.box);
    const box=JSON.stringify(drop.heldBox);IslandState.toggleDock();check(JSON.stringify(embedded.box)===embeddedBox,"Embedded drag follows projection");embedded.completing=true;embedded.holding=false;check(JSON.stringify(embedded.box)===embeddedBox,"Embedded completion loses held geometry");embedded.completing=false;check(JSON.stringify(drop.box)===box,"Projection moves held drag geometry");drop.completing=true;drop.holding=false;check(JSON.stringify(drop.box)===box,"Completion loses heldBox");
-   root.hiddenByFullscreen=true;
-  }else if(phase===2){check(!drop.interactive&&!root.mask.item,"Fullscreen leaves clock input active");root.hiddenByFullscreen=false;root.captureActive=true;}
+   root.fullscreen=true;
+  }else if(phase===2){check(!drop.interactive&&!root.mask.item,"Fullscreen leaves clock input active");root.fullscreen=false;root.captureActive=true;}
   else if(phase===3){check(!drop.interactive&&!root.mask.item,"Capture leaves clock input active");root.captureActive=false;Session.locked=true;}
   else if(phase===4){const mode=IslandState.restingMode;IslandState.toggleDock();check(IslandState.restingMode===mode,"Locked toggle accepted");check(!drop.interactive&&!root.mask.item&&!drop.holding&&!drop.completing,"Lock retains drag or input");Session.locked=false;Session.secure=true;}
   else if(phase===5){const mode=IslandState.restingMode;IslandState.toggleDock();check(IslandState.restingMode===mode&&!drop.interactive,"Secure toggle or input accepted");Session.secure=false;IslandState.closeMenu();Preferences.motion="instant";IslandState.restingMode=IslandState.Dock;}
@@ -49,6 +54,15 @@ ShellRoot {
    const oldPosition=surface.naturalCenterX-Preferences.barHeight-Preferences.clusterGap;
    check(surface.clockStage.inputRegion.width===surface.clockStage.width+12,"Mask does not follow projected geometry");
    const mode=IslandState.restingMode;Bindings.trigger("dock");check(IslandState.restingMode===mode,"Preview binding action escaped guard");
+   Session.locked=true;Session.secure=true;
+   check(!surface.visible&&!root.inputAllowed,"Desktop surface appears before authentication");
+   Preferences.lockScreenStyle="modern";Session.unlocking=true;
+   check(surface.visible&&!root.inputAllowed&&!root.mask.item&&!drop.interactive,"Unlock preparation exposes input");
+  }else if(phase===7){
+   Session.locked=false;
+   check(surface.visible&&!root.inputAllowed&&!root.mask.item,"Secure compositor still owns input");
+   Session.secure=false;Session.unlocking=false;
+   check(surface.visible&&root.inputAllowed&&root.mask.item,"Unlock replaced the prepared surface");
    console.log("DOCK INPUT PASS");Qt.quit();
   }
   phase++;
@@ -61,5 +75,7 @@ with tempfile.TemporaryDirectory(prefix='modesty-dock-input-') as d:
     (w/'services').mkdir()
     for f in (ROOT/'services').iterdir():
         if f.name!='Session.qml':(w/'services'/f.name).symlink_to(f)
-    (w/'services/Session.qml').write_text('pragma Singleton\nimport QtQuick\nimport Quickshell\nSingleton {property bool locked:false;property bool secure:false;function isLocked(){return locked;}}')
-    with patch.object(qml,'ROOT',w):qml.run(SOURCE.replace('NATIVE',native.as_uri()).replace('MASK',mask),'DOCK INPUT PASS')
+    (w/'services/Session.qml').write_text('pragma Singleton\nimport QtQuick\nimport Quickshell\nSingleton {property bool locked:false;property bool secure:false;property bool unlocking:false;function isLocked(){return locked;}}')
+    with patch.object(qml,'ROOT',w):
+        qml.run(SOURCE.replace('NATIVE',native.as_uri()).replace('GUARDS',guards)
+                .replace('SURFACE_VISIBLE',visibility).replace('MASK',mask),'DOCK INPUT PASS')

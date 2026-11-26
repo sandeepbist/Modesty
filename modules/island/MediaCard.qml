@@ -37,9 +37,9 @@ Rectangle {
         width:viewport.contentWidth;height:viewport.contentHeight
     Art {x:12;y:12;width:88;height:88;source:Media.artUrl;radius:10;visible:!!Media.active}
     Column {x:114;y:13;width:parent.width-126;spacing:4;visible:!!Media.active
-        PanelText {width:parent.width;text:Media.title||"Nothing playing";font.pixelSize:15;font.weight:Font.Medium;maximumLineCount:2;wrapMode:Text.Wrap}
-        PanelText {width:parent.width;visible:!!Media.artist;text:Media.artist;font.pixelSize:12;color:Theme.subtext}
-        PanelText {width:parent.width;text:Media.active?.trackAlbum||Media.active?.identity||"";font.pixelSize:11;color:Theme.subtext;opacity:.8}
+        PanelText {width:parent.width;text:Media.title||"Nothing playing";font.pixelSize:Tokens.textSize(15);font.weight:Font.Medium;maximumLineCount:2;wrapMode:Text.Wrap}
+        PanelText {width:parent.width;visible:!!Media.artist;text:Media.artist;font.pixelSize:Tokens.textSize(12);color:Theme.subtext}
+        PanelText {width:parent.width;text:Media.active?.trackAlbum||Media.active?.identity||"";font.pixelSize:Tokens.textSize(11);color:Theme.subtext;opacity:.8}
     }
     Slider {
         id:seek;x:12;y:parent.height-57;width:parent.width-24;height:19;padding:0;hoverEnabled:true
@@ -51,11 +51,11 @@ Rectangle {
         }
         handle:Rectangle {x:seek.visualPosition*(seek.width-width);y:(seek.height-height)/2;width:8;height:8;radius:4;color:Theme.accent;border.width:seek.activeFocus?2:0;border.color:Theme.text;opacity:seek.hovered||seek.pressed||seek.activeFocus?1:0;Behavior on opacity {NumberAnimation {duration:Tokens.animFast}}}
     }
-    PanelText {id:elapsed;visible:!!Media.active;x:12;anchors.verticalCenter:playback.verticalCenter;text:root.duration(seek.pressed?seek.value*Media.length:Media.position);font.pixelSize:11;font.features:({tnum:1});color:Theme.subtext}
-    PanelText {id:total;visible:!!Media.active;anchors.right:parent.right;anchors.rightMargin:12;anchors.verticalCenter:playback.verticalCenter;text:root.duration(Media.length);font.pixelSize:11;font.features:({tnum:1});color:Theme.subtext}
+    PanelText {id:elapsed;visible:!!Media.active;x:12;anchors.verticalCenter:playback.verticalCenter;text:root.duration(seek.pressed?seek.value*Media.length:Media.position);font.pixelSize:Tokens.textSize(11);font.features:({tnum:1});color:Theme.subtext}
+    PanelText {id:total;visible:!!Media.active;anchors.right:parent.right;anchors.rightMargin:12;anchors.verticalCenter:playback.verticalCenter;text:root.duration(Media.length);font.pixelSize:Tokens.textSize(11);font.features:({tnum:1});color:Theme.subtext}
     Column {anchors.centerIn:parent;spacing:10;visible:!Media.active
         Icon {anchors.horizontalCenter:parent.horizontalCenter;icon:"music_note";size:28;color:Theme.subtext}
-        PanelText {text:"No media playing";font.pixelSize:14;color:Theme.subtext}
+        PanelText {text:"No media playing";font.pixelSize:Tokens.textSize(14);color:Theme.subtext}
     }
     Row {id:playback;visible:!!Media.active;x:(parent.width-width)/2;anchors.bottom:parent.bottom;anchors.bottomMargin:7;spacing:6
         IconButton {anchors.verticalCenter:parent.verticalCenter;icon:"skip_previous";label:"Previous track";size:14;enabled:Media.canGoPrevious;onClicked:Media.previous()}

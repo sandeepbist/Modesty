@@ -4,6 +4,7 @@ import qs.theme
 
 Rectangle {
     id:root
+    property bool wrap:false
     property real maximumY:Math.max(8,(parent?.height||0)-height-8)
     property point heldPosition:Qt.point(8,8)
     property string heldText:""
@@ -24,9 +25,9 @@ Rectangle {
     }
     onRequestedChanged:reconcile()
     width:Math.min(320,Math.max(24,(parent?.width||0)-16),label.implicitWidth+22)
-    height:30;radius:10;x:heldPosition.x;y:heldPosition.y;z:100
+    height:wrap?label.implicitHeight+14:30;radius:10;x:heldPosition.x;y:heldPosition.y;z:100
     color:Theme.surfaceSolid;border.width:1;border.color:Theme.withAlpha(Theme.text,.1)
     opacity:0;visible:opacity>0
-    PanelText {id:label;anchors.centerIn:parent;width:parent.width-22;text:root.heldText;font.pixelSize:Tokens.captionSize}
+    PanelText {id:label;anchors.centerIn:parent;width:parent.width-22;text:root.heldText;font.pixelSize:Tokens.captionSize;wrapMode:root.wrap?Text.WordWrap:Text.NoWrap;elide:root.wrap?Text.ElideNone:Text.ElideRight}
     NumberAnimation {id:fade;target:root;property:"opacity";duration:Tokens.animFast;easing.type:Easing.OutCubic}
 }

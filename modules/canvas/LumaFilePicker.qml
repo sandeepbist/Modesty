@@ -74,6 +74,7 @@ Item {
                 Keys.forwardTo:[root]
                 PanelText {anchors.fill:parent;text:root.displayPath;visible:!location.activeFocus;font:location.font;color:Theme.subtext;verticalAlignment:Text.AlignVCenter}
                 onAccepted:{const value=text.trim().replace(/^~(?=\/|$)/,root.home);if(value.startsWith("/")){root.navigate(root.localUrl(value));root.focusFilter();}}
+                Keys.onPressed:event=>{LumaCapture.clipboardKey(location,event);}
                 Keys.onEscapePressed:root.cancelled()
             }
             IconButton {icon:"close";size:16;label:"Back to conversation";onClicked:root.cancelled()}
@@ -97,6 +98,7 @@ Item {
                 onAccepted:root.activate(entries.currentIndex)
                 Keys.onUpPressed:root.step(-1)
                 Keys.onDownPressed:root.step(1)
+                Keys.onPressed:event=>{LumaCapture.clipboardKey(filter,event);}
                 Keys.onEscapePressed:root.cancelled()
                 PanelText {anchors.fill:parent;text:"Find a file…";font.pixelSize:13;color:Theme.withAlpha(Theme.subtext,.7);verticalAlignment:Text.AlignVCenter;visible:!filter.text&&!filter.preeditText}
             }

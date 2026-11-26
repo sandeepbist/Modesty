@@ -27,7 +27,7 @@ Rectangle {
         y: 11
         width: Math.max(0, root.width - 36 - readout.implicitWidth)
         text: root.label
-        font.pixelSize: 12
+        font.pixelSize: Tokens.textSize(12)
         font.weight: Font.Medium
     }
 

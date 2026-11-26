@@ -29,7 +29,7 @@ function check(p,label){
     assert.equal(JSON.stringify(p),original,label+' input remains unchanged');
 }
 const themeSource=fs.readFileSync(root+'/theme/Theme.qml','utf8');
-const theme={Palette:palette,mode:'dark',paletteName:'everblush',wallpaperVariants:{},previewWallpaperVariants:null,previewSyncPending:false,restoringPreview:false};
+const theme={Palette:palette,mode:'dark',paletteName:'everblush',customThemes:[],wallpaperVariants:{},previewWallpaperVariants:null,previewSyncPending:false,restoringPreview:false};
 theme.root=theme;Object.defineProperty(theme,'light',{get(){return this.mode==='light';}});vm.createContext(theme);
 theme.wallpaperPalette=vm.runInContext('('+themeSource.match(/property var wallpaperPalette: \((\{[^\n]+\})\)/)[1]+')',theme);
 theme.palettes=vm.runInContext('('+themeSource.match(/readonly property var palettes: (\{[\s\S]*?\n    \})\n\n    \/\/ ---- Resolved colors/)[1]+')',theme);

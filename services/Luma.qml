@@ -92,13 +92,21 @@ Singleton {
                 players:Media.players.map(p=>({id:p.dbusName,identity:p.identity,title:p.trackTitle,playing:p.isPlaying,canPlay:p.canPlay,canPause:p.canPause,canSeek:p.canSeek,canRepeat:p.loopSupported,canShuffle:p.shuffleSupported,length:p.length,position:p.position}))},focus:{phase:FocusTimer.phase,duration:FocusTimer.duration,remaining:FocusTimer.remaining},
             agents:AgentWork.tasks.map(t=>({provider:t.provider,state:t.waiting?"waiting":"working"}))};
     }
-    function send(query: string,requestIntent: string): bool {
+    readonly property bool pageAvailable:CanvasState.opened&&CanvasState.privateSession&&LumaCapture.privateReady&&LumaCapture.generation===CanvasState.identity&&LumaCapture.inputDestination!=="closed"&&!LumaCapture.busy&&Preferences.lumaWindowContext&&Preferences.searchAiEnabled&&loaded&&!Preferences.preview&&!Session.isLocked()&&!Voice.active&&!Voice.error&&!busy&&!cancelPending
+    function analyzePage(instruction:string):bool {
+        if(!pageAvailable)return false;
+        return send(instruction.trim()||"Explain this page and answer any questions shown. State any missing context.","conversation",{kind:"analyze_page",generation:CanvasState.identity});
+    }
+    function send(query: string,requestIntent: string,requestContext:var): bool {
         query=query.trim().slice(0,6000);
         if(!query||busy||cancelPending||!loaded||Preferences.preview||Session.isLocked())return false;
+        if(requestContext&&!pageAvailable)return false;
         error="";currentWindow=null;proposals=[];citations=[];fileResults=[];liveMetrics=false;execution=[];taskToken="";router="";intent="auto";answerModel="";received=false;autoLocal=false;requestCount=0;streamId="";streamedText="";
-        pendingPayload=JSON.stringify({query,intent:requestIntent||"auto",applications:Preferences.lumaDesktop?Apps.apps.map(a=>({id:a.id,name:a.name})):[],history:messages,attachments,sharedText,model:Preferences.searchAiModel,
+        pendingPayload=requestContext?JSON.stringify({query,requestContext,model:Preferences.searchAiModel,aiEnabled:Preferences.searchAiEnabled,currentWindowAllowed:Preferences.lumaWindowContext}):JSON.stringify({query,intent:requestIntent||"auto",applications:Preferences.lumaDesktop?Apps.apps.map(a=>({id:a.id,name:a.name})):[],history:messages,attachments,sharedText,model:Preferences.searchAiModel,
             useJev:Preferences.lumaJev,systemAccess:Preferences.lumaSystem,accessMode:Preferences.lumaAccess,localFiles:Preferences.lumaLocalFiles,web:Preferences.lumaWeb,desktop:Preferences.lumaDesktop,context:Preferences.lumaDesktop?context():{},taskContext:Preferences.lumaDesktop?{recentTasks,pendingTask,taskExpires}:{},pendingTask:Preferences.lumaDesktop&&Date.now()<taskExpires?pendingTask:null,aiEnabled:Preferences.searchAiEnabled,currentWindowAllowed:Preferences.lumaWindowContext});
-        messages=messages.concat([turn("user",query)]).slice(-16);
+        const message=turn("user",query);
+        if(requestContext)message.requestKind="analyze_page";
+        messages=messages.concat([message]).slice(-16);
         proposalBatch=messages[messages.length-1].id;
         phase="routing";status="Understanding";
         worker.command=["python3",backend,"chat"];worker.running=true;
@@ -136,7 +144,7 @@ Singleton {
         const index=messages.map(m=>m.role).lastIndexOf("user"),last=messages[index];
         if(!last||busy)return false;
         const previous=messages;messages=messages.slice(0,index);
-        const started=send(last.text,"auto");
+        const started=last.requestKind==="analyze_page"?analyzePage(last.text):send(last.text,"auto");
         if(!started)messages=previous;
         return started;
     }

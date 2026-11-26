@@ -27,7 +27,7 @@ Rectangle {
         PanelText {
             width: parent.width
             text: root.label
-            font.pixelSize: 12
+            font.pixelSize: Tokens.textSize(12)
             font.weight: Font.Medium
         }
 

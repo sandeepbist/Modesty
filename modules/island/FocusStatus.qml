@@ -7,10 +7,10 @@ Item {
     property bool condensed:false
     readonly property real condensedMinimumWidth:21+condensedMeasure.advanceWidth
     readonly property bool minimal:condensed&&width<condensedMinimumWidth
-    TextMetrics {id:condensedMeasure;text:FocusTimer.phase==="finished"?"Done":FocusTimer.timeText;font.family:Tokens.clockFont;font.pixelSize:12;font.weight:Font.Medium;font.features:({tnum:1})}
+    TextMetrics {id:condensedMeasure;text:FocusTimer.phase==="finished"?"Done":FocusTimer.timeText;font.family:Tokens.clockFont;font.pixelSize:Tokens.textSize(12);font.weight:Font.Medium;font.features:({tnum:1})}
     Rectangle {anchors.fill:parent;anchors.margins:2;radius:height/2;color:Theme.withAlpha(Theme.accent,.085)}
     Icon {x:root.condensed?3:13;anchors.verticalCenter:parent.verticalCenter;size:root.condensed?14:17;icon:FocusTimer.phase==="finished"?"check":"timer";color:Theme.accent}
-    RollingText {x:root.condensed?19:35;width:Math.max(0,parent.width-(root.condensed?21:71));height:parent.height;visible:!root.minimal;countsDown:true;slideDigits:FocusTimer.phase!=="finished";text:condensedMeasure.text;font.family:Tokens.clockFont;font.pixelSize:root.condensed?condensedMeasure.font.pixelSize:14;font.weight:Font.Medium;font.features:({tnum:1});horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter}
+    RollingText {x:root.condensed?19:35;width:Math.max(0,parent.width-(root.condensed?21:71));height:parent.height;visible:!root.minimal;countsDown:true;slideDigits:FocusTimer.phase!=="finished";text:condensedMeasure.text;font.family:Tokens.clockFont;font.pixelSize:root.condensed?condensedMeasure.font.pixelSize:Tokens.textSize(14);font.weight:Font.Medium;font.features:({tnum:1});horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter}
     Item {
         id:detail;objectName:"focusDetail"
         width:root.condensed?parent.width:action.x;height:parent.height;activeFocusOnTab:true

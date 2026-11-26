@@ -22,7 +22,7 @@ ColumnLayout {
     }
     RowLayout {
         Layout.fillWidth:true;spacing:8
-        PanelText {Layout.fillWidth:true;text:"Search inside your PDFs and notes.";font.pixelSize:12;color:Theme.subtext}
+        PanelText {Layout.fillWidth:true;text:"Search inside your PDFs and notes.";font.pixelSize:Tokens.textSize(12);color:Theme.subtext}
         IconButton {implicitWidth:36;implicitHeight:36;icon:"info";size:14;color:Theme.subtext;label:"Indexed locally. Submitted questions share matching passages with Jev and your answer provider. Scanned PDFs need a text layer."}
     }
     Repeater {
@@ -31,7 +31,7 @@ ColumnLayout {
             required property string modelData
             Layout.fillWidth:true;spacing:10
             Icon {icon:"folder";size:18;color:Theme.subtext}
-            PanelText {Layout.fillWidth:true;text:modelData.replace(Quickshell.env("HOME"),"~");font.pixelSize:12;elide:Text.ElideMiddle}
+            PanelText {Layout.fillWidth:true;text:modelData.replace(Quickshell.env("HOME"),"~");font.pixelSize:Tokens.textSize(12);elide:Text.ElideMiddle}
             IconButton {implicitWidth:36;implicitHeight:36;icon:"close";size:14;label:"Remove knowledge folder";enabled:!Knowledge.busy;onClicked:{Preferences.set("lumaKnowledgeRoots",Preferences.lumaKnowledgeRoots.filter(p=>p!==modelData));Knowledge.rebuild();}}
         }
     }
@@ -42,5 +42,5 @@ ColumnLayout {
         Item {Layout.fillWidth:true}
         ActivityPulse {running:Knowledge.busy;visible:running}
     }
-    PanelText {Layout.fillWidth:true;visible:Knowledge.busy||!!Knowledge.error||Preferences.lumaKnowledgeRoots.length>0;text:Knowledge.error||(Knowledge.busy?"Updating local passages…":Knowledge.stats.documents+" documents · "+Knowledge.stats.passages+" passages");font.pixelSize:12;color:Knowledge.error?Theme.red:Theme.subtext;wrapMode:Text.WordWrap}
+    PanelText {Layout.fillWidth:true;visible:Knowledge.busy||!!Knowledge.error||Preferences.lumaKnowledgeRoots.length>0;text:Knowledge.error||(Knowledge.busy?"Updating local passages…":Knowledge.stats.documents+" documents · "+Knowledge.stats.passages+" passages");font.pixelSize:Tokens.textSize(12);color:Knowledge.error?Theme.red:Theme.subtext;wrapMode:Text.WordWrap}
 }
