@@ -1,46 +1,14 @@
 # Modesty
 
-A Quickshell desktop for Arch Linux and Hyprland. Three small pills expand into
-media controls, a calendar and a control center, with a launcher, Luma search and
-assistant, notifications, a lock screen and a window companion.
+A Quickshell desktop for Arch Linux and Hyprland. Switch between compact island
+pills and a dock with workspaces, media, and a focus timer. Open the clock,
+control center, app launcher, and Luma from the same shell.
 
-![Modesty control center on the maintainer's desktop](assets/showcase/controls.png)
+**[Install](#install) · [Shortcuts](#use) · [Screenshots and demos](#screenshots-and-demos) ·
+[Update](#update) · [Uninstall](#uninstall-and-restore) ·
+[Get help](https://github.com/sandeepbist/Modesty/issues/new/choose)**
 
-**[Install](#install) · [Use](#use) · [Update](#update) ·
-[Screenshots and video](#screenshots-and-video) · [Uninstall](#uninstall-and-restore) ·
-[Contribute](#contribute) · [Get help](https://github.com/sandeepbist/Modesty/issues/new/choose)**
-
-<details>
-<summary>Optional AMD shell memory reduction</summary>
-
-The main-shell startup has an opt-in optimization for a verified AMD Mesa
-Wayland device. It avoids loading unused EGL vendors inside Quickshell. It
-does not change animations, shaders, or the GPU environment passed to apps.
-Other desktops keep normal startup by default.
-
-From a working desktop session, enable it locally and restart:
-
-```sh
-python3 scripts/shell_renderer.py --enable
-python3 scripts/session-control.py restart
-```
-
-The selection is saved in local state, outside the dotfiles. Each startup checks
-the saved device against normal and Mesa EGL initialization. Changed devices,
-explicit GPU or plugin choices, preload libraries, reconnect mode, unavailable
-drivers, and missing compiler support keep normal startup. The helper builds
-once with the installed C compiler and stays in the user's cache. This applies
-only to main-shell startup through `session-control.py`, not direct or preview
-launches. It does not promise a higher frame rate.
-
-To return to normal startup:
-
-```sh
-python3 scripts/shell_renderer.py --disable
-python3 scripts/session-control.py restart
-```
-
-</details>
+[![Modesty theme picker with an expanded Alpine Dusk preview and palette swatches](assets/showcase/hero.webp)](#screenshots-and-demos)
 
 ## Install
 
@@ -148,9 +116,13 @@ python3 install.py --install-voice
 | Album-art pill | Media controls |
 | Clock pill | Clock; calendar available from the clock panel |
 | Status pill | Control center |
+| Super + Alt + D | Switch between island pills and the dock |
 | Tap Super | Application launcher |
 | Super + Space | Luma search and assistant |
 | Super + comma | Settings |
+| Super + Alt + comma | Themes |
+| Super + Alt + semicolon | Wallpapers |
+| Super + Escape | Power menu |
 | Super + Alt + N | Quick Notes; customizable in Settings |
 | Super + L | Lock screen |
 | Escape / outside click | Dismiss the current panel |
@@ -164,6 +136,10 @@ python3 install.py --install-voice
 | Quick Notes | Plain text and Markdown capture, search, pins, Archive, Trash, restore, and Markdown export |
 | Reminders | One-time advance notices and daily, weekly, weekday, or monthly calendar recurrence with a timezone |
 | Agent activity | T3 Code task status: working, waiting and completion feedback |
+
+Choose **Wallpaper colors** in the theme picker to follow the current wallpaper.
+Open **Settings → Personalization → Themes** to create, edit, or delete saved
+palettes. Pick **Modern** or **Legacy** in **Settings → System → Lock screen & profile**.
 
 Settings uses five categories with page tabs and remembers the last page in each category. Search individual controls with Ctrl+F, then use Up/Down and Enter. Unavailable controls stay visible and link to their prerequisite. Music and media share one page. Unsaved personal notes and provider key inputs remain in the current Settings window when you switch pages or search.
 
@@ -334,24 +310,19 @@ It does not undo a separate system upgrade or installer run.
 
 </details>
 
-## Screenshots and video
+## Screenshots and demos
 
-Captured from the maintainer's live Hyprland desktop, using the installed shell
-and personal wallpaper. The installer supplies a separate, credited wallpaper
-collection. Colors, panel layout and apps can differ on your machine.
-
-| Calendar | Themes |
+| Dock and control center | Themes and wallpapers |
 | --- | --- |
-| ![Live calendar panel](assets/showcase/calendar.png) | ![Live theme picker](assets/showcase/themes.png) |
+| [![Dock above the control center, with media and a focus timer](assets/showcase/dock.webp)](assets/showcase/dock.mp4) | [![Wallpaper carousel with a centered mountain preview and dimmed side cards](assets/showcase/wallpapers.webp)](assets/showcase/appearance.mp4) |
+| [Watch the pills become a dock](assets/showcase/dock.mp4) · 9 seconds | [Watch palette changes and wallpaper browsing](assets/showcase/appearance.mp4) · 12 seconds |
 
-| Launcher | Local voice setup |
+| Modern lock screen and power menu | Theme settings |
 | --- | --- |
-| ![Live application launcher](assets/showcase/launcher.png) | ![Local voice settings on the live desktop](assets/showcase/voice.png) |
+| [![Translucent lock clock over a mountain wallpaper](assets/showcase/lock.webp)](assets/showcase/lock-power.mp4) | ![Settings page for creating and managing themes](assets/showcase/settings.webp) |
+| [Watch the lock transition and a cancelled reboot hold](assets/showcase/lock-power.mp4) · 9 seconds | Save palettes from wallpapers or generated color schemes. |
 
-[![Watch island transitions](assets/showcase/island.gif)](assets/showcase/island.mp4)
-
-[Watch the full-resolution clip](assets/showcase/island.mp4) ·
-[Watch volume and brightness transitions](assets/showcase/sliders.mp4)
+Recorded from Modesty's native preview with sample media and devices. [Wallpaper photography credits](THIRD_PARTY.md#showcase-photography).
 
 ## Customize
 
@@ -437,6 +408,38 @@ versions. Remove keys and personal data from logs or screenshots before sharing.
   checks with Qt 6.11.2 and 6.12.0, each using a matching Quickshell build.
 - Physical GPU drivers, login behavior and optional plugin builds remain outside
   container coverage.
+
+</details>
+
+<details>
+<summary>Optional AMD shell memory reduction</summary>
+
+The main-shell startup has an opt-in optimization for a verified AMD Mesa
+Wayland device. It avoids loading unused EGL vendors inside Quickshell. It
+does not change animations, shaders, or the GPU environment passed to apps.
+Other desktops keep normal startup by default.
+
+From a working desktop session, enable it locally and restart:
+
+```sh
+python3 scripts/shell_renderer.py --enable
+python3 scripts/session-control.py restart
+```
+
+The selection is saved in local state, outside the dotfiles. Each startup checks
+the saved device against normal and Mesa EGL initialization. Changed devices,
+explicit GPU or plugin choices, preload libraries, reconnect mode, unavailable
+drivers, and missing compiler support keep normal startup. The helper builds
+once with the installed C compiler and stays in the user's cache. This applies
+only to main-shell startup through `session-control.py`, not direct or preview
+launches. It does not promise a higher frame rate.
+
+To return to normal startup:
+
+```sh
+python3 scripts/shell_renderer.py --disable
+python3 scripts/session-control.py restart
+```
 
 </details>
 
