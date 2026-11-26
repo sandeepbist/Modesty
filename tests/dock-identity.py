@@ -7,6 +7,7 @@ import Quickshell
 import "modules/island" as Island
 import qs.services
 import qs.components
+import qs.theme
 ShellRoot {
  FloatingWindow {id:window;visible:true;implicitWidth:1100;implicitHeight:750
   Island.IslandSurface {id:surface;availableWidth:1100;availableHeight:750}
@@ -19,6 +20,13 @@ ShellRoot {
  function geometry(){return [surface.mediaStage,surface.clockStage,surface.controlStage].map(s=>[s.x,s.y,s.width,s.height]);}
  function toggle(){const g=JSON.stringify(geometry()),v=surface.dockVelocity;IslandState.toggleDock();check(Preferences.motion==="instant"||(JSON.stringify(geometry())===g&&surface.dockVelocity===v),"Retarget resets current frame or velocity before="+g+" after="+JSON.stringify(geometry())+" v="+v+" afterV="+surface.dockVelocity+" motion="+Preferences.motion);}
  function waitPane(stage,name){input.tryVerify(()=>!!pane(stage,name)&&pane(stage,name).enabled,2500,"Pane never reveals "+name);return pane(stage,name);}
+ function checkProviderLabel(stage){
+  const label=walk(stage).find(c=>c instanceof RollingText&&c.visible&&c.text==="Codex ×2");
+  check(!!label,"Codex pill missing");
+  const text=label.children.find(c=>c instanceof PanelText&&c.visible);
+  check(!!text&&text.text==="Codex ×2"&&!text.truncated&&text.font.family===Tokens.font,
+        "Codex pill clips the provider label or draws it in the wrong font");
+ }
  function morph(){
   Preferences.motion="fluid";Preferences.motionSpeed=.5;
   for(const progress of [.25,.6,.95]){
@@ -54,6 +62,11 @@ ShellRoot {
   popup.close();IslandState.closeMenu();input.wait(200);
   Preferences.motion="instant";Context.clear();Notifications.previewNotify(1100);const expiry=Notifications.list[0];input.wait(450);toggle();input.wait(150);toggle();input.wait(650);
   check(expiry.popupClosing||!expiry.popup,"Mode restarted notification expiry");
+  Notifications.dismiss(expiry);IslandState.closeMenu();IslandState.restingMode=IslandState.Pills;
+  Preferences.fontFamily="SF Compact Rounded";Preferences.bodyFontSize=11.5;Preferences.showAlbum=false;
+  AgentWork.providerLabel="Codex ×2";AgentWork.kind="working";AgentWork.pulse=true;input.wait(80);
+  checkProviderLabel(surface.clockStage);
+  AgentWork.kind="completed";input.wait(80);checkProviderLabel(surface.mediaStage);
   console.log("DOCK IDENTITY PASS");Qt.quit();
  }catch(e){console.error(e);Qt.exit(1);}}}
 }

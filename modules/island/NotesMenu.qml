@@ -168,7 +168,7 @@ FocusScope {
         spacing: root.shortViewport?8:16
         RowLayout {
             Layout.fillWidth: true; spacing: 8
-            PanelText {Layout.fillWidth: true; text: Notes.libraryOpen ? "Notes library" : "Quick Notes"; font.pixelSize: 15; font.weight: Font.DemiBold}
+            PanelText {Layout.fillWidth: true; text: Notes.libraryOpen ? "Notes library" : "Quick Notes"; font.pixelSize: Tokens.textSize(15); font.weight: Font.DemiBold}
             HeaderButton {
                 icon: root.compact && Notes.libraryOpen && root.showEditor ? "arrow_back" : Notes.libraryOpen ? "close_fullscreen" : "library_books"
                 label: root.compact && Notes.libraryOpen && root.showEditor ? "Back to library" : Notes.libraryOpen ? "Close library" : "Open library"
@@ -182,7 +182,7 @@ FocusScope {
             Layout.fillWidth: true; Layout.preferredHeight: errorRow.implicitHeight + 16
             visible: !!Notes.error; radius: 10; color: Theme.withAlpha(Theme.red, .07)
             RowLayout {id: errorRow; anchors.fill: parent; anchors.margins: 8; spacing: 8
-                PanelText {Layout.fillWidth: true; text: Notes.error; font.pixelSize: 12; color: Theme.red; wrapMode: Text.Wrap; elide: Text.ElideNone; maximumLineCount: 3}
+                PanelText {Layout.fillWidth: true; text: Notes.error; font.pixelSize: Tokens.textSize(12); color: Theme.red; wrapMode: Text.Wrap; elide: Text.ElideNone; maximumLineCount: 3}
                 ChoiceButton {objectName: "notesRetry"; text: "Retry"; implicitHeight: 28; onClicked: Notes.retry()}
                 ChoiceButton {objectName: "notesRecover"; text: "Recover"; implicitHeight: 28; visible: !Notes.loaded && !!Notes.error; onClicked: Notes.recover()}
             }
@@ -198,7 +198,7 @@ FocusScope {
                     id: searchField; objectName: "notesSearch"
                     cursorDelegate:InputCaret {editor:searchField}
                     Layout.fillWidth: true; implicitHeight: 36; placeholderText: "Search notes"; selectByMouse: true
-                    font.family: Tokens.font; font.pixelSize: 13; color: Theme.text; placeholderTextColor: Theme.subtext; selectionColor: Theme.accent; selectedTextColor: Theme.accentText
+                    font.family: Tokens.font; font.pixelSize: Tokens.textSize(13); color: Theme.text; placeholderTextColor: Theme.subtext; selectionColor: Theme.accent; selectedTextColor: Theme.accentText
                     leftPadding: 12; rightPadding: clearSearch.visible ? 36 : 12
                     onTextEdited: { root.query = text; }
                     background: Rectangle {radius: 10; color: Theme.surfaceSolid; border.width: 1; border.color: searchField.activeFocus ? Theme.accent : Theme.withAlpha(Theme.text, .07)}
@@ -214,7 +214,7 @@ FocusScope {
                             text: modelData.label; hoverEnabled: true
                             onClicked: root.category = modelData.id
                             Accessible.name: text
-                            contentItem: PanelText {text: categoryTab.text; font.pixelSize: 12; font.weight: root.category === categoryTab.modelData.id ? Font.DemiBold : Font.Normal; color: root.category === categoryTab.modelData.id ? Theme.text : Theme.subtext; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter}
+                            contentItem: PanelText {text: categoryTab.text; font.pixelSize: Tokens.textSize(12); font.weight: root.category === categoryTab.modelData.id ? Font.DemiBold : Font.Normal; color: root.category === categoryTab.modelData.id ? Theme.text : Theme.subtext; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter}
                             background: Rectangle {
                                 radius: 6; color: Theme.withAlpha(Theme.text, categoryTab.pressed ? .06 : categoryTab.hovered ? .03 : 0)
                                 border.width: categoryTab.activeFocus ? 1 : 0; border.color: Theme.accent
@@ -249,15 +249,15 @@ FocusScope {
                             spacing: row.dense ? 4 : 8
                             RowLayout {width: parent.width; spacing: 8
                                 Icon {icon: "push_pin"; size: 13; color: Theme.accent; visible: row.modelData.pinned; Layout.alignment: Qt.AlignVCenter}
-                                PanelText {Layout.fillWidth: true; text: root.markedText(root.libraryTitle(row.modelData)); textFormat: Text.StyledText; font.pixelSize: 13; font.weight: Font.Medium; Layout.alignment: Qt.AlignVCenter}
-                                PanelText {text: row.modelData.updatedAt ? Qt.formatDateTime(new Date(row.modelData.updatedAt), "d MMM") : ""; font.pixelSize: 11; color: Theme.subtext; Layout.alignment: Qt.AlignVCenter}
+                                PanelText {Layout.fillWidth: true; text: root.markedText(root.libraryTitle(row.modelData)); textFormat: Text.StyledText; font.pixelSize: Tokens.textSize(13); font.weight: Font.Medium; Layout.alignment: Qt.AlignVCenter}
+                                PanelText {text: row.modelData.updatedAt ? Qt.formatDateTime(new Date(row.modelData.updatedAt), "d MMM") : ""; font.pixelSize: Tokens.textSize(11); color: Theme.subtext; Layout.alignment: Qt.AlignVCenter}
                             }
-                            PanelText {width: parent.width; text: root.markedText(root.libraryPreview(row.modelData).replace(/\s+/g, " ")); textFormat: Text.StyledText; visible: !!text && row.showsPreview; font.pixelSize: 12; color: Theme.subtext; wrapMode: row.dense ? Text.NoWrap : Text.Wrap; maximumLineCount: row.dense ? 1 : 2}
+                            PanelText {width: parent.width; text: root.markedText(root.libraryPreview(row.modelData).replace(/\s+/g, " ")); textFormat: Text.StyledText; visible: !!text && row.showsPreview; font.pixelSize: Tokens.textSize(12); color: Theme.subtext; wrapMode: row.dense ? Text.NoWrap : Text.Wrap; maximumLineCount: row.dense ? 1 : 2}
                         }
                     }
                     Column {anchors.centerIn: parent; width: parent.width - 20; spacing: 8; visible: noteList.count === 0
                         Icon {anchors.horizontalCenter: parent.horizontalCenter; icon: root.query ? "search" : root.category === "trash" ? "delete_outline" : "edit_note"; size: 25; color: Theme.withAlpha(Theme.accent, .6)}
-                        PanelText {width: parent.width; horizontalAlignment: Text.AlignHCenter; text: !Notes.loaded ? "Loading notes…" : root.query ? "No matching notes" : root.category === "trash" ? "Trash is empty" : root.category === "archived" ? "No archived notes" : root.category === "pinned" ? "Pin a note to keep it here" : "Your next thought starts here"; font.pixelSize: 11; color: Theme.subtext; wrapMode: Text.Wrap; elide: Text.ElideNone}
+                        PanelText {width: parent.width; horizontalAlignment: Text.AlignHCenter; text: !Notes.loaded ? "Loading notes…" : root.query ? "No matching notes" : root.category === "trash" ? "Trash is empty" : root.category === "archived" ? "No archived notes" : root.category === "pinned" ? "Pin a note to keep it here" : "Your next thought starts here"; font.pixelSize: Tokens.textSize(11); color: Theme.subtext; wrapMode: Text.Wrap; elide: Text.ElideNone}
                         ChoiceButton {anchors.horizontalCenter: parent.horizontalCenter; text: "New note"; visible: !root.query && root.category === "active"; enabled: Notes.loaded; onClicked: root.newNote()}
                     }
                 }
@@ -293,7 +293,7 @@ FocusScope {
                             placeholderText: "Write something to remember…"; readOnly: !root.editable; selectByMouse: true
                             wrapMode: TextEdit.Wrap; textFormat: TextEdit.PlainText
                             padding: 0; leftPadding: 0; rightPadding: 0; bottomPadding: 8
-                            font.family: Tokens.font; font.pixelSize: 15; font.weight: Font.Normal
+                            font.family: Tokens.font; font.pixelSize: Tokens.textSize(15); font.weight: Font.Normal
                             color: Theme.text; placeholderTextColor: Theme.withAlpha(Theme.subtext, .65)
                             selectionColor: Theme.withAlpha(Theme.accent, .65); selectedTextColor: Theme.accentText
                             background: Item {}
@@ -305,7 +305,7 @@ FocusScope {
                         }
                     }
                     RowLayout {Layout.fillWidth: true; visible: !!root.active && root.active.status !== "active"
-                        PanelText {Layout.fillWidth: true; text: root.active?.status === "trash" ? "This note is in Trash" : "Archived note"; color: Theme.subtext; font.pixelSize: 11}
+                        PanelText {Layout.fillWidth: true; text: root.active?.status === "trash" ? "This note is in Trash" : "Archived note"; color: Theme.subtext; font.pixelSize: Tokens.textSize(11)}
                         ChoiceButton {text: "Restore"; implicitHeight: 28; onClicked: Notes.setStatus(Notes.activeId, "active")}
                     }
                 }
@@ -313,15 +313,15 @@ FocusScope {
         }
         RowLayout {Layout.fillWidth: true; spacing: 8
             Rectangle {width: 5; height: 5; radius: 2.5; color: Notes.error ? Theme.red : Notes.dirty || Notes.saving ? Theme.accent : Theme.withAlpha(Theme.subtext, .6)}
-            PanelText {Layout.fillWidth: true; text: root.copied || (Notes.exportPath ? "Exported to " + Notes.exportPath : Notes.saveState === "Failed" ? "Save failed" : Notes.saveState); font.pixelSize: 11; color: Notes.error ? Theme.red : Theme.subtext; Accessible.role: Accessible.StaticText; Accessible.name: text}
+            PanelText {Layout.fillWidth: true; text: root.copied || (Notes.exportPath ? "Exported to " + Notes.exportPath : Notes.saveState === "Failed" ? "Save failed" : Notes.saveState); font.pixelSize: Tokens.textSize(11); color: Notes.error ? Theme.red : Theme.subtext; Accessible.role: Accessible.StaticText; Accessible.name: text}
             ChoiceButton {text: "Undo Trash"; visible: !!Notes.undo; implicitHeight: 26; onClicked: Notes.undoTrash()}
-            PanelText {text: "Ctrl+N · Ctrl+F"; visible: !Notes.undo && root.width > 330; color: Theme.subtext; font.pixelSize: 11}
+            PanelText {text: "Ctrl+N · Ctrl+F"; visible: !Notes.undo && root.width > 330; color: Theme.subtext; font.pixelSize: Tokens.textSize(11)}
         }
     }
     component NoteAction: MenuItem {
         id: actionItem
-        implicitHeight: 31; font.family: Tokens.font; font.pixelSize: 11; hoverEnabled: true
-        contentItem: PanelText {text: actionItem.text; color: actionItem.enabled ? Theme.text : Theme.subtext; verticalAlignment: Text.AlignVCenter; font.pixelSize: 11}
+        implicitHeight: 31; font.family: Tokens.font; font.pixelSize: Tokens.textSize(11); hoverEnabled: true
+        contentItem: PanelText {text: actionItem.text; color: actionItem.enabled ? Theme.text : Theme.subtext; verticalAlignment: Text.AlignVCenter; font.pixelSize: Tokens.textSize(11)}
         background: Rectangle {radius: 7; color: actionItem.highlighted ? Theme.withAlpha(Theme.accent, .12) : "transparent"; border.width: actionItem.activeFocus ? 1 : 0; border.color: Theme.accent}
         HoverHandler {cursorShape: Qt.PointingHandCursor}
     }
@@ -352,8 +352,8 @@ FocusScope {
         radius: 12; color: Theme.bgSolid; border.width: 1; border.color: Theme.withAlpha(Theme.red, .35)
         MouseArea {anchors.fill: parent; acceptedButtons: Qt.AllButtons; onWheel: event => event.accepted = true}
         ColumnLayout {anchors.centerIn: parent; width: Math.min(320, parent.width - 32); spacing: 14
-            PanelText {Layout.fillWidth: true; text: "Delete this note permanently?"; font.pixelSize: 15; font.weight: Font.Medium; wrapMode: Text.Wrap; elide: Text.ElideNone}
-            PanelText {Layout.fillWidth: true; text: "This cannot be undone. Restore the note to keep it."; font.pixelSize: 12; color: Theme.subtext; wrapMode: Text.Wrap; elide: Text.ElideNone}
+            PanelText {Layout.fillWidth: true; text: "Delete this note permanently?"; font.pixelSize: Tokens.textSize(15); font.weight: Font.Medium; wrapMode: Text.Wrap; elide: Text.ElideNone}
+            PanelText {Layout.fillWidth: true; text: "This cannot be undone. Restore the note to keep it."; font.pixelSize: Tokens.textSize(12); color: Theme.subtext; wrapMode: Text.Wrap; elide: Text.ElideNone}
             RowLayout {Layout.fillWidth: true; spacing: 8
                 ChoiceButton {id: deleteCancel; Layout.fillWidth: true; objectName: "notesDeleteCancel"; text: "Cancel"; onClicked: {root.deleteId = ""; root.focusEditor();}}
                 ChoiceButton {Layout.fillWidth: true; objectName: "notesDeleteConfirm"; text: "Delete permanently"; onClicked: {Notes.deleteNote(root.deleteId); root.deleteId = "";}}

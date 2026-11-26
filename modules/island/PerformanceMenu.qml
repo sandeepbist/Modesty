@@ -69,10 +69,10 @@ ColumnLayout {
                         required property string modelData
                         readonly property var value:modelData==="CPU"?root.sample.cpu:root.sample.memoryUsed/root.sample.memoryTotal
                         Layout.fillWidth:true;Layout.preferredWidth:1;spacing:3
-                        PanelText {text:summary.modelData==="Memory"?"RAM used":summary.modelData;font.pixelSize:11;color:Theme.subtext}
+                        PanelText {text:summary.modelData==="Memory"?"RAM used":summary.modelData;font.pixelSize:Tokens.textSize(11);color:Theme.subtext}
                         Row {spacing:3
                             PanelText {objectName:summary.modelData+"Percent";text:Number.isFinite(summary.value)?Math.round(summary.value*100):"—";font.pixelSize:28;font.weight:Font.Medium;font.letterSpacing:-1;font.features:({tnum:1})}
-                            PanelText {text:"%";font.pixelSize:13;color:Theme.subtext;anchors.baseline:parent.children[0].baseline}
+                            PanelText {text:"%";font.pixelSize:Tokens.textSize(13);color:Theme.subtext;anchors.baseline:parent.children[0].baseline}
                         }
                         PanelText {objectName:summary.modelData+"Detail";Layout.fillWidth:true;text:summary.modelData==="Memory"?root.bytes(root.sample.memoryUsed)+" / "+root.bytes(root.sample.memoryTotal):"All cores";font.pixelSize:10;color:Theme.subtext}
                         MetricTrace {objectName:summary.modelData+"History";Layout.fillWidth:true;implicitHeight:18;values:root.history[summary.modelData==="CPU"?"cpu":"memory"]||[]}
@@ -82,7 +82,7 @@ ColumnLayout {
             ColumnLayout {
                 Layout.fillWidth:true;spacing:6;visible:root.deviceNames.length>0
                 Rectangle {Layout.fillWidth:true;implicitHeight:1;color:Theme.withAlpha(Theme.text,.07)}
-                PanelText {text:"Disk activity";font.pixelSize:11;color:Theme.subtext}
+                PanelText {text:"Disk activity";font.pixelSize:Tokens.textSize(11);color:Theme.subtext}
                 Repeater {
                     model:root.deviceNames
                     ColumnLayout {
@@ -93,11 +93,11 @@ ColumnLayout {
                         Layout.fillWidth:true;spacing:3
                         RowLayout {Layout.fillWidth:true;spacing:8
                             PanelText {
-                                objectName:"driveName-"+drive.modelData;Layout.fillWidth:true;text:drive.modelData;font.pixelSize:12;font.weight:Font.Medium
+                                objectName:"driveName-"+drive.modelData;Layout.fillWidth:true;text:drive.modelData;font.pixelSize:Tokens.textSize(12);font.weight:Font.Medium
                                 HoverHandler {id:driveHover}
                                 ToolTip.visible:driveHover.hovered;ToolTip.text:text
                             }
-                            PanelText {objectName:"driveBusy-"+drive.modelData;text:drive.reading.busy==null?"—":Math.round(drive.reading.busy*100)+"% active";font.pixelSize:11;color:Theme.subtext;font.features:({tnum:1})}
+                            PanelText {objectName:"driveBusy-"+drive.modelData;text:drive.reading.busy==null?"—":Math.round(drive.reading.busy*100)+"% active";font.pixelSize:Tokens.textSize(11);color:Theme.subtext;font.features:({tnum:1})}
                         }
                         RowLayout {Layout.fillWidth:true;spacing:10
                             Repeater {model:["read","write"]
@@ -105,7 +105,7 @@ ColumnLayout {
                                     required property string modelData
                                     Layout.fillWidth:true;Layout.preferredWidth:1;spacing:5
                                     PanelText {text:modelData==="read"?"Read":"Write";font.pixelSize:10;color:Theme.subtext}
-                                    PanelText {objectName:drive.modelData+"-"+modelData;Layout.fillWidth:true;text:root.bytes(drive.reading[modelData])+"/s";font.pixelSize:11;font.features:({tnum:1})}
+                                    PanelText {objectName:drive.modelData+"-"+modelData;Layout.fillWidth:true;text:root.bytes(drive.reading[modelData])+"/s";font.pixelSize:Tokens.textSize(11);font.features:({tnum:1})}
                                 }
                             }
                         }
@@ -118,14 +118,14 @@ ColumnLayout {
                 readonly property real peak:Math.max(1024,...root.history.download,...root.history.upload)
                 Layout.fillWidth:true;spacing:6
                 Rectangle {Layout.fillWidth:true;implicitHeight:1;color:Theme.withAlpha(Theme.text,.07)}
-                PanelText {text:"Network";font.pixelSize:11;color:Theme.subtext}
+                PanelText {text:"Network";font.pixelSize:Tokens.textSize(11);color:Theme.subtext}
                 RowLayout {Layout.fillWidth:true;spacing:18
                     Repeater {model:["download","upload"]
                         ColumnLayout {
                             required property string modelData
                             Layout.fillWidth:true;Layout.preferredWidth:1;spacing:4
                             PanelText {text:modelData==="download"?"↓  Download":"↑  Upload";font.pixelSize:10;color:Theme.subtext}
-                            PanelText {objectName:modelData+"Rate";Layout.fillWidth:true;text:root.bytes(root.sample[modelData])+"/s";font.pixelSize:14;font.weight:Font.Medium;font.features:({tnum:1})}
+                            PanelText {objectName:modelData+"Rate";Layout.fillWidth:true;text:root.bytes(root.sample[modelData])+"/s";font.pixelSize:Tokens.textSize(14);font.weight:Font.Medium;font.features:({tnum:1})}
                             MetricTrace {objectName:modelData+"History";Layout.fillWidth:true;implicitHeight:18;values:root.history[modelData];ceiling:network.peak;stroke:modelData==="download"?Theme.accent:Theme.subtext}
                         }
                     }
@@ -134,7 +134,7 @@ ColumnLayout {
             ColumnLayout {
                 Layout.fillWidth:true;spacing:6;visible:root.diskPaths.length>0
                 Rectangle {Layout.fillWidth:true;implicitHeight:1;color:Theme.withAlpha(Theme.text,.07)}
-                PanelText {text:"Storage";font.pixelSize:11;color:Theme.subtext}
+                PanelText {text:"Storage";font.pixelSize:Tokens.textSize(11);color:Theme.subtext}
                 Repeater {
                     model:root.diskPaths
                     ColumnLayout {
@@ -144,7 +144,7 @@ ColumnLayout {
                         readonly property var disk:(root.sample.disks||[]).find(d=>d.path===modelData)||({})
                         Layout.fillWidth:true;spacing:3
                         RowLayout {Layout.fillWidth:true;spacing:8
-                            PanelText {Layout.fillWidth:true;text:storage.modelData==="/"?"System storage":"Home storage";font.pixelSize:11}
+                            PanelText {Layout.fillWidth:true;text:storage.modelData==="/"?"System storage":"Home storage";font.pixelSize:Tokens.textSize(11)}
                             PanelText {objectName:"storageUsage-"+storage.modelData;text:root.bytes(storage.disk.used)+" / "+root.bytes(storage.disk.total);font.pixelSize:10;color:Theme.subtext;font.features:({tnum:1})}
                         }
                         PanelText {
@@ -158,7 +158,7 @@ ColumnLayout {
                     }
                 }
             }
-            PanelText {objectName:"performanceStatus";Layout.fillWidth:true;visible:!!root.error||!root.sample.memoryTotal;text:root.error||"Waiting for metrics…";wrapMode:Text.Wrap;color:Theme.subtext;font.pixelSize:12}
+            PanelText {objectName:"performanceStatus";Layout.fillWidth:true;visible:!!root.error||!root.sample.memoryTotal;text:root.error||"Waiting for metrics…";wrapMode:Text.Wrap;color:Theme.subtext;font.pixelSize:Tokens.textSize(12)}
         }
     }
 }

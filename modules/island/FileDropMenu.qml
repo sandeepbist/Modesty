@@ -89,13 +89,13 @@ ColumnLayout {
                         spacing: 5
                         PanelText {
                             width: parent.width; text: file.modelData.name
-                            font.pixelSize: 14; font.weight: Font.Medium; font.letterSpacing: -.15
+                            font.pixelSize: Tokens.textSize(14); font.weight: Font.Medium; font.letterSpacing: -.15
                         }
                         PanelText {
                             width: parent.width
                             text: (file.modelData.kind === "image" ? file.modelData.width + " × " + file.modelData.height : file.modelData.kind === "pdf" ? "PDF" : file.modelData.kind==="archive"?"Archive":file.modelData.kind==="text"?"Text":"File")
                                   + " · " + (file.modelData.size >= 1048576 ? (file.modelData.size / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(file.modelData.size / 1024)) + " KB")
-                            font.pixelSize: 11; color: Theme.subtext
+                            font.pixelSize: Tokens.textSize(11); color: Theme.subtext
                         }
                     }
                     IconButton {
@@ -139,7 +139,7 @@ ColumnLayout {
                         text: IslandDrop.question; placeholderText: "Ask Luma…"
                         color: Theme.text; placeholderTextColor: Theme.subtext
                         selectionColor: Theme.accent; selectedTextColor: Theme.bgSolid
-                        font.family: Tokens.font; font.pixelSize: 13
+                        font.family: Tokens.font; font.pixelSize: Tokens.textSize(13)
                         font.kerning: true; font.preferTypoLineMetrics: true
                         renderType: Tokens.textRenderType; background: null
                         Accessible.name: "Question about attached files"
@@ -215,7 +215,7 @@ ColumnLayout {
                                 model:IslandDrop.renamePlan
                                 RowLayout {required property var modelData;Layout.fillWidth:true;spacing:10
                                     Icon {icon:"draft";size:15;color:Theme.subtext}
-                                    PanelText {Layout.fillWidth:true;text:modelData.name;font.pixelSize:12;font.weight:Font.Medium}
+                                    PanelText {Layout.fillWidth:true;text:modelData.name;font.pixelSize:Tokens.textSize(12);font.weight:Font.Medium}
                                     IconButton {icon:"info";size:12;label:modelData.path.split("/").pop()+" becomes "+modelData.name;color:Theme.subtext}
                                 }
                             }
@@ -258,7 +258,7 @@ ColumnLayout {
                                     Accessible.name: text + " image format"
                                     onClicked: root.outputFormat = modelData
                                     background: Rectangle { color: "transparent"; radius: 7; border.width: parent.activeFocus ? 1 : 0; border.color: Theme.accent }
-                                    contentItem: PanelText { text: parent.text; font.pixelSize: 12; font.weight: Font.Medium; color: root.outputFormat === parent.modelData ? Theme.text : Theme.subtext; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                                    contentItem: PanelText { text: parent.text; font.pixelSize: Tokens.textSize(12); font.weight: Font.Medium; color: root.outputFormat === parent.modelData ? Theme.text : Theme.subtext; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                                     Keys.onPressed: event => {
                                         if ([Qt.Key_Left, Qt.Key_Right].includes(event.key)) {
@@ -280,7 +280,7 @@ ColumnLayout {
                             validator: IntValidator { bottom: 1; top: 8192 }
                             onTextEdited: if (acceptableInput) root.outputWidth = Number(text)
                             onAccepted: if (acceptableInput) IslandDrop.run("export", {width: root.outputWidth, format: root.outputFormat})
-                            PanelText { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: "px"; font.pixelSize: 11; color: Theme.subtext }
+                            PanelText { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: "px"; font.pixelSize: Tokens.textSize(11); color: Theme.subtext }
                         }
                         QuietAction { text: "Save copy"; glyph: "check"; selected: true; enabled: widthField.acceptableInput && !IslandDrop.busy; onClicked: IslandDrop.run("export", {width: root.outputWidth, format: root.outputFormat}) }
                     }
@@ -300,7 +300,7 @@ ColumnLayout {
                     PanelText {
                         Layout.fillWidth: true
                         text: IslandDrop.error || (IslandDrop.busy ? ({inspect: "Reading files…", extract: "Reading text…", export: "Saving copies…",compress:"Creating archive…",unpack:"Extracting archive…",merge:"Merging PDFs…",rename:"Applying names…", "rename-preview":"Preparing names…"})[IslandDrop.operation] : IslandDrop.status)
-                        font.pixelSize: 12; color: IslandDrop.error ? Theme.red : Theme.subtext
+                        font.pixelSize: Tokens.textSize(12); color: IslandDrop.error ? Theme.red : Theme.subtext
                         wrapMode: Text.WordWrap; elide: Text.ElideNone
                     }
                     IconButton { visible: !!IslandDrop.lastOutput; size: 14; icon: "folder_open"; label: "Show result"; onClicked: Quickshell.execDetached(["xdg-open", IslandDrop.lastOutput.slice(0, IslandDrop.lastOutput.lastIndexOf("/"))]) }
@@ -339,7 +339,7 @@ ColumnLayout {
         }
         contentItem: Item {
             Icon { x: 7; anchors.verticalCenter: parent.verticalCenter; visible: !!button.glyph; icon: button.glyph; size: 13; color: button.selected ? Theme.accent : button.hovered || button.activeFocus ? Theme.text : Theme.subtext }
-            PanelText { id: label; x: button.glyph ? 26 : 8; height: parent.height; text: button.text; font.pixelSize: 12; font.weight: Font.Medium; color: button.selected ? Theme.accent : button.hovered || button.activeFocus ? Theme.text : Theme.subtext; verticalAlignment: Text.AlignVCenter; Behavior on color { ColorAnimation { duration: Tokens.animFast } } }
+            PanelText { id: label; x: button.glyph ? 26 : 8; height: parent.height; text: button.text; font.pixelSize: Tokens.textSize(12); font.weight: Font.Medium; color: button.selected ? Theme.accent : button.hovered || button.activeFocus ? Theme.text : Theme.subtext; verticalAlignment: Text.AlignVCenter; Behavior on color { ColorAnimation { duration: Tokens.animFast } } }
         }
     }
 }

@@ -50,7 +50,7 @@ def main():
     shutil.copyfile(ROOT/'tests/fixtures/luma-capture.qml', fixture/'shell.qml')
     config = out/'nested.lua'
     config.write_text('''hl.monitor({output="",mode="800x600@60",position="0x0",scale=1})
-hl.config({misc={disable_hyprland_logo=true,disable_splash_rendering=true},ecosystem={no_donation_nag=true,no_update_news=true},general={gaps_in=0,gaps_out=0,border_size=0},animations={enabled=false},decoration={rounding=0,blur={enabled=false},shadow={enabled=false}}})
+hl.config({misc={disable_watchdog_warning=true,disable_hyprland_logo=true,disable_splash_rendering=true},ecosystem={no_donation_nag=true,no_update_news=true},general={gaps_in=0,gaps_out=0,border_size=0},animations={enabled=false},decoration={rounding=0,blur={enabled=false},shadow={enabled=false}}})
 ''')
     parent = dict(os.environ)
     environment = dict(parent, AQ_DRM_DEVICES='/dev/dri/modesty-no-kms', HYPRLAND_NO_SD_NOTIFY='1', HYPRLAND_NO_SD_VARS='1',

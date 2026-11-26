@@ -172,14 +172,24 @@ def auth():
     if not MARKER.exists():
         subprocess.Popen([POLKIT], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
 
-def start():
+def spawn_native():
     if not MARKER.exists():
-        run(['caelestia', 'shell', '-d']); return
+        raise RuntimeError('Modesty is not selected as the main shell.')
+    assert_unlocked()
     from desktop_environment import clean_environment
     env = dict(clean_environment(), MODESTY_COMPAT='1', MODESTY_PREVIEW='0')
     from shell_renderer import run_shell
     run_shell(['quickshell', '-d', '--no-duplicate', '-p', str(ROOT/'shell.qml')], env)
-    end = time.monotonic() + 8
+
+def start():
+    if not MARKER.exists():
+        run(['caelestia', 'shell', '-d']); return
+    # Compositor-owned startup avoids inheriting the caller's process context.
+    result = run(['hyprctl', 'eval', f'hl.dispatch(hl.dsp.exec_cmd({control("spawn-native")}))'], check=False)
+    output = (result.stdout + result.stderr).strip()
+    if result.returncode or output != 'ok':
+        raise RuntimeError('Hyprland could not start Modesty: '+(output or 'no dispatch acknowledgement'))
+    end = time.monotonic() + 100
     while time.monotonic() < end:
         info = health()
         if info and info['compatibility'] and not info['preview'] and info['policyAgent']:
@@ -240,6 +250,7 @@ if __name__ == '__main__':
         elif mode == 'restore': restore()
         elif mode == 'auth': auth()
         elif mode == 'start': start()
+        elif mode == 'spawn-native': spawn_native()
         elif mode == 'restart':
             restart()
         elif mode == 'stop':

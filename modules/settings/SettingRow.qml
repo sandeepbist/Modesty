@@ -16,9 +16,15 @@ Item {
     readonly property bool available:!setting.when||setting.values.includes(read(setting.when))
     objectName:"setting-"+setting.key
     readonly property var dependency:Catalog.prerequisite(setting)
+    readonly property bool prerequisiteFocused: prerequisiteButton.activeFocus
     signal prerequisite(var target)
     function reveal() { return available ? (setting.kind==="toggle"?toggleControl:setting.kind==="slider"?sliderLoader.item:setting.kind==="text"?textLoader.item.field:setting.kind==="choice"?choiceLoader.item:root) : prerequisiteButton; }
     readonly property var value:read(setting.key)
+    readonly property string sliderLabel: {
+        const amount = Number(value);
+        return (setting.displayScale === undefined ? Math.round(amount * 100) / 100
+            : Math.round(amount * setting.displayScale)) + (setting.unit || "");
+    }
     activeFocusOnTab:setting.kind==="action"
     Accessible.name:setting.label
     Accessible.role:setting.kind==="action"?Accessible.Button:Accessible.Grouping
@@ -47,37 +53,13 @@ Item {
     ColumnLayout {
     id:body;width:root.width;spacing:8
     RowLayout {
-        Layout.fillWidth:true;Layout.minimumHeight:40;spacing:12
+        Layout.fillWidth:true;Layout.minimumHeight:root.setting.kind==="slider"?24:40;spacing:12
         ColumnLayout {
             Layout.fillWidth:true;spacing:4
-            PanelText {Layout.fillWidth:true;text:root.setting.label;font.pixelSize:13;font.weight:Font.Medium;wrapMode:Text.Wrap;elide:Text.ElideNone}
-            PanelText {Layout.fillWidth:true;visible:!!root.setting.description&&!root.fullDescription;text:root.setting.description||"";font.pixelSize:12;lineHeight:1.3;color:Theme.subtext;wrapMode:Text.Wrap;elide:Text.ElideNone}
+            PanelText {Layout.fillWidth:true;text:root.setting.label;font.pixelSize:Tokens.textSize(13);font.weight:Font.Medium;wrapMode:Text.Wrap;elide:Text.ElideNone}
+            PanelText {Layout.fillWidth:true;visible:!!root.setting.description&&!root.fullDescription;text:root.setting.description||"";font.pixelSize:Tokens.textSize(12);lineHeight:1.3;color:Theme.subtext;wrapMode:Text.Wrap;elide:Text.ElideNone}
         }
         Toggle {id:toggleControl;implicitWidth:40;implicitHeight:32;objectName:root.setting.kind==="toggle"?"control-"+root.setting.key:"";enabled:root.available;visible:root.setting.kind==="toggle";text:root.setting.label;checked:root.value===true;onToggled:root.write(checked)}
-    Loader {
-        id:sliderLoader;enabled:root.available
-        Layout.preferredWidth:164;Layout.minimumWidth:140;opacity:enabled?1:.4;active:root.setting.kind==="slider";visible:active
-        sourceComponent:Slider {
-            id:slider;objectName:"control-"+root.setting.key
-            from:root.setting.min;to:root.setting.max;stepSize:root.setting.step
-            implicitHeight:36
-            Binding {target:slider;property:"value";value:Number(root.value);when:!slider.pressed;restoreMode:Binding.RestoreNone}
-            onMoved:root.write(value)
-            Accessible.name:root.setting.label
-            hoverEnabled:true
-            background:Rectangle {
-                x:slider.leftPadding;y:(slider.height-height)/2;width:slider.availableWidth;height:4;radius:2;color:Theme.withAlpha(Theme.text,.1)
-                Rectangle {width:parent.width*slider.visualPosition;height:4;radius:2;color:Theme.accent}
-            }
-            handle:Rectangle {
-                x:slider.leftPadding+slider.visualPosition*(slider.availableWidth-width);y:(slider.height-height)/2
-                width:14;height:14;radius:7;color:Theme.accent;antialiasing:true
-                border.width:slider.activeFocus?2:0;border.color:Theme.text
-                scale:slider.pressed?1.14:slider.hovered?1.06:1
-                Behavior on scale {NumberAnimation {duration:Tokens.animFast;easing.type:Easing.OutCubic}}
-            }
-        }
-    }
     Loader {
         id:choiceLoader; enabled:root.available
         Layout.preferredWidth:180;Layout.minimumWidth:140;opacity:enabled?1:.4
@@ -90,7 +72,7 @@ Item {
             onActivated:root.write(currentValue)
             Accessible.name:root.setting.label
             Accessible.description:root.setting.description||""
-            contentItem:PanelText {text:choice.displayText;font.pixelSize:12;verticalAlignment:Text.AlignVCenter}
+            contentItem:PanelText {text:choice.displayText;font.pixelSize:Tokens.textSize(12);verticalAlignment:Text.AlignVCenter}
             indicator:Icon {x:choice.width-width-10;y:(choice.height-height)/2;icon:choice.popup.visible?"expand_less":"expand_more";size:15;color:Theme.subtext}
             background:Rectangle {radius:8;color:Theme.withAlpha(Theme.text,choice.pressed ? .1 : choice.hovered ? .07 : .035);border.width:1;border.color:choice.activeFocus?Theme.accent:Theme.withAlpha(Theme.text,.08)}
             delegate:ItemDelegate {
@@ -107,7 +89,7 @@ Item {
                 contentItem:RowLayout {
                     spacing:8
                     Icon {icon:"check";size:15;color:Theme.accent;opacity:choice.currentIndex===option.index?1:0}
-                    PanelText {id:optionLabel;Layout.fillWidth:true;text:option.modelData.label;font.pixelSize:12;wrapMode:Text.Wrap;elide:Text.ElideNone;verticalAlignment:Text.AlignVCenter}
+                    PanelText {id:optionLabel;Layout.fillWidth:true;text:option.modelData.label;font.pixelSize:Tokens.textSize(12);wrapMode:Text.Wrap;elide:Text.ElideNone;verticalAlignment:Text.AlignVCenter}
                 }
                 background:Rectangle {radius:6;color:option.highlighted?Theme.accentLow:option.hovered?Theme.withAlpha(Theme.text,.055):"transparent"}
             }
@@ -124,10 +106,35 @@ Item {
             }
         }
     }
-        PanelText {Layout.preferredWidth:52;horizontalAlignment:Text.AlignRight;visible:root.setting.kind==="slider";text:(Math.round(Number(root.value)*100)/100)+(root.setting.unit||"");font.pixelSize:12;color:Theme.subtext;font.features:({tnum:1})}
+        PanelText {horizontalAlignment:Text.AlignRight;visible:root.setting.kind==="slider";text:root.sliderLabel;font.pixelSize:Tokens.textSize(12);color:Theme.subtext;font.features:({tnum:1})}
         Icon {visible:root.setting.kind==="action";icon:"chevron_right";size:16;color:Theme.subtext}
     }
-    PanelText {Layout.fillWidth:true;visible:!!root.setting.description&&root.fullDescription;text:root.setting.description||"";font.pixelSize:12;lineHeight:1.3;color:Theme.subtext;wrapMode:Text.Wrap;elide:Text.ElideNone}
+    Loader {
+        id:sliderLoader;enabled:root.available
+        Layout.fillWidth:true;opacity:enabled?1:.4;active:root.setting.kind==="slider";visible:active
+        sourceComponent:Slider {
+            id:slider;objectName:"control-"+root.setting.key
+            from:root.setting.min;to:root.setting.max;stepSize:root.setting.step
+            implicitHeight:26
+            leftPadding:0;rightPadding:0
+            Binding {target:slider;property:"value";value:Number(root.value);when:!slider.pressed;restoreMode:Binding.RestoreNone}
+            onMoved:root.write(value)
+            Accessible.name:root.setting.label
+            hoverEnabled:true
+            background:Rectangle {
+                x:slider.leftPadding;y:(slider.height-height)/2;width:slider.availableWidth;height:6;radius:3;color:Theme.withAlpha(Theme.text,.1)
+                Rectangle {width:parent.width*slider.visualPosition;height:6;radius:3;color:Theme.accent}
+            }
+            handle:Rectangle {
+                x:slider.leftPadding+slider.visualPosition*(slider.availableWidth-width);y:(slider.height-height)/2
+                width:14;height:14;radius:7;color:Theme.accent;antialiasing:true
+                border.width:slider.activeFocus?2:0;border.color:Theme.text
+                scale:slider.pressed?1.14:slider.hovered?1.06:1
+                Behavior on scale {NumberAnimation {duration:Tokens.animFast;easing.type:Easing.OutCubic}}
+            }
+        }
+    }
+    PanelText {Layout.fillWidth:true;visible:!!root.setting.description&&root.fullDescription;text:root.setting.description||"";font.pixelSize:Tokens.textSize(12);lineHeight:1.3;color:Theme.subtext;wrapMode:Text.Wrap;elide:Text.ElideNone}
     Loader {
         id:textLoader;enabled:root.available
         Layout.fillWidth:true;active:root.setting.kind==="text";visible:active
@@ -140,13 +147,13 @@ Item {
                 onEditingFinished:root.write(text)
                 Accessible.name:root.setting.label
             }
-            PanelText {text:":";font.pixelSize:16;color:Theme.subtext}
+            PanelText {text:":";font.pixelSize:Tokens.textSize(16);color:Theme.subtext}
             Item {Layout.fillWidth:true}
         }
     }
     RowLayout {
         Layout.fillWidth:true;visible:!root.available;spacing:8
-        PanelText {Layout.fillWidth:true;text:root.dependency?.message||"Unavailable";wrapMode:Text.Wrap;elide:Text.ElideNone;font.pixelSize:12;color:Theme.subtext}
+        PanelText {Layout.fillWidth:true;text:root.dependency?.message||"Unavailable";wrapMode:Text.Wrap;elide:Text.ElideNone;font.pixelSize:Tokens.textSize(12);color:Theme.subtext}
         ActionButton {id:prerequisiteButton;objectName:"prerequisite-"+root.setting.key;text:root.dependency?"Go to "+root.dependency.label:"";visible:!!root.dependency;onClicked:root.prerequisite(root.dependency)}
     }
 }

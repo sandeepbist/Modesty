@@ -25,9 +25,10 @@ def build():
     version = json.loads(output(['hyprctl', 'version', '-j']))
     if version.get('commit') != SUPPORTED_BUILD:
         raise RuntimeError('This experimental plugin supports only Hyprland '+SUPPORTED_BUILD)
-    flags = shlex.split(output(['pkg-config', '--cflags', '--libs', 'hyprland']))
+    flags = shlex.split(output(['pkg-config', '--cflags', '--libs', 'hyprland', 'libeis-1.0']))
     compiler = os.environ.get('CXX', 'c++')
-    identity = SOURCE.read_bytes()+output([compiler, '--version']).encode()+repr(flags).encode()+json.dumps(version, sort_keys=True).encode()
+    dependencies = [SOURCE, *sorted(SOURCE.parent.glob('*.hpp'))]
+    identity = b''.join(path.name.encode()+b'\0'+path.read_bytes() for path in dependencies)+output([compiler, '--version']).encode()+repr(flags).encode()+json.dumps(version, sort_keys=True).encode()
     cache = Path(os.environ.get('XDG_CACHE_HOME', str(Path.home()/'.cache')))/'modesty/luma-capture'
     cache.mkdir(parents=True, exist_ok=True)
     target = cache/(hashlib.sha256(identity).hexdigest()[:24]+'.so')
@@ -99,6 +100,16 @@ def loaded():
     return any(plugin.get('name') == 'luma-capture' for plugin in plugins)
 
 
+def input_capability():
+    try:
+        value = json.loads(output(['hyprctl', 'luma-private', 'status']))
+        if isinstance(value, str):
+            value = json.loads(value)
+        return value.get('protocol') == 1
+    except (OSError, subprocess.SubprocessError, ValueError, AttributeError):
+        return False
+
+
 def load(plugin):
     if loaded():
         if enabled_plugin(paths()[0]) == plugin:
@@ -166,6 +177,12 @@ def disable():
     marker, _, _ = paths()
     plugin = enabled_plugin(marker)
     if plugin is not None:
+        if loaded() and input_capability():
+            state = json.loads(output(['hyprctl', 'luma-private', 'quiesce']))
+            if isinstance(state, str):
+                state = json.loads(state)
+            if state.get('protocol') != 1 or state.get('neutral') is not True:
+                raise RuntimeError('Release all keys and modifiers, then turn privacy off again. Protection remains loaded.')
         command = ['hyprctl', 'plugin', 'unload', str(plugin)]
         reply = output(command)
         if reply not in ('ok', 'plugin not loaded'):
@@ -180,9 +197,11 @@ def main():
     args = parser.parse_args()
     try:
         if args.command == 'status':
+            active = loaded()
             print(json.dumps({'experimental': True, 'supportedBuild': SUPPORTED_BUILD,
                               'supported': json.loads(output(['hyprctl', 'version', '-j'])).get('commit') == SUPPORTED_BUILD,
-                              'enabled': paths()[0].exists(), 'loaded': loaded()}))
+                              'enabled': paths()[0].exists(), 'loaded': active,
+                              'inputProtocol': 1 if active and input_capability() else 0}))
         elif args.command == 'disable':
             disable()
             print('Luma capture disabled')

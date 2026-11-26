@@ -5,13 +5,17 @@ import qs.theme
 Item {
     id: root
     property string text: ""
-    property font font: Qt.font({family:Tokens.clockFont,pixelSize:15,weight:Font.Medium,features:{tnum:1}})
+    property font font: Qt.font({family:Tokens.clockFont,pixelSize:Tokens.textSize(15),weight:Font.Medium,features:{tnum:1}})
     property color color: Theme.text
     property bool animated: true
     property bool countsDown: false
+    property real tracking: 0
+    implicitWidth: glyphRow.implicitWidth
     Row {
+        id: glyphRow
         x:(parent.width-width)/2
         height: parent.height
+        spacing: root.tracking
         Repeater {
             model: root.text.length
             Item {

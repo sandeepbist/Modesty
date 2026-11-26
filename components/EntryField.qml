@@ -15,7 +15,7 @@ TextField {
     selectionColor: Theme.accent
     selectedTextColor: Theme.accentText
     font.family: Tokens.font
-    font.pixelSize: 13
+    font.pixelSize: Tokens.textSize(13)
     font.kerning:true
     font.preferTypoLineMetrics:true
     font.hintingPreference:Font.PreferVerticalHinting

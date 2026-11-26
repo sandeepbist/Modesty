@@ -40,7 +40,7 @@ FocusScope {
                 cursorDelegate:InputCaret {editor:input}
                 x:43;anchors.verticalCenter:parent.verticalCenter;width:parent.width-58;height:24;verticalAlignment:TextInput.AlignVCenter
                 focus:true;color:Theme.text;selectionColor:Theme.accent;selectedTextColor:Theme.bgSolid
-                font.family:Tokens.font;font.pixelSize:15;font.hintingPreference:Font.PreferVerticalHinting;renderType:Tokens.textRenderType
+                font.family:Tokens.font;font.pixelSize:Tokens.textSize(15);font.hintingPreference:Font.PreferVerticalHinting;renderType:Tokens.textRenderType
                 selectByMouse:true;clip:true;onTextChanged:root.query=text
                 Keys.onDownPressed:root.step(1)
                 Keys.onUpPressed:root.step(-1)
@@ -51,7 +51,7 @@ FocusScope {
                     else if (event.key === Qt.Key_PageDown) { root.step(Preferences.launcherVisibleRows); event.accepted = true; }
                     else if (event.key === Qt.Key_PageUp) { root.step(-Preferences.launcherVisibleRows); event.accepted = true; }
                 }
-                PanelText {anchors.fill:parent;text:"Search";visible:!input.text;color:Theme.subtext;font.pixelSize:15;verticalAlignment:Text.AlignVCenter}
+                PanelText {anchors.fill:parent;text:"Search";visible:!input.text;color:Theme.subtext;font.pixelSize:Tokens.textSize(15);verticalAlignment:Text.AlignVCenter}
             }
         }
         CalculatorResult {id:calculator;Layout.fillWidth:true;query:root.query}
@@ -100,8 +100,8 @@ FocusScope {
                             anchors.left:iconSlot.right;anchors.leftMargin:12
                             anchors.right:parent.right;anchors.rightMargin:14
                             anchors.verticalCenter:parent.verticalCenter;spacing:2
-                            PanelText {width:parent.width;text:appRow.text;font.pixelSize:15;font.weight:Font.Medium}
-                            PanelText {width:parent.width;visible:Preferences.launcherDescriptions&&!!text;text:appRow.description;font.pixelSize:12;color:Theme.subtext}
+                            PanelText {width:parent.width;text:appRow.text;font.pixelSize:Tokens.textSize(15);font.weight:Font.Medium}
+                            PanelText {width:parent.width;visible:Preferences.launcherDescriptions&&!!text;text:appRow.description;font.pixelSize:Tokens.textSize(12);color:Theme.subtext}
                         }
 
                     }
@@ -109,11 +109,11 @@ FocusScope {
             }
             Column {parent:list;anchors.centerIn:parent;spacing:12;visible:!root.results.length
                 Icon {anchors.horizontalCenter:parent.horizontalCenter;icon:"search_off";size:28;color:Theme.subtext}
-                PanelText {text:"No applications found";font.pixelSize:13;color:Theme.subtext}
+                PanelText {text:"No applications found";font.pixelSize:Tokens.textSize(13);color:Theme.subtext}
             }
         }
         Item {Layout.fillHeight:true;visible:calculator.requested}
-        PanelText {Layout.fillWidth:true;visible:!!Apps.error;text:Apps.error;color:Theme.red;font.pixelSize:12;wrapMode:Text.Wrap;elide:Text.ElideNone}
+        PanelText {Layout.fillWidth:true;visible:!!Apps.error;text:Apps.error;color:Theme.red;font.pixelSize:Tokens.textSize(12);wrapMode:Text.Wrap;elide:Text.ElideNone}
 
     }
 }

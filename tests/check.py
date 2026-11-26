@@ -26,18 +26,21 @@ commands = [
     [sys.executable, 'tests/reminders.py'],
     [sys.executable, 'tests/reminders-qml.py'],
     [sys.executable, 'tests/luma-native-qml.py'],
+    [sys.executable, 'tests/luma-page.py'],
+    [sys.executable, 'tests/luma-page-qml.py'],
     [sys.executable, 'tests/luma-capture-loader.py'],
     [sys.executable, 'tests/luma-capture-settings.py'],
+    [sys.executable, 'tests/lock-screen-ui.py'],
     [sys.executable, 'tests/inactive-content.py'],
     [sys.executable, 'tests/palette-cache.py'],
     *[['dbus-run-session', '--', sys.executable, f'tests/{name}.py'] for name in
-      ('bluetooth', 'notifications', 'session-events')],
+      ('bluetooth', 'notifications', 'session-events', 'dock-ui')],
 ]
 island_tests = (
     'activity-header-ui', 'dock-balance-ui', 'dock-bindings', 'dock-contour-gl',
     'dock-corrections', 'dock-data', 'dock-identity', 'dock-input', 'dock-media',
-    'dock-order-ui', 'dock-ui', 'focus-countdown-ui', 'island-controls-ui',
-    'island-geometry-ui', 'island-polish-ui', 'provider-privacy-ui', 'tray-hover-ui',
+    'dock-order-ui', 'focus-countdown-ui', 'island-appearance-ui', 'island-controls-ui',
+    'island-geometry-ui', 'island-polish-ui', 'power-menu-ui', 'provider-privacy-ui', 'tray-hover-ui',
 )
 island_commands = [[sys.executable, f'tests/{name}.py'] for name in island_tests]
 commands.extend(island_commands)

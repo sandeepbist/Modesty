@@ -11,6 +11,11 @@ import wallpaper as wallpaper_tools
 STATE = Path(os.environ.get('XDG_STATE_HOME') or Path.home() / '.local/state') / 'modesty'
 WALLS = Path(os.environ.get('MODESTY_WALLPAPERS') or Path.home() / 'Pictures/Wallpapers').expanduser()
 WALL_CACHE = Path(os.environ.get('XDG_CACHE_HOME') or Path.home() / '.cache') / 'modesty' / 'wallpapers.json'
+BUNDLED_WALLS = Path(__file__).resolve().parents[1] / 'setup' / 'wallpapers'
+BUNDLED_THEMES = {
+    'nasa-blue-marble.jpg': dict(id='blue-marble', label='Blue Marble', palette='nord'),
+    'nasa-earth-at-night.png': dict(id='earth-at-night', label='Earth at Night', palette='midnight'),
+}
 
 def run(args, check=True):
     p = subprocess.run(args, capture_output=True, text=True, timeout=8)
@@ -23,8 +28,12 @@ def optional(args):
     except (OSError, RuntimeError, subprocess.TimeoutExpired): return ''
 
 def wallpaper_files():
-    if not WALLS.is_dir(): return []
-    return [p.resolve() for p in sorted(WALLS.iterdir()) if p.is_file() and p.suffix.lower() in {'.png', '.jpg', '.jpeg', '.webp'}]
+    personal = [p.resolve() for p in sorted(WALLS.iterdir())
+                if p.is_file() and p.suffix.lower() in {'.png', '.jpg', '.jpeg', '.webp'}] if WALLS.is_dir() else []
+    names = {path.name for path in personal}
+    bundled = [BUNDLED_WALLS / name for name in BUNDLED_THEMES
+               if name not in names and (BUNDLED_WALLS / name).is_file()]
+    return list(dict.fromkeys(personal + bundled))
 
 def wallpapers(options=None):
     try: monitors = json.loads(optional(['hyprctl','monitors','-j']))
@@ -32,7 +41,7 @@ def wallpapers(options=None):
     displays = [[m['width'],m['height']] for m in monitors if m.get('width') and m.get('height')]
     files = wallpaper_files()
     signature = [[str(path), path.stat().st_mtime_ns, path.stat().st_size] for path in files]
-    key = [3, displays, signature]
+    key = [4, displays, signature]
     result = None
     try:
         cached = json.loads(WALL_CACHE.read_text())
@@ -47,7 +56,10 @@ def wallpapers(options=None):
                 thumb = wallpaper_tools.cached_image(path, 'preview')
                 display = wallpaper_tools.cached_image(path, 'display', displays)
             except (OSError, ValueError): thumb = display = path
-            result.append({'name':path.name,'path':str(path),'url':path.as_uri(),'thumbnailUrl':thumb.as_uri(),'displayUrl':display.as_uri()})
+            entry = {'name':path.name,'path':str(path),'url':path.as_uri(),'thumbnailUrl':thumb.as_uri(),'displayUrl':display.as_uri()}
+            if path.name in BUNDLED_THEMES:
+                entry['theme'] = BUNDLED_THEMES[path.name]
+            result.append(entry)
         wallpaper_tools.write_json(WALL_CACHE, {'key':key, 'wallpapers':result})
     if options:
         result = [dict(entry) for entry in result]

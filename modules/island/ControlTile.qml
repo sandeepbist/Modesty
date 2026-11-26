@@ -70,7 +70,7 @@ Rectangle {
         anchors.fill: parent; visible: !root.level && root.kind!=="media" && root.kind!=="notifications"
         Icon {x:root.width>90?14:(parent.width-width)/2;anchors.verticalCenter:parent.verticalCenter;icon:root.icon;size:Preferences.controlIconSize;color:root.foreground}
         Column { x:Math.max(48,Preferences.controlIconSize+24); anchors.verticalCenter: parent.verticalCenter; width:Math.max(0,parent.width-x-14); spacing:3; visible:root.width>90
-            PanelText { width:parent.width;visible:!["wifi","bluetooth"].includes(root.kind); text:root.title;color:root.foreground; font.pixelSize:12; font.weight:Font.DemiBold }
+            PanelText { width:parent.width;visible:!["wifi","bluetooth"].includes(root.kind); text:root.title;color:root.foreground; font.pixelSize:Tokens.textSize(12); font.weight:Font.DemiBold }
             PanelText { width:parent.width; text:root.subtitle; font.pixelSize:["wifi","bluetooth"].includes(root.kind)?12:11; color:root.selected?Theme.accentText:Theme.subtext; Behavior on color {ColorAnimation {duration:Tokens.animFast}} }
         }
         TapHandler { id:tileTap; enabled:root.usable; onTapped:{Hints.hide(root);root.activate();} }
@@ -93,7 +93,7 @@ Rectangle {
                 width:root.vertical?parent.width:38;height:14
                 visible:root.vertical?root.height>95:root.width>=170
                 horizontalAlignment:root.vertical?Text.AlignHCenter:Text.AlignRight
-                text:Math.round(levelSlider.position*100)+"%";font.pixelSize:11;font.features:({tnum:1})
+                text:Math.round(levelSlider.position*100)+"%";font.pixelSize:Tokens.textSize(11);font.features:({tnum:1})
                 color:root.vertical&&levelSlider.position>.85?Theme.bgSolid:Theme.subtext;z:2
             }
             Slider {
@@ -140,8 +140,8 @@ Rectangle {
         sourceComponent: Art {
             anchors.fill:parent;source:Media.artUrl;radius:root.radius
             Rectangle { anchors.fill:parent;radius:root.radius;color:Media.artUrl?"#aa141b17":Theme.surfaceSolid }
-            PanelText { x:12;y:11;visible:root.width>=100&&root.height>=90;width:parent.width-(root.width < 132 ? 42 : 24);text:Media.title||"Nothing playing";font.pixelSize:12;font.weight:Font.DemiBold;color:Media.artUrl?"#f5ffffff":Theme.text }
-            PanelText { x:12;y:29;visible:root.width>=100&&root.height>=90;width:parent.width-24;text:Media.artist;font.pixelSize:11;color:Media.artUrl?"#bdffffff":Theme.subtext }
+            PanelText { x:12;y:11;visible:root.width>=100&&root.height>=90;width:parent.width-(root.width < 132 ? 42 : 24);text:Media.title||"Nothing playing";font.pixelSize:Tokens.textSize(12);font.weight:Font.DemiBold;color:Media.artUrl?"#f5ffffff":Theme.text }
+            PanelText { x:12;y:29;visible:root.width>=100&&root.height>=90;width:parent.width-24;text:Media.artist;font.pixelSize:Tokens.textSize(11);color:Media.artUrl?"#bdffffff":Theme.subtext }
             RepeatButton {anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 3; size: 11; visible: root.width < 132 && root.height>=90; enabled: root.usable && Media.canRepeat}
             Row { anchors.horizontalCenter:parent.horizontalCenter;anchors.bottom:parent.bottom;anchors.bottomMargin:12;spacing:root.width>160?6:1
                 IconButton { icon:"skip_previous";label:"Previous";size:12;visible:root.width>=100;enabled:root.usable&&Media.canGoPrevious;onClicked:Media.previous() }

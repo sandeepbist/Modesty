@@ -17,27 +17,43 @@ import "../../services/ModelDiff.js" as ModelDiff
 
 PanelWindow {
     id: window
-    screen: Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name) ?? Quickshell.screens[0]
+    screen: Quickshell.screens.find(s => s.name === (CanvasState.privateSession?window.privateScreenName:Hyprland.focusedMonitor?.name)) ?? Quickshell.screens[0]
     implicitWidth: screen?.width ?? 1920
     implicitHeight: screen?.height ?? 1080
     color: "transparent"
     visible: CanvasState.opened || card.opacity > 0 || travelPhase !== ""
+    exclusionMode:CanvasState.privateSession?ExclusionMode.Ignore:ExclusionMode.Auto
     WlrLayershell.namespace: "modesty-command-canvas"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: !CanvasState.opened ? WlrKeyboardFocus.None : window.acquireFocus ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
+    WlrLayershell.keyboardFocus: !CanvasState.opened || CanvasState.privateSession ? WlrKeyboardFocus.None : window.acquireFocus ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
     anchors { top: true; left: true }
     mask: Region {
-        item: CanvasState.opened ? card : null
+        item: CanvasState.opened && window.privatePresented ? card : null
         radius: surface.radius
         Region { item: CanvasState.opened && scopeMenu.opened ? scopeMenu.contentItem : null; radius: 10 }
     }
     property bool acquireFocus: false
+    readonly property bool privatePresented:!CanvasState.privateSession||(LumaCapture.generation===CanvasState.identity&&LumaCapture.inputDestination!=="closed")
     HyprlandFocusGrab {
-        active: CanvasState.opened
+        active: CanvasState.opened&&!CanvasState.privateSession
         windows: [window]
-        onCleared: { window.acquireFocus = false; if(CanvasState.opened)CanvasState.close(); }
+        onCleared: { if(!CanvasState.privateSession){window.acquireFocus = false; if(CanvasState.opened)CanvasState.close();} }
     }
     property Item originItem: null
+    property string privateScreenName:""
+    property real privateX:0
+    property real privateY:0
+    property var deferredSearch:null
+    function startPrivate():void {
+        privateScreenName=Hyprland.focusedMonitor?.name??Quickshell.screens[0]?.name??"";
+        privateX=(width-card.finalWidth)*Preferences.searchX/100;
+        privateY=(height-Preferences.searchBarHeight)*Preferences.searchY/100;
+        privateOpen.restart();
+    }
+    Timer {id:privateOpen;objectName:"lumaPrivateArming";interval:80;onTriggered:{if(CanvasState.opened&&CanvasState.privateSession)LumaCapture.openPrivate(CanvasState.identity,window.privateScreenName);}}
+    Connections {target:Quickshell;function onScreensChanged(){
+        if(CanvasState.privateSession&&!Quickshell.screens.some(s=>s.name===window.privateScreenName))CanvasState.close("monitor-gone");
+    }}
     property string originScreenName: ""
     property bool originAvailable: false
     property real originX: 0
@@ -61,9 +77,10 @@ PanelWindow {
     readonly property string backend: Qt.resolvedUrl("../../scripts/command-canvas.py").toString().replace("file://", "")
     readonly property string calculator: Qt.resolvedUrl("../../scripts/calculator.py").toString().replace("file://", "")
     property string selectedScope: "all"
+    property bool pageView:false
     property string pendingScope: ""
     property real scopeExposure: 1
-    readonly property var prefix: matchPrefix(input.text)
+    readonly property var prefix: pageView?null:matchPrefix(input.text)
     readonly property string query: prefix ? input.text.slice(prefix.length) : input.text
     readonly property string scope: prefix ? prefix.scope : selectedScope
     property string provider: "web"
@@ -148,8 +165,11 @@ PanelWindow {
         if(word===Preferences.searchFilePrefix)return {scope:"files",length:match[0].length};
         return null;
     }
-    function search(value: string): void { Qt.callLater(()=>{window.acquireFocus=true;input.text=value;input.forceActiveFocus();}); }
-    function diagnostics(): var { return {open:CanvasState.opened,query,scope,calculating,calculation,calculationError,calculatorRunning:calculatorWorker.running,calculatorPending:calcDelay.running,prefix:prefix?.scope??"",selected,listIndex:list.currentIndex,actionBar,actionIndex,previewPath,count:results.length,results:results.slice(0,12).map(r=>({kind:r.kind,title:r.title})),answer:answerHasText?quickAnswer.title:"",answerKind:answerHasText?quickAnswer.label??"Source":"",answerPending,answerQuery,answerEligible,answerRunning:answerWorker.running,aiRunning:Luma.busy,indexed,attachmentPicker:conversation.pickerOpen,inputFocused:input.activeFocus,windowFocused:input.Window.active,keyboardAcquired:window.acquireFocus,x:card.x,y:card.y,width:card.width,height:card.height,originX,originY,travelPhase,travelProgress,border:borderLight.diagnostics()}; }
+    function search(value: string): void {
+        if(CanvasState.pendingOpen){deferredSearch=value;return;}
+        Qt.callLater(()=>{if(CanvasState.opened){window.acquireFocus=true;input.text=value;input.forceActiveFocus();}});
+    }
+    function diagnostics(): var { const menuAt=scopeMenu.contentItem.mapToItem(window.contentItem,0,0);return {scopeMenuBox:{x:menuAt.x,y:menuAt.y,width:scopeMenu.contentItem.width,height:scopeMenu.contentItem.height},presented:window.privatePresented,open:CanvasState.opened,privateSession:CanvasState.privateSession,inputDestination:LumaCapture.inputDestination,privateReady:LumaCapture.privateReady,captureState:LumaCapture.state,captureError:LumaCapture.error,screenName:screen?.name??"",screenWidth:width,screenHeight:height,normalX:Preferences.searchX,normalY:Preferences.searchY,query,scope,calculating,calculation,calculationError,calculatorRunning:calculatorWorker.running,calculatorPending:calcDelay.running,prefix:prefix?.scope??"",selected,listIndex:list.currentIndex,actionBar,actionIndex,previewPath,count:results.length,results:results.slice(0,12).map(r=>({kind:r.kind,title:r.title})),answer:answerHasText?quickAnswer.title:"",answerKind:answerHasText?quickAnswer.label??"Source":"",answerPending,answerQuery,answerEligible,answerRunning:answerWorker.running,aiRunning:Luma.busy,indexed,attachmentPicker:conversation.pickerOpen,scopeMenuOpen:scopeMenu.opened,inputFocused:input.activeFocus,windowFocused:input.Window.active,keyboardAcquired:window.acquireFocus,x:card.x,y:card.y,width:card.width,height:card.height,originX,originY,travelPhase,travelProgress,border:borderLight.diagnostics()}; }
     function capture(path: string): void { if(CanvasState.opened) card.grabToImage(result => result.saveToFile(path)); }
     function moveDrop(opening: bool): void {
         travel.stop();
@@ -213,6 +233,7 @@ PanelWindow {
         scopeMotion.restart();
     }
     function commitScope(value: string): void {
+        pageView=false;
         selectedScope = value; if(prefix)input.text=query;
         provider="web"; selected = 0; selectedKey = ""; selectionPinned=false; actionBar = false; previewPath = ""; answerExpanded=false; confirmClear=false;
         if (value === "clipboard") refreshClipboard();
@@ -285,6 +306,17 @@ PanelWindow {
         answerWorker.running=false;
         if(ready&&Luma.usePreview(value,ready)||Luma.send(value,intent))input.clear();
     }
+    function analyzePage():void {
+        if(!Luma.pageAvailable)return;
+        const draft=input.text;
+        answerDelay.stop();answerRevealDelay.stop();answerWorker.running=false;queuedAsk="";
+        quickAnswer=null;heldAnswer=null;answerQuery="";answerExpanded=false;answerRevealed=false;
+        scopeMotion.stop();scopeExposure=1;pendingScope="";pageView=true;selectedScope="ask";
+        provider="web";selected=0;selectedKey="";selectionPinned=false;actionBar=false;previewPath="";
+        conversation.pickerOpen=false;conversation.historyOpen=false;
+        Luma.analyzePage(draft);
+        input.forceActiveFocus();
+    }
     function retryAnswer(): void {
         if(answerWorker.running||answerRetryAt*1000>Date.now())return;
         sourceSettled=false;quickAnswer=null;answerQuery="";answerError="";answerStatus="Understanding";
@@ -349,6 +381,7 @@ PanelWindow {
         else if (index === 4) { Luma.attach(row.path); scopeMotion.stop();scopeExposure=1;commitScope("ask"); input.clear(); }
     }
     function closeOne(): void {
+        if(CanvasState.privateSession){CanvasState.close("escape");return;}
         if(Voice.active){Voice.cancel();input.forceActiveFocus();}
         else if(Voice.error){Voice.error="";input.forceActiveFocus();}
         else if (conversation.pickerOpen) conversation.closeAttachments();
@@ -413,18 +446,21 @@ PanelWindow {
     onAnswerEligibleChanged:{if(answerEligible&&query.trim().length>=4){answerRevealDelay.restart();answerDelay.restart();}else{answerRevealDelay.stop();answerRevealed=false;answerExpanded=false;answerDelay.stop();if(!Luma.previewActive)answerWorker.running=false;}}
     onProviderChanged:if(scope==="web"&&query.trim().length>=3){if(provider==="web"){onlineDelay.restart();answerDelay.restart();}else{onlineDelay.stop();answerDelay.stop();}}
     Connections {target:Luma;function onCancelPreview(){window.queuedAsk="";answerWorker.running=false;}}
-    Connections {target:CanvasState;function onConversationRequested(){window.acquireFocus=true;scopeMotion.stop();window.scopeExposure=1;commitScope("ask");input.clear();input.forceActiveFocus();}function onOpenedChanged() {
+    Connections {target:CanvasState;function onTypingRequested(){if(!conversation.pickerOpen&&!scopeMenu.opened&&!conversation.historyOpen)input.forceActiveFocus();}function onConversationRequested(){window.acquireFocus=true;scopeMotion.stop();window.scopeExposure=1;commitScope("ask");input.clear();input.forceActiveFocus();}function onOpenedChanged() {
         if (CanvasState.opened) {
+            if(CanvasState.privateSession)window.startPrivate();
             window.acquireFocus=true;
             closeCleanup.stop();scopeMotion.stop();window.scopeExposure=1;window.pendingScope="";window.suppressResize=true;
             window.promptIndex=0;
-            window.selectedScope=Luma.busy?"ask":"all"; window.provider="web"; input.clear();
+            window.pageView=false;window.selectedScope=Luma.busy?"ask":"all"; window.provider="web"; input.clear();
             window.fileRows=[]; window.previewPath=""; window.actionBar=false;
             input.forceActiveFocus();
             indexDelay.restart();
             resetDone.restart();
-            window.moveDrop(true);
+            if(!CanvasState.privateSession)window.moveDrop(true);
+            if(window.deferredSearch!==null){const value=window.deferredSearch;window.deferredSearch=null;window.search(value);}
         } else {
+            privateOpen.stop();
             window.acquireFocus=false;
             indexDelay.stop();
             calcDelay.stop();calculatorWorker.running=false;
@@ -568,14 +604,15 @@ PanelWindow {
     Item {
         id:card;objectName:"lumaSurface"
         readonly property real finalWidth:Math.min(Preferences.searchWidth,window.width-24)
-        readonly property real finalX:Math.max(12,Math.min((window.width-finalWidth)*Preferences.searchX/100,window.width-finalWidth-12))
-        readonly property real finalY:Math.max(12,Math.min((window.height-Preferences.searchBarHeight)*Preferences.searchY/100,window.height-Preferences.searchBarHeight-38-104-17-16))
+        readonly property real finalX:Math.max(12,Math.min(CanvasState.privateSession?window.privateX:(window.width-finalWidth)*Preferences.searchX/100,window.width-finalWidth-12))
+        readonly property real normalY:Math.max(12,Math.min((window.height-Preferences.searchBarHeight)*Preferences.searchY/100,window.height-Preferences.searchBarHeight-38-104-17-16))
+        readonly property real finalY:CanvasState.privateSession?Math.max(12,Math.min(window.privateY,window.height-bodyHeight-16)):normalY
         readonly property bool voiceStatus:Voice.active||!!Voice.error
         readonly property bool expanded:voiceStatus||window.query.trim().length>0||window.scope!=="all"||!!window.previewPath
         readonly property int listTop:Preferences.searchBarHeight+12
         readonly property int answerSpace:window.answerVisible?Math.ceil(answerPanel.preferredHeight)+12:0
         readonly property int footerSpace:window.actionBar?48:window.scope==="clipboard"&&window.clipboardRows.length?45:16
-        readonly property real heightLimit:Math.min(window.height-finalY-16,Math.max(Preferences.searchMaxHeight,listTop+68+footerSpace))
+        readonly property real heightLimit:Math.min(window.height-(CanvasState.privateSession?28:normalY+16),Math.max(Preferences.searchMaxHeight,listTop+68+footerSpace))
         readonly property int rowsShown:window.answerExpanded?0:Math.min(resultModel.count,Preferences.searchRows,Math.max(answerSpace?0:1,Math.floor((heightLimit-listTop-answerSpace-footerSpace-8)/52)))
         readonly property bool emptyMessage:!rowsShown&&((window.scope==="files"&&window.query.trim().length>=2)||(window.scope==="content"&&window.query.trim().length>=3)||(window.scope==="actions"&&window.query.trim().length>0)||window.scope==="clipboard")
         readonly property int baseHeight:Preferences.searchBarHeight
@@ -587,10 +624,10 @@ PanelWindow {
         height:window.travelling?window.orbSize+(bodyHeight-window.orbSize)*window.heightAmount:bodyHeight
         x:window.travelling?window.originX+(finalX+panelWidth/2-window.originX)*window.fallAmount-width/2:finalX
         y:window.travelling?window.originY+22*window.separationAmount+(finalY+Preferences.searchBarHeight/2-window.originY-22)*window.fallAmount-Math.min(height,Preferences.searchBarHeight)/2:finalY
-        opacity:window.travelling?(window.travelProgress>.001?1:0):CanvasState.opened?1:0
+        opacity:!window.privatePresented?0:window.travelling?(window.travelProgress>.001?1:0):CanvasState.opened?1:0
         transform:Translate {y:window.travelling||CanvasState.opened?0:8;Behavior on y {enabled:!window.travelling;NumberAnimation {id:panelLiftMotion;duration:Tokens.reducedMotion?0:Preferences.searchMotion;easing.type:Easing.OutQuint}}}
         visible:opacity>0
-        Behavior on opacity {enabled:!window.travelling;NumberAnimation {duration:Tokens.reducedMotion?0:Math.round(Preferences.searchMotion*.65);easing.type:Easing.OutCubic}}
+        Behavior on opacity {enabled:!window.travelling&&!CanvasState.privateSession;NumberAnimation {duration:Tokens.reducedMotion?0:Math.round(Preferences.searchMotion*.65);easing.type:Easing.OutCubic}}
         Behavior on panelWidth {enabled:!window.travelling&&!Tokens.reducedMotion&&Preferences.searchMotion>0;SmoothedAnimation {id:widthMotion;velocity:-1;duration:Preferences.searchMotion;reversingMode:SmoothedAnimation.Immediate}}
         Behavior on bodyHeight {enabled:!window.suppressResize&&!window.travelling&&!Tokens.reducedMotion&&Preferences.searchMotion>0;SmoothedAnimation {id:resizeMotion;velocity:-1;duration:Math.round(Preferences.searchMotion*1.15);reversingMode:SmoothedAnimation.Immediate}}
         RectangularShadow {anchors.fill:surface;radius:surface.radius;blur:window.travelling?8+16*window.widthAmount:24;offset.y:window.travelling?3+7*window.widthAmount:10;color:Theme.light?"#18000000":"#40000000";cached:!window.travelling&&!resizeMotion.running&&!widthMotion.running;visible:Preferences.shadows}
@@ -621,6 +658,7 @@ PanelWindow {
                 }
                 Menu {
                     id:scopeMenu;objectName:"lumaFilters"
+                    popupType:Popup.Item
                     x:-4;y:searchBar.height+12;width:196;padding:6
                     closePolicy:Popup.CloseOnEscape|Popup.CloseOnPressOutside
                     onClosed:if(CanvasState.opened)input.forceActiveFocus()
@@ -644,7 +682,7 @@ PanelWindow {
                 }
                 TextInput {
                     id:input;objectName:"commandCanvasSearch"
-                    x:window.scope==="ask"?0:44;width:parent.width-x-(Preferences.searchAiEnabled?76:34);height:parent.height
+                    x:window.scope==="ask"?0:44;width:parent.width-x-(CanvasState.privateSession?148:Preferences.searchAiEnabled?76:34);height:parent.height
                     verticalAlignment:TextInput.AlignVCenter
                     focus:true;clip:true;selectByMouse:true;maximumLength:6000
                     readOnly:Voice.active
@@ -659,9 +697,10 @@ PanelWindow {
                     Keys.onDownPressed:window.scope==="ask"?conversation.scroll(36):window.answerExpanded?window.scrollAnswer(36):window.step(1)
                     Keys.onUpPressed:window.scope==="ask"?conversation.scroll(-36):window.answerExpanded?window.scrollAnswer(-36):window.step(-1)
                     Keys.onEscapePressed:if(window.scope==="ask"&&conversation.historyOpen)conversation.historyOpen=false;else window.closeOne()
-                    Keys.onTabPressed:event=>{if(!window.answerExpanded&&window.results[window.selected]?.kind==="file"){window.actionIndex=window.actionBar?(window.actionIndex+1)%6:0;window.actionBar=true;window.previewPath="";}event.accepted=true;}
-                    Keys.onBacktabPressed:event=>{if(window.actionBar)window.actionIndex=(window.actionIndex+5)%6;event.accepted=true;}
+                    Keys.onTabPressed:event=>{if(!window.answerExpanded&&window.results[window.selected]?.kind==="file"){window.actionIndex=window.actionBar?(window.actionIndex+1)%6:0;window.actionBar=true;window.previewPath="";}else if(CanvasState.privateSession){event.accepted=false;return;}event.accepted=true;}
+                    Keys.onBacktabPressed:event=>{if(window.actionBar)window.actionIndex=(window.actionIndex+5)%6;else if(CanvasState.privateSession){event.accepted=false;return;}event.accepted=true;}
                     Keys.onPressed:event=>{
+                        if(LumaCapture.clipboardKey(input,event))return;
                         if(event.key===Qt.Key_Return||event.key===Qt.Key_Enter){if(window.scope==="ask"&&conversation.historyOpen)conversation.openSelectedConversation();else window.submit(event.modifiers);event.accepted=true;}
                         else if(event.key===Qt.Key_Space&&event.modifiers===Qt.ControlModifier){if(window.answerExpanded&&window.answerHasText)window.answerExpanded=false;else if(window.results[window.selected]?.kind==="file")window.showPreview();else if(window.answerHasText)window.answerExpanded=true;event.accepted=true;}
                         else if(window.scope==="ask"&&(event.key===Qt.Key_PageDown||event.key===Qt.Key_PageUp)){conversation.scroll(conversation.height*.8*(event.key===Qt.Key_PageDown?1:-1));event.accepted=true;}
@@ -670,13 +709,52 @@ PanelWindow {
                     }
                     RollingText {anchors.fill:parent;visible:!input.text;text:Voice.active?(Voice.held?"I’m listening…":"One moment…"):window.prompt;color:Theme.withAlpha(Theme.text,input.activeFocus?.7:.5);font:input.font;horizontalAlignment:Text.AlignLeft;verticalAlignment:Text.AlignVCenter;Behavior on color {ColorAnimation {duration:Tokens.animMedium}}}
                 }
-                IconButton {anchors.right:parent.right;anchors.verticalCenter:parent.verticalCenter;icon:"close";size:16;label:"Close Luma";visible:!conversation.pickerOpen;onClicked:CanvasState.close()}
+                IconButton {anchors.right:parent.right;anchors.verticalCenter:parent.verticalCenter;icon:"close";size:16;label:"Close Luma";visible:!CanvasState.privateSession&&!conversation.pickerOpen;onClicked:CanvasState.close()}
                 IconButton {
-                    id:sendButton;anchors.right:parent.right;anchors.rightMargin:38;anchors.verticalCenter:parent.verticalCenter
+                    id:analyzePageButton;objectName:"lumaAnalyzePage"
+                    anchors.right:parent.right;anchors.rightMargin:114;anchors.verticalCenter:parent.verticalCenter
+                    icon:"document_scanner";size:18;color:Theme.accent
+                    label:"Analyze Page · sends exposed document text and the visible window image to your configured AI provider"
+                    Accessible.description:label
+                    visible:CanvasState.privateSession&&LumaCapture.privateReady
+                    enabled:Luma.pageAvailable
+                    onClicked:window.analyzePage()
+                }
+                IconButton {
+                    id:sendButton;anchors.right:parent.right;anchors.rightMargin:CanvasState.privateSession?76:38;anchors.verticalCenter:parent.verticalCenter
                     icon:"arrow_forward";rotation:-90;size:18;label:"Ask Luma · Ctrl+Enter";color:Theme.accent
                     opacity:Preferences.searchAiEnabled&&input.text.trim()?(Luma.busy?.35:1):0
                     enabled:!!input.text.trim()&&!Luma.busy&&!Voice.active;visible:!Voice.active&&opacity>0;onClicked:window.ask()
                     Behavior on opacity {NumberAnimation {duration:Tokens.animFast;easing.type:Easing.OutCubic}}
+                }
+            }
+            Item {
+                id:dragHandle;objectName:"lumaDragHandle"
+                visible:CanvasState.privateSession
+                x:parent.width-56;y:Math.max(8,(Preferences.searchBarHeight-32)/2);width:32;height:32
+                activeFocusOnTab:true
+                Accessible.role:Accessible.Button;Accessible.name:"Move Luma";Accessible.description:"Drag to move Luma. Arrow keys move it when focused."
+                Rectangle {anchors.fill:parent;radius:16;color:"transparent";border.width:dragHandle.activeFocus?1:0;border.color:Theme.accent}
+                Icon {anchors.centerIn:parent;icon:"drag_indicator";size:18;color:Theme.subtext}
+                property real startX:0
+                property real startY:0
+                DragHandler {
+                    id:dragMotion
+                    target:null
+                    onActiveChanged:if(active){dragHandle.startX=card.finalX;dragHandle.startY=card.finalY;}
+                    onTranslationChanged:{
+                        if(!active)return;
+                        window.privateX=Math.max(12,Math.min(dragHandle.startX+translation.x,window.width-card.width-12));
+                        window.privateY=Math.max(12,Math.min(dragHandle.startY+translation.y,window.height-card.height-16));
+                    }
+                }
+                Keys.onPressed:event=>{
+                    if(event.key===Qt.Key_Left)window.privateX=card.finalX-12;
+                    else if(event.key===Qt.Key_Right)window.privateX=card.finalX+12;
+                    else if(event.key===Qt.Key_Up)window.privateY=card.finalY-12;
+                    else if(event.key===Qt.Key_Down)window.privateY=card.finalY+12;
+                    else return;
+                    event.accepted=true;
                 }
             }
             Rectangle {x:24;y:card.baseHeight;width:parent.width-48;height:1;color:Theme.withAlpha(Theme.text,.065);opacity:card.expanded&&!card.voiceStatus?window.contentAmount:0;Behavior on opacity {NumberAnimation {duration:Tokens.animFast}}}
@@ -840,4 +918,5 @@ PanelWindow {
         }
 
     }
+    HintBubble {objectName:"lumaPageHint";wrap:true}
 }

@@ -296,6 +296,14 @@ Item {
                 ActionButton {visible:!!Luma.sharedText;text:"Shared text ×";implicitHeight:28;onClicked:Luma.sharedText=""}
             }
         }
+        PanelText {
+            objectName:"lumaPageScope"
+            width:parent.width
+            visible:!!Luma.currentWindow?.scope
+            text:!visible?"":(Luma.currentWindow.scope==="document_text"?(Luma.currentWindow.truncated?"Limited exposed document text + visible window":"Exposed document text + visible window"):"Visible window only")+" · "+(Luma.currentWindow.fallbackReason||"Virtualized or unexposed content and offscreen imagery may be missing.")
+            wrapMode:Text.WordWrap;font.pixelSize:11;color:Theme.subtext
+            Accessible.name:text
+        }
         Row {
             width:parent.width;height:32;spacing:6
             IconButton {icon:"attach_file";size:16;color:Theme.subtext;label:"Attach file · sent to answer provider";enabled:!Luma.busy&&Luma.attachments.length<3;onClicked:root.openAttachments()}

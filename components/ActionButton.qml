@@ -17,7 +17,7 @@ AbstractButton {
     opacity: enabled ? 1 : 0.4
 
     background: Rectangle {
-        radius: 12
+        radius: Tokens.fieldRadius
         color: root.primary ? Theme.accent : Theme.surfaceSolid
         border.width: root.activeFocus ? 1 : 0
         border.color: Theme.accent
@@ -31,7 +31,7 @@ AbstractButton {
         id: label
 
         text: root.text
-        font.pixelSize: 12
+        font.pixelSize: Tokens.textSize(12)
         font.weight: Font.Medium
         color: root.primary ? Theme.accentText : Theme.text
         horizontalAlignment: Text.AlignHCenter

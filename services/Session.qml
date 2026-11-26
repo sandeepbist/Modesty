@@ -90,17 +90,20 @@ Singleton {
     // Authentication completes first; the compositor lock remains held until
     // every lock surface has finished its departure animation.
     Timer {
-        id: unlockDelay; interval: Tokens.reducedMotion ? 1 : Preferences.lockDuration + 16
+        id: unlockDelay; interval: Tokens.reducedMotion ? 1 : Tokens.lockDepartureDuration + 16
         onTriggered: {
             sessionLock.locked = false;
             root.refreshLockState();
-            root.unlocking = false;
+            if (!sessionLock.secure) root.unlocking = false;
         }
     }
     WlSessionLock {
         id: sessionLock
         onSecureChanged: {
-            Qt.callLater(root.refreshLockState);
+            Qt.callLater(() => {
+                root.refreshLockState();
+                if (!secure && !locked) root.unlocking = false;
+            });
             if (secure && root.suspendAfterLock) {
                 root.suspendAfterLock = false;
                 suspendProc.running = true;

@@ -56,17 +56,22 @@ with tempfile.TemporaryDirectory(prefix='luma-loader-check-') as temporary:
         reload_error = None
         unload_error = None
         unload_completed = False
+        input_neutral = True
 
         def output(command, **kwargs):
             calls.append(command)
             if command == ['hyprctl', 'version', '-j']:
                 return json.dumps({'commit': version})
-            if command == ['pkg-config', '--cflags', '--libs', 'hyprland']:
+            if command == ['pkg-config', '--cflags', '--libs', 'hyprland', 'libeis-1.0']:
                 return '-I/mock/include'
             if command == [os.environ.get('CXX', 'c++'), '--version']:
                 return 'mock compiler 1.0'
             if command == ['hyprctl', 'plugin', 'list', '-j']:
                 return json.dumps([{'name': 'luma-capture'}] if active else [])
+            if command == ['hyprctl', 'luma-private', 'status']:
+                return json.dumps({'protocol': 1})
+            if command == ['hyprctl', 'luma-private', 'quiesce']:
+                return json.dumps({'protocol': 1, 'neutral': input_neutral})
             if command[:3] == ['hyprctl', 'plugin', 'load']:
                 if not marker.exists():
                     check(not marker.exists() and not script.exists())
@@ -143,6 +148,12 @@ with tempfile.TemporaryDirectory(prefix='luma-loader-check-') as temporary:
                     script.unlink()
                 execs.write_bytes(original)
 
+            initial_build = loader.build()
+            header = loader.SOURCE.with_name('private-input.hpp')
+            header.write_text('// Changed router dependency\n')
+            check(loader.build() != initial_build, 'Router changes reused a stale binary')
+            header.unlink()
+            check(loader.build() == initial_build)
             plugin = loader.enable()
             check(json.loads(marker.read_text())['plugin'] == str(plugin))
             check(execs.stat().st_mode & 0o777 == 0o640)
@@ -174,6 +185,10 @@ with tempfile.TemporaryDirectory(prefix='luma-loader-check-') as temporary:
             state = json.loads(stdout.getvalue())
             check(state['enabled'] and state['loaded'] and state['supported'])
             check(state['supportedBuild'] == loader.SUPPORTED_BUILD)
+            check(state['inputProtocol'] == 1)
+            for unavailable in ('unknown request', '{"protocol":0}', 'null'):
+                with patch.object(loader, 'output', return_value=unavailable):
+                    check(not loader.input_capability(), 'Old or invalid API advertised private input')
             for command in ('build', 'test'):
                 with patch.object(sys, 'argv', ['luma-capture.py', command]), \
                         contextlib.redirect_stdout(io.StringIO()), \
@@ -243,6 +258,12 @@ assert(callback); callback()
             plugin = replacement
             execs.write_bytes(registered+b'\r\n-- unrelated edit after enable\r\n')
             edited = execs.read_bytes()
+            input_neutral = False
+            before = list(calls)
+            fails(loader.disable, 'Release all keys and modifiers')
+            check(marker.exists() and str(plugin) in active)
+            check(not any(command[:3] == ['hyprctl', 'plugin', 'unload'] for command in calls[len(before):]))
+            input_neutral = True
             loader.disable()
             check(not marker.exists() and not active and execs.read_bytes() == edited)
             check(calls[-2:] == [['hyprctl', 'plugin', 'unload', str(plugin)], ['hyprctl', 'reload']])
@@ -265,7 +286,8 @@ assert(callback); callback()
                 check(marker.exists() and marker.read_bytes() == recorded,
                       'Failed unload discarded the recovery marker')
                 check((str(plugin) in active) is not unload_completed and execs.read_bytes() == edited)
-                check(calls[before:] == [['hyprctl', 'plugin', 'unload', str(plugin)]],
+                check(calls[before:] == [['hyprctl', 'plugin', 'list', '-j'], ['hyprctl', 'luma-private', 'status'],
+                                        ['hyprctl', 'luma-private', 'quiesce'], ['hyprctl', 'plugin', 'unload', str(plugin)]],
                       'Native fallback changed before plugin unload succeeded')
                 if not unload_completed:
                     check(loader.load(plugin) is False, 'Failed disable lost the recorded build identity')

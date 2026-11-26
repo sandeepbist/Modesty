@@ -32,7 +32,7 @@ Rectangle {
             PanelText {id:appName;objectName:"notificationAppName";x:root.popup?24:0;anchors.verticalCenter:parent.verticalCenter;width:Math.max(0,parent.width-x-(root.popup?26:0));text:root.notification?.appName||"Notification";font.pixelSize:root.popup?11:10;font.weight:Font.Medium;color:Theme.subtext}
         }
         PanelText {id:summary;objectName:"notificationSummary";width:parent.width;text:root.notification?.summary||"";font.pixelSize:root.popup?14:13;font.weight:Font.Medium;wrapMode:Text.Wrap;maximumLineCount:root.expanded||root.popup?2:1}
-        PanelText {id:body;objectName:"notificationBody";width:parent.width;visible:Preferences.notificationBody&&!!text;text:root.notification?.body||"";font.pixelSize:12;color:Theme.subtext;wrapMode:Text.Wrap;maximumLineCount:root.expanded?100:root.popup?2:1;elide:Text.ElideRight;lineHeight:1.15}
+        PanelText {id:body;objectName:"notificationBody";width:parent.width;visible:Preferences.notificationBody&&!!text;text:root.notification?.body||"";font.pixelSize:Tokens.textSize(12);color:Theme.subtext;wrapMode:Text.Wrap;maximumLineCount:root.expanded?100:root.popup?2:1;elide:Text.ElideRight;lineHeight:1.15}
         PanelText {objectName:"notificationTimestamp";visible:root.expanded;text:root.notification?Qt.formatDateTime(root.notification.receivedAt,"ddd, h:mm ap"):"";font.pixelSize:10;color:Theme.subtext}
         Flow {
             id:actions;objectName:"notificationActions"
@@ -51,7 +51,7 @@ Rectangle {
                         Rectangle {anchors.fill:parent;radius:parent.radius;color:Theme.withAlpha(Theme.text,action.pressed?.12:action.hovered?(root.popup?.065:.14):0);Behavior on color {ColorAnimation {duration:Tokens.animFast}}}
                     }
                     contentItem:PanelText {
-                        id:actionLabel;text:action.text;font.pixelSize:12;font.weight:Font.Medium
+                        id:actionLabel;text:action.text;font.pixelSize:Tokens.textSize(12);font.weight:Font.Medium
                         horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter
                         wrapMode:root.popup?Text.WrapAnywhere:Text.NoWrap;elide:root.popup?Text.ElideNone:Text.ElideRight
                     }

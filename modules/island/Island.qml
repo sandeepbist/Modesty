@@ -20,6 +20,9 @@ PanelWindow {
             && /^flameshot$/i.test(c.title || "") && c.mapped !== false;
     })
     readonly property bool hiddenByFullscreen: captureActive || (fullscreen && !IslandState.menuOpen && !Tray.open)
+    readonly property bool sessionBlocked: Session.locked || Session.secure
+    readonly property bool preparingUnlock: Session.unlocking === true && Preferences.lockScreenStyle === "modern"
+    readonly property bool inputAllowed: !sessionBlocked && surface.visible && !captureActive && !hiddenByFullscreen
     Timer {id:fullscreenRefresh;interval:50;onTriggered:Hyprland.refreshToplevels()}
     Connections {target:Hyprland;function onRawEvent(event){if(["fullscreen","activewindowv2","workspacev2","movewindowv2","closewindow","openwindow","windowtitlev2"].includes(event.name))fullscreenRefresh.restart();}}
     Component.onCompleted: Hyprland.refreshToplevels()
@@ -33,7 +36,7 @@ PanelWindow {
     color: "transparent"
     WlrLayershell.namespace: "modesty-island"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: IslandState.menuOpen && surface.visible && !captureActive ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: IslandState.menuOpen && inputAllowed ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     anchors {
         top: true
@@ -42,7 +45,7 @@ PanelWindow {
 
     // Compositor dismissal also works when a shortcut opens under a stationary pointer.
     HyprlandFocusGrab {
-        active: IslandState.menuOpen && root.visible && surface.visible && !root.captureActive
+        active: IslandState.menuOpen && root.visible && root.inputAllowed
         windows: root.dropTargetWindow?.visible ? [root,root.dropTargetWindow] : [root]
         onCleared: if (IslandState.menuOpen) IslandState.dismissCurrent()
     }
@@ -58,19 +61,19 @@ PanelWindow {
         transformOrigin: Item.Top
         availableWidth: root.width
         availableHeight: root.height-y
-        visible: !!root.screen && !Session.locked && !Session.secure && !root.hiddenByFullscreen
-        focus: true
+        visible: !!root.screen && (!root.sessionBlocked || root.preparingUnlock) && !root.hiddenByFullscreen
+        focus: !root.sessionBlocked
         Keys.onEscapePressed: { Tray.close(); IslandState.dismissCurrent(); }
     }
 
     mask: Region {
-        item: root.captureActive || root.hiddenByFullscreen || !surface.visible ? null : surface.clockStage.inputRegion
+        item: root.inputAllowed ? surface.clockStage.inputRegion : null
         radius: surface.clockStage.capsule.radius
-        Region { item: root.hiddenByFullscreen || !surface.visible || !surface.mediaStage.visible || !surface.mediaStage.enabled ? null : surface.mediaStage.inputRegion; radius: surface.mediaStage.capsule.radius }
-        Region { item: root.hiddenByFullscreen || !surface.visible || !surface.controlStage.visible ? null : surface.controlStage.inputRegion; radius: surface.controlStage.capsule.radius }
-        Region { item: root.hiddenByFullscreen || !surface.visible || !surface.trayIcons.visible ? null : surface.trayIcons; radius: Preferences.barHeight / 2 }
-        Region { item: Tray.open && surface.visible && !root.hiddenByFullscreen ? surface.trayMenu : null; radius:18 }
-        Region { item: root.hiddenByFullscreen || !surface.visible ? null : surface.popupInputRegion; radius:12*Preferences.uiScale }
+        Region { item: root.inputAllowed && surface.mediaStage.visible && surface.mediaStage.enabled ? surface.mediaStage.inputRegion : null; radius: surface.mediaStage.capsule.radius }
+        Region { item: root.inputAllowed && surface.controlStage.visible ? surface.controlStage.inputRegion : null; radius: surface.controlStage.capsule.radius }
+        Region { item: root.inputAllowed && surface.trayIcons.visible ? surface.trayIcons : null; radius: Preferences.barHeight / 2 }
+        Region { item: root.inputAllowed && Tray.open ? surface.trayMenu : null; radius:18 }
+        Region { item: root.inputAllowed ? surface.popupInputRegion : null; radius:12*Preferences.uiScale }
     }
 
 }

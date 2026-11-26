@@ -7,7 +7,7 @@ Item {
     id: root
     property string text: ""
     property color color: Theme.text
-    property font font: Qt.font({family: Tokens.font, pixelSize: 14, weight: Font.Medium})
+    property font font: Qt.font({family: Tokens.font, pixelSize: Tokens.pillTextSize, weight: Font.Medium})
     property int horizontalAlignment: Text.AlignHCenter
     property int verticalAlignment: Text.AlignVCenter
     property bool marquee: false

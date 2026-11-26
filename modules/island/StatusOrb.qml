@@ -60,7 +60,7 @@ Item {
             color:Theme.text;opacity:selected?(root.deviceOnly?1:1-root.dockProgress):0;visible:opacity>0
         }
     }
-    Text {anchors.horizontalCenter:parent.horizontalCenter;y:20;text:root.batteryKnown?Math.round(root.level*100)+"%":"?";font.pixelSize:7;color:Theme.text;opacity:root.dockProgress;visible:root.deviceOnly}
+    Text {font.family:Tokens.font;anchors.horizontalCenter:parent.horizontalCenter;y:20;text:root.batteryKnown?Math.round(root.level*100)+"%":"?";font.pixelSize:7;color:Theme.text;opacity:root.dockProgress;visible:root.deviceOnly}
     DockSignals {id:signals;visible:!root.deviceOnly;anchors.fill:parent;dockProgress:root.dockProgress;compactWifi:!root.deviceShown}
     Accessible.role:Accessible.StaticText
     Accessible.name:statusText

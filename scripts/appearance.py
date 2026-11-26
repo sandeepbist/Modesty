@@ -26,7 +26,10 @@ def apply(data, directory):
     lua = colors_config(data['colors'])
     directory.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile('w',dir=directory,prefix='.appearance-',delete=False) as stream:
-        json.dump({'paletteName':data['paletteName'],'mode':data['mode']},stream)
+        state = {'paletteName': data['paletteName'], 'mode': data['mode']}
+        if 'customThemes' in data:
+            state['customThemes'] = data['customThemes']
+        json.dump(state, stream)
         temporary=Path(stream.name)
     temporary.replace(directory/'appearance.json')
     subprocess.run(['hyprctl','eval',lua],check=True,capture_output=True,text=True,timeout=5)
@@ -68,7 +71,8 @@ def apply(data, directory):
 
 if __name__ == '__main__':
     try:
-        apply(json.loads(sys.argv[1]), Path(os.environ.get('XDG_STATE_HOME') or Path.home()/'.local/state')/'modesty')
+        data = json.loads(sys.stdin.readline() if sys.argv[1] == '--stdin' else sys.argv[1])
+        apply(data, Path(os.environ.get('XDG_STATE_HOME') or Path.home()/'.local/state')/'modesty')
         print(json.dumps({'ok':True}))
     except Exception as error:
         print(json.dumps({'ok':False,'error':str(error)}));sys.exit(1)

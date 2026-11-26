@@ -29,9 +29,13 @@ third-party copyrighted material have separate restrictions.
 - **Earth at Night (2012):** NASA Earth Observatory/NOAA; Suomi NPP VIIRS imagery.
   [NASA image collection](https://github.com/NASAWorldWind/WebWorldWind/blob/develop/images/dnb_land_ocean_ice_2012.png).
 
-The maintainer's personal wallpaper shown in showcase captures is not supplied
-by the installer and is not relicensed by Modesty. Screenshots and clips show the
-live desktop; visible application icons and artwork retain their creators' rights.
+### Showcase photography
+
+The README screenshots and demos use mountain photography from the maintainer's
+wallpaper collection and the photographer's Unsplash gallery. The photos appear
+as backgrounds and thumbnails in the shell preview. They retain their
+original terms and are separate from the installer wallpapers.
+[Daniel Leone on Unsplash](https://unsplash.com/@danielleone) · [Unsplash License](https://unsplash.com/license).
 
 Do not add downloaded images without recording their source and redistribution
 terms. Keep upstream license notices when replacing or updating assets.

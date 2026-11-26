@@ -20,6 +20,7 @@ ShellRoot {
     property var launcherItem
     property var wifiItem
     property real closeOpacity: 0
+    property bool overlappingPanes: false
     property double deadline: Date.now() + 15000
     FloatingWindow {
         visible: true; implicitWidth: 1000; implicitHeight: 1000
@@ -82,13 +83,13 @@ ShellRoot {
                 near(pane("clock").visibleScale, .7, "Partial opening scale");
                 check(!pane("clock").presented && pane("clock").opacity > .1, "Partial opening did not reveal");
                 closeOpacity = pane("clock").opacity;
+                const openingReveal = pane("clock").revealAmount;
                 stage.panel = "idle";
                 near(pane("clock").outgoingScale, .7, "Close snapshot raced selection");
-                const t = (.7 - .55) / .43;
-                near(pane("clock").outgoingReveal, t * t * (3 - 2 * t), "Close reveal snapshot");
+                near(pane("clock").outgoingReveal, openingReveal, "Close reveal snapshot");
                 geometry(.4); next();
             } else if (phase === 2) {
-                near(pane("clock").transform[0].xScale, .7, "Outgoing scale followed closing bounds");
+                near(pane("clock").transform[0].xScale, .975 + .025 * .7, "Outgoing content changed size during close");
                 check(pane("clock").opacity > 0 && pane("clock").opacity < closeOpacity, "Outgoing fade lost");
                 const scale=pane("clock").transform[0].xScale,opacity=pane("clock").opacity;
                 stage.panel = "clock";
@@ -150,6 +151,16 @@ ShellRoot {
                 ControlLayout.remove("focus"); next();
             } else if (phase === 11 && ticks > 2) {
                 check(controls().length === ControlLayout.items.length && !controls().some(item => item.kind === "focus"), "Removed control retained heavy content");
+                physicalWidth = 700; physicalHeight = 475;
+                next();
+            } else if (phase === 12 && pane("launcher").opacity > .99) {
+                IslandState.menu = "themes"; stage.panel = "themes"; next();
+            } else if (phase === 13) {
+                const outgoing = pane("launcher").opacity, incoming = pane("themes").opacity;
+                overlappingPanes = overlappingPanes || (outgoing > .05 && incoming > .05);
+                check(outgoing + incoming > .55, "Panel switch left a dark gap");
+                if (ticks < 8) return;
+                check(overlappingPanes && incoming > .99 && outgoing === 0, "Panel handoff did not finish");
                 console.log("INACTIVE CONTENT CHECK PASS: interrupted fades, warm launcher, hidden Canvas and stable layout identities");
                 Qt.quit();
             }

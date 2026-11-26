@@ -28,6 +28,7 @@ struct CaptureCallback {
 };
 std::vector<std::weak_ptr<CaptureCallback>> callbacks;
 std::vector<int> scenes;
+namespace PrivateInput { void shutdown() {} }
 void PLUGIN_EXIT() UNLOAD_BODY
 
 void check(const char* name, bool copied, bool nativeFailed, bool renderFailed, bool destroy, bool expire) {

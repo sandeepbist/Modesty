@@ -16,7 +16,7 @@ Item {
     readonly property real naturalRightX: naturalCenterX+center.naturalWidth+(right.visible?gap:0)
     readonly property real maximumDockWidth: Math.max(0,width-32/Preferences.uiScale)
     readonly property real dockWidth: Math.max(0,Math.min(maximumDockWidth,dockWidthMotion.value))
-    readonly property real dockHeight: Math.max(0,Math.min(maximumHeight,dockHeightMotion.value))
+    readonly property real dockHeight: Tokens.panelExtent(dockHeightMotion.value, Math.min(Preferences.barHeight, maximumHeight), maximumHeight, false)
     readonly property real dockX: Math.max(16/Preferences.uiScale,Math.min(width-16/Preferences.uiScale-dockWidth,dockRestLeft-(dockWidth-dockRestWidth)/2))
     readonly property var dockPanels:[left,center,right].filter(s=>s.expanded&&!(s===center&&s.panel==="context"&&["workspace","welcome"].includes(Context.kind)))
     readonly property bool dockBody:dockPanels.length>0||center.inlineContext
@@ -49,14 +49,26 @@ Item {
     readonly property real dockRestWidth: Math.min(maximumDockWidth,Math.min(680,dockMinimumWidth))
     readonly property real dockRestLeft: dockClockStart-dockCenterGap-dockEdgePadding-dockLeftNeed
     readonly property real dockClockWidth: dockClockNeed
-    readonly property real dockSideWidth: Math.max(dockLeftNeed,dockRightNeed)
     readonly property real dockStatusWidth: dockRightNeed
     readonly property real dockActivityWidth: dockActivityNeed
     readonly property real dockWorkspaceX: dockClockStart-dockCenterGap-dockLeftNeed-dockX
     readonly property real dockMediaX: dockClockStart-dockCenterGap-dockMediaWidth-dockX
     readonly property real dockStatusX: dockClockStart+dockClockNeed+dockCenterGap-dockX
-    FrameSpring {id:dockWidthMotion;owner:root;targetValue:Math.min(root.maximumDockWidth,Math.max(root.dockRestWidth,...root.dockPanels.map(s=>s.targetWidth)));minimumValue:0;maximumValue:root.maximumDockWidth;positionTolerance:.02}
-    FrameSpring {id:dockHeightMotion;owner:root;targetValue:Math.min(root.maximumHeight,Preferences.barHeight+Math.max(center.inlineContext?Preferences.barHeight:0,...root.dockPanels.filter(s=>!s.inlineContext).map(s=>s.targetHeight)));minimumValue:Math.min(Preferences.barHeight,root.maximumHeight);maximumValue:root.maximumHeight;positionTolerance:.02}
+    FrameSpring {
+        id:dockWidthMotion;owner:root
+        targetValue:Math.min(root.maximumDockWidth,Math.max(root.dockRestWidth,...root.dockPanels.map(s=>s.targetWidth)))
+        minimumValue:root.dockRestWidth;maximumValue:root.maximumDockWidth;positionTolerance:.02
+        readonly property bool shapingPanel:root.dockBody || dockHeightMotion.running
+        frequency:root.dockBody ? Tokens.panelSpringFrequency : shapingPanel ? 4.2 : 4.8
+        dampingRatio:root.dockBody ? Tokens.panelSpringDamping : shapingPanel || Preferences.motion === "gentle" ? 1 : .75
+    }
+    FrameSpring {
+        id:dockHeightMotion;owner:root
+        targetValue:Math.min(root.maximumHeight,Preferences.barHeight+Math.max(center.inlineContext?Preferences.barHeight:0,...root.dockPanels.filter(s=>!s.inlineContext).map(s=>s.targetHeight)))
+        minimumValue:Math.min(Preferences.barHeight,root.maximumHeight);maximumValue:root.maximumHeight;positionTolerance:.02
+        frequency:root.dockBody ? Tokens.panelDepthFrequency : Tokens.panelSpringFrequency
+        dampingRatio:Tokens.panelSpringDamping
+    }
     readonly property real sharedLift: sharedHover.value
     FrameSpring {id:sharedHover;owner:root;targetValue:IslandState.pointerInside&&!root.dockBody?Preferences.hoverLift:0;positionTolerance:.01}
     function project(s,restX,restWidth):var {
@@ -184,8 +196,7 @@ Item {
         readonly property bool mediaAvailable: Preferences.showAlbum && (!Preferences.mediaAutoHide || Media.hasSession || sessionGrace.running)
         readonly property bool dockMediaAvailable: Preferences.showAlbum && (Media.hasSession || sessionGrace.running)
         readonly property bool agentAvailable: AgentWork.needsAttention || (AgentWork.pulse && AgentWork.kind !== "working")
-        readonly property string agentName: AgentWork.needsAttention ? (AgentWork.tasks.find(t=>t.waiting)?.provider || "Agent") : (AgentWork.providerLabel || "Agent")
-        readonly property string agentText: agentName
+        readonly property string agentText: AgentWork.needsAttention ? (AgentWork.tasks.find(t=>t.waiting)?.provider || "Agent") : (AgentWork.providerLabel || "Agent")
         readonly property string mode: root.panel === "media" ? "media" : mediaAvailable ? "media" : agentAvailable ? "agent" : "none"
         readonly property bool wanted: IslandState.owner === "media" || mode !== "none"
         // Brief metadata gaps between tracks/players should not blink the pill.
@@ -205,8 +216,8 @@ Item {
         panel: IslandState.owner === "media" ? root.panel : "idle"
         readonly property real textBudget: Math.max(0, Math.min(440, root.naturalCenterX - root.gap - 16))
         readonly property bool titleRevealed:!LiveMedia.compactTitle||(IslandState.pointerInside&&IslandState.hoverStage==="media")
-        TextMetrics {id: lyricMeasure; text: LiveMedia.lyric || Media.title; font.family: Tokens.font; font.pixelSize: 13; font.weight: Font.Medium}
-        TextMetrics {id: agentMeasure; text:left.agentText; font.family:Tokens.font; font.pixelSize:12; font.weight:Font.DemiBold}
+        TextMetrics {id: lyricMeasure; text: LiveMedia.lyric || Media.title; font.family: Tokens.font; font.pixelSize: Tokens.textSize(13); font.weight: Font.Medium}
+        TextMetrics {id: agentMeasure; text:left.agentText; font.family:Tokens.font; font.pixelSize:Tokens.textSize(12); font.weight:Font.DemiBold}
         readonly property real mediaRestingWidth: LiveMedia.expanded ? Math.min(textBudget, Preferences.barHeight + 24 + (Preferences.mediaVisualizer ? 38 : 0) + (Preferences.mediaLyrics && titleRevealed ? Math.max(140, lyricMeasure.advanceWidth + 8) : 0)) : Preferences.barHeight
         restingWidth: mode === "media" ? mediaRestingWidth : mode === "agent" ? Math.min(195,agentMeasure.advanceWidth+43) : Preferences.barHeight
         // Preserve the circle's geometry while fading; collapsing its width
@@ -220,7 +231,7 @@ Item {
             visible: left.mode === "agent" || (root.dockProgress>0&&!left.dockMediaAvailable&&left.agentAvailable)
             AgentGlyph { anchors.centerIn: parent; kind: AgentWork.needsAttention ? "waiting" : AgentWork.kind }
         }
-        RollingText { x:32; width:parent.width-40; height:parent.height; visible:left.mode==="agent"; text:left.agentText; font.pixelSize:12; font.weight:Font.DemiBold; horizontalAlignment:Text.AlignLeft;verticalAlignment:Text.AlignVCenter }
+        RollingText { x:32; width:parent.width-40; height:parent.height; visible:left.mode==="agent"; text:left.agentText; font:agentMeasure.font; horizontalAlignment:Text.AlignLeft;verticalAlignment:Text.AlignVCenter }
         Item {x:12;width:parent.width-Preferences.barHeight-20;height:parent.height;clip:true;opacity:1-root.dockProgress;visible:left.mode==="media"&&LiveMedia.expanded
             Row {id:levels;anchors.left:parent.left;anchors.verticalCenter:parent.verticalCenter;spacing:2;visible:Preferences.mediaVisualizer
                 Repeater {model:6;Rectangle {required property int index;width:3;height:Math.max(3,LiveMedia.bars[index]*18);radius:1.5;anchors.verticalCenter:parent.verticalCenter;color:Theme.accent;Behavior on height {NumberAnimation {duration:65;easing.type:Easing.OutQuad}}}}
@@ -233,7 +244,7 @@ Item {
                 readingTime: LiveMedia.lineRemaining
                 text: LiveMedia.lyric || Media.title
                 horizontalAlignment: Text.AlignLeft
-                font.family: Tokens.font; font.pixelSize: 13; font.weight: Font.Medium
+                font.family: Tokens.font; font.pixelSize: Tokens.textSize(13); font.weight: Font.Medium
             }
         }
         onActivated: localX => {

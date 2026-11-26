@@ -7,10 +7,10 @@ Item {
     property bool condensed:false
     readonly property real condensedMinimumWidth:22+condensedMeasure.advanceWidth
     readonly property bool minimal:condensed&&width<condensedMinimumWidth
-    TextMetrics {id:condensedMeasure;text:Recorder.phase==="recording"?Recorder.timeText:Recorder.phase==="paused"?"Paused":Recorder.phase==="saving"?"Saving":Recorder.phase==="countdown"?"In "+Recorder.status.remaining:"Preparing";font.family:Tokens.font;font.pixelSize:11;font.weight:Font.Medium;font.features:({tnum:1})}
+    TextMetrics {id:condensedMeasure;text:Recorder.phase==="recording"?Recorder.timeText:Recorder.phase==="paused"?"Paused":Recorder.phase==="saving"?"Saving":Recorder.phase==="countdown"?"In "+Recorder.status.remaining:"Preparing";font.family:Tokens.font;font.pixelSize:Tokens.textSize(11);font.weight:Font.Medium;font.features:({tnum:1})}
     Rectangle {anchors.fill:parent;anchors.margins:2;radius:height/2;color:Theme.withAlpha(Theme.red,.085)}
     Icon {x:root.condensed?3:8;anchors.verticalCenter:parent.verticalCenter;size:15;icon:"video_camera_front";color:Recorder.phase==="paused"?Theme.yellow:Theme.red}
-    PanelText {x:root.condensed?20:28;width:Math.max(0,parent.width-(root.condensed?22:62));height:parent.height;visible:!root.minimal;text:root.condensed?condensedMeasure.text:Recorder.label;font.pixelSize:root.condensed?condensedMeasure.font.pixelSize:13;font.weight:Font.Medium;verticalAlignment:Text.AlignVCenter;horizontalAlignment:Text.AlignHCenter;font.features:({tnum:1})}
+    PanelText {x:root.condensed?20:28;width:Math.max(0,parent.width-(root.condensed?22:62));height:parent.height;visible:!root.minimal;text:root.condensed?condensedMeasure.text:Recorder.label;font.pixelSize:root.condensed?condensedMeasure.font.pixelSize:Tokens.textSize(13);font.weight:Font.Medium;verticalAlignment:Text.AlignVCenter;horizontalAlignment:Text.AlignHCenter;font.features:({tnum:1})}
     Item {
         id:detail;objectName:"recorderDetail"
         width:root.condensed?parent.width:action.x;height:parent.height;activeFocusOnTab:true

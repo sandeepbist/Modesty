@@ -14,8 +14,13 @@ Item {
     readonly property real headerInset: presentation?.header ?? 0
     readonly property real bodyApertureWidth: width
     readonly property real bodyApertureHeight: Math.max(0,height-headerInset)
-    readonly property real naturalWidth: Math.max(0,Math.min(maximumWidth,Math.max(Math.min(restingWidth,targetWidth),apertureWidth)))
-    readonly property real naturalHeight: Math.max(0,Math.min(maximumHeight,Math.max(Math.min(Preferences.barHeight,targetHeight),apertureHeight)))
+    readonly property real minimumWidth: Math.min(restingWidth, targetWidth)
+    readonly property real minimumHeight: Math.min(Preferences.barHeight, targetHeight)
+    readonly property bool returningToPill: !expanded && !inlineContext && !continuousWidth
+    readonly property bool settlingWidth: returningToPill && targetWidth === restingWidth
+    readonly property bool settlingHeight: returningToPill && targetHeight === Preferences.barHeight
+    readonly property real naturalWidth: Tokens.panelExtent(apertureWidth, minimumWidth, maximumWidth, !inlineContext && !continuousWidth)
+    readonly property real naturalHeight: Tokens.panelExtent(apertureHeight, minimumHeight, maximumHeight, !inlineContext)
     property string stage
     signal activated(real localX)
     property string panel: "idle"
@@ -50,11 +55,15 @@ Item {
         for(let i=0;i<contentPanes.count;i++)if(contentPanes.itemAt(i)?.opacity>.01)return true;
         return false;
     }
-    readonly property bool outgoingContentVisible: {
+    function canCrossfade(name: string): bool {
+        return !["idle", "context", "dropcue", "toast", "authentication", "unlockcheck"].includes(name);
+    }
+    readonly property bool showingDisclosure: canCrossfade(panel)
+    readonly property bool blockingOutgoingContent: {
         if(panel==="idle")return false;
         for(let i=0;i<contentPanes.count;i++) {
             const pane=contentPanes.itemAt(i);
-            if(pane&&!pane.selected&&pane.opacity>.01)return true;
+            if(pane&&!pane.selected&&pane.opacity>.01&&!(showingDisclosure&&canCrossfade(pane.modelData)))return true;
         }
         return false;
     }
@@ -78,19 +87,25 @@ Item {
     function finishWidth(): void { apertureWidth = targetWidth; }
     onInlineContextChanged: Qt.callLater(transferWidth)
     onContinuousWidthChanged: Qt.callLater(transferWidth)
-    // Rebound must not shrink the resting pill or cross the screen's margin.
     width: presentation?.width ?? naturalWidth
     height: presentation?.height ?? naturalHeight
     FrameSpring {
         id:widthMotion;owner:root;targetValue:root.targetWidth
         enabled:widthMotion.available&&!root.inlineContext&&!root.continuousWidth
-        minimumValue:Math.min(root.restingWidth,root.targetWidth);maximumValue:root.maximumWidth
+        frequency:root.settlingWidth ? Tokens.panelDepthFrequency : Tokens.panelSpringFrequency
+        dampingRatio:Tokens.panelSpringDamping
+        minimumValue:root.settlingWidth ? -Infinity : root.minimumWidth;maximumValue:root.maximumWidth
         onValueChanged: if (!root.inlineContext && !root.continuousWidth) root.apertureWidth = value
         onAvailableChanged: if (!available && root.inlineContext) Qt.callLater(root.finishWidth)
     }
     // Held volume/brightness keys keep the original short feedback deadline.
     Behavior on apertureWidth {enabled:widthMotion.available&&root.inlineContext&&!root.continuousWidth;SmoothedAnimation {id:levelWidthMotion;velocity:-1;duration:root.expanded?Tokens.morphDuration:Tokens.collapseDuration;reversingMode:SmoothedAnimation.Immediate}}
-    FrameSpring {id:heightMotion;owner:root;targetValue:root.targetHeight;minimumValue:Math.min(Preferences.barHeight,root.targetHeight);maximumValue:root.maximumHeight}
+    FrameSpring {
+        id:heightMotion;owner:root;targetValue:root.targetHeight
+        frequency:root.settlingHeight ? Tokens.panelSpringFrequency : Tokens.panelDepthFrequency
+        dampingRatio:Tokens.panelSpringDamping
+        minimumValue:root.settlingHeight ? -Infinity : root.minimumHeight;maximumValue:root.maximumHeight
+    }
     Connections {
         target:Tokens
         function onReducedMotionChanged(){if(Tokens.reducedMotion)root.apertureWidth=root.targetWidth;}
@@ -118,23 +133,35 @@ Item {
         radius: Math.max(0, Math.min(Preferences.expandedRadius, width / 2, height / 2))
         color: "transparent"
         border.width: 0
-        SurfaceLighting {anchors.fill:parent;radius:capsule.radius;active:root.expanded;opacity:1-root.dockProgress;visible:root.expanded&&opacity>0;interactive:true;focused:root.panel==="authentication"}
+        SurfaceLighting {
+            anchors.fill: parent
+            radius: capsule.radius
+            active: visible
+            opacity: (1 - root.dockProgress) * Tokens.smoothStep((height - Preferences.barHeight) / 52)
+            visible: opacity > 0
+            interactive: root.expanded
+            focused: root.panel === "authentication"
+        }
         Item { id: rest
             clip:root.externalDecoration
             width:root.presentation?.restWidth??Math.min(root.width,root.restingWidth)
             height: Preferences.barHeight
             x:root.presentation?root.presentation.restSceneX-root.x:root.stage==="media"?parent.width-width:root.stage==="controls"?0:(parent.width-width)/2
-            opacity: Math.max(root.dockProgress, !root.expanded && root.height <= Preferences.barHeight * 1.1 ? 1 : 0)
+            opacity: Math.max(root.dockProgress, !root.expanded && root.height <= Preferences.barHeight + 30 ? 1 : 0)
             visible: opacity > 0; enabled: root.dockProgress>0 || (!root.expanded && root.nearRest)
             Behavior on opacity { NumberAnimation { duration: Tokens.animFast } }
         }
         Repeater {
             id: contentPanes
-            model: ["clock", "context", "dropcue", "files", "notes", "toast", "calendar", "media", "privacy", "quicksettings", "themes", "wallpapers", "power", "launcher", "authentication", "unlockcheck"]
+            model: root.stage === "media" ? ["media"]
+                : root.stage === "controls" ? ["context", "quicksettings"]
+                : ["clock", "context", "dropcue", "files", "notes", "toast", "calendar", "privacy", "themes", "wallpapers", "power", "launcher", "authentication", "unlockcheck"]
             delegate: Loader {
                 id: content
                 required property string modelData
                 readonly property bool selected: root.expanded && root.panel === modelData && !(modelData === "context" && root.inlineContext)
+                readonly property bool picker: modelData==="themes"||modelData==="wallpapers"
+                readonly property bool disclosure: !["context", "dropcue", "toast"].includes(modelData)
                 property real outgoingScale:1
                 property real outgoingReveal:1
                 property bool presented:false
@@ -166,7 +193,14 @@ Item {
                 Connections { target: root; enabled: content.selected; function onTargetWidthChanged() { Qt.callLater(content.resizeContent); } function onTargetHeightChanged() { Qt.callLater(content.resizeContent); } }
                 Component.onCompleted: Qt.callLater(resizeContent)
                 readonly property real inset: ["context","dropcue"].includes(modelData) ? 0 : Preferences.innerPadding
-                width: Math.max(0, heldWidth - inset * 2); height: Math.max(0, heldHeight - inset * 2)
+                readonly property real layoutWidth: Math.max(0, heldWidth - inset * 2)
+                width: picker ? Math.min(layoutWidth, Math.max(0, root.bodyApertureWidth - inset * 2)) : layoutWidth
+                height: Math.max(0, heldHeight - inset * 2)
+                Binding {
+                    target: content.modelData==="wallpapers" ? content.item : null
+                    property: "carouselLayoutWidth"
+                    value: content.layoutWidth
+                }
                 x: {const natural=root.stage === "media" ? parent.width-width-inset : root.stage === "controls" ? inset : (parent.width-width)/2;return natural+((parent.width-width)/2-natural)*root.dockProgress;}
                 readonly property real bodyApertureWidth: root.bodyApertureWidth
                 readonly property real bodyApertureHeight: root.bodyApertureHeight
@@ -175,30 +209,41 @@ Item {
                 y: inset+root.headerInset
                 readonly property real resumeAmount:Math.max(0,Math.min(1,resumeMotion.value))
                 readonly property real fittingHeight:["quicksettings","notes","toast","media"].includes(modelData)?viewportHeight:height
-                readonly property real presentationScale:presentation==="held"?outgoingScale:presentation==="resume"?resumeScale+(1-resumeScale)*resumeAmount:Math.max(0,Math.min(1,(root.bodyApertureWidth-inset*2)/Math.max(1,width),(root.bodyApertureHeight-inset*2)/Math.max(1,fittingHeight)))
+                readonly property real presentationScale:presentation==="held"?outgoingScale:presentation==="resume"?resumeScale+(1-resumeScale)*resumeAmount:Math.max(0,Math.min(1,(root.bodyApertureWidth-inset*2)/Math.max(1,layoutWidth),(root.bodyApertureHeight-inset*2)/Math.max(1,fittingHeight)))
                 readonly property real visibleScale:presentation==="entrance"&&presented?1:presentationScale
                 onPresentationScaleChanged:if(selected&&presentation==="entrance"&&presentationScale>=.995)presented=true
                 readonly property real revealAmount: {
                     if(presentation==="held")return outgoingReveal;
                     if(presentation==="resume")return resumeReveal+(1-resumeReveal)*resumeAmount;
                     if(presented)return 1;
-                    const t=Math.max(0,Math.min(1,(presentationScale-.55)/.43));
-                    return t*t*(3-2*t);
+                    return disclosure ? Tokens.smoothStep((presentationScale - .18) / .72)
+                        : Tokens.smoothStep((presentationScale - .55) / .43);
                 }
-                transform:Scale {
-                    origin.x:root.stage==="media"?content.width:root.stage==="controls"?0:content.width/2
-                    xScale:content.visibleScale
-                    yScale:xScale
-                }
+                transform: [
+                    Scale {
+                        origin.x:root.stage==="media"?content.width:root.stage==="controls"?0:content.width/2
+                        xScale:content.picker ? 1 : content.disclosure ? .975 + .025 * content.visibleScale : content.visibleScale
+                        yScale:xScale
+                    },
+                    Translate {
+                        y:content.disclosure ? -10*(1-content.exposure*content.revealAmount) : 0
+                    }
+                ]
                 source: root.panelSources[modelData]
                 active: selected || opacity > 0 || (root.stage === "clock" && ["clock","launcher"].includes(modelData)) || (root.stage === "controls" && modelData === "quicksettings")
-                asynchronous: !["launcher", "wallpapers", "dropcue", "files"].includes(modelData)
+                asynchronous: !picker && !["launcher", "dropcue", "files"].includes(modelData)
                 visible: opacity > 0 || (selected && modelData === "launcher")
-                enabled: selected && (modelData === "launcher" || opacity > 0.7)
+                enabled: selected && (modelData === "launcher" || (opacity > .7 && visibleScale > .82))
                 // Render the settled layout once and fit it into the moving aperture.
                 // Geometry drives the reveal; no per-frame opacity animation restarts.
-                property real exposure:selected&&status===Loader.Ready&&!root.outgoingContentVisible?1:0
-                Behavior on exposure {NumberAnimation {duration:Tokens.reducedMotion?0:content.selected?Tokens.animFast:Math.round(70/Preferences.motionSpeed);easing.type:Easing.OutCubic}}
+                property real exposure:selected&&status===Loader.Ready&&!root.blockingOutgoingContent?1:0
+                Behavior on exposure {
+                    NumberAnimation {
+                        duration: Tokens.reducedMotion ? 0 : Math.round((content.selected ? 140
+                            : !content.disclosure ? 70 : root.expanded ? 140 : 210) / Preferences.motionSpeed)
+                        easing.type:content.disclosure ? Easing.InOutQuad : Easing.OutCubic
+                    }
+                }
                 opacity:exposure*revealAmount*(modelData==="context"&&Context.kind==="workspace"?1-root.dockProgress:1)
                 z: selected ? 1 : 0
                 function focusContent(): void { if (enabled && item && IslandState.menuOpen) item.forceActiveFocus(); }

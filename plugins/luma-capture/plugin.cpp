@@ -12,6 +12,7 @@
 #include <memory>
 #include <stdexcept>
 #include <vector>
+#include "private-input.hpp"
 
 namespace {
 using namespace Render;
@@ -254,16 +255,19 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE pluginHandle) {
         install("CCursorshareSession::render", reinterpret_cast<const void*>(&renderCursor));
         install("CScreenshareFrame::renderMonitor", reinterpret_cast<const void*>(&renderCapture));
         shareHook = install("CScreenshareFrame::share", reinterpret_cast<const void*>(&shareFrame));
+        PrivateInput::init(handle, install);
     } catch (...) {
+        PrivateInput::shutdown();
         for (auto* hook : hooks)
             HyprlandAPI::removeFunctionHook(handle, hook);
         hooks.clear();
         throw;
     }
-    return {"luma-capture", "Capture a fresh desktop scene without Luma overlays", "Modesty", "0.1.0"};
+    return {"luma-capture", "Private Luma capture and focusless interaction", "Modesty", "0.2.0"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {
+    PrivateInput::shutdown();
     for (const auto& weak : callbacks) {
         if (const auto callback = weak.lock()) {
             if (!callback->frame.expired()) {

@@ -149,7 +149,7 @@ Item {
                         Row {
                             anchors.centerIn:parent;spacing:6
                             Icon {icon:action.modelData.icon;size:17;color:Theme.subtext}
-                            PanelText {objectName:action.modelData.key+"Label";text:action.text;width:Math.min(implicitWidth,Math.max(0,action.availableWidth-23));font.pixelSize:11;color:Theme.subtext;anchors.verticalCenter:parent.verticalCenter}
+                            PanelText {objectName:action.modelData.key+"Label";text:action.text;width:Math.min(implicitWidth,Math.max(0,action.availableWidth-23));font.pixelSize:Tokens.textSize(11);color:Theme.subtext;anchors.verticalCenter:parent.verticalCenter}
                         }
                     }
                     background:Rectangle {
@@ -201,7 +201,7 @@ Item {
         radius:Math.max(0,Math.min(Preferences.expandedRadius-Preferences.innerPadding-root.detailFrame.inset,width/2,height/2))
         color:Theme.surfaceSolid;border.width:1;border.color:Theme.withAlpha(Theme.text,.07);contentInsideBorder:false;antialiasing:true
         opacity:root.detail?1:0;visible:opacity>0
-        Behavior on opacity {NumberAnimation {duration:root.detail?Tokens.animFast:Tokens.reducedMotion?0:Math.round(70/Preferences.motionSpeed);easing.type:Easing.OutCubic}}
+        Behavior on opacity {NumberAnimation {duration:Tokens.animFast;easing.type:Easing.InOutQuad}}
         SurfaceLighting {anchors.fill:parent;radius:sheet.radius;active:!!root.detail;interactive:true}
         MouseArea {anchors.fill:parent;acceptedButtons:Qt.AllButtons;onWheel:event=>event.accepted=true}
         Flickable {
@@ -224,13 +224,17 @@ Item {
                 function settle():void {if(selected)heldHeight=IslandState.sizes[modelData][1]-Preferences.innerPadding*2-IslandState.detailChromeHeight;}
                 onSelectedChanged:{if(!selected)revealed=false;Qt.callLater(settle);}
                 Connections {target:IslandState;function onSizesChanged(){Qt.callLater(loader.settle);}}
-                readonly property bool revealReady:selected&&status===Loader.Ready&&!root.outgoingDetailVisible&&sheet.height>=Math.min(height,detailViewport.height)*.94+2*root.detailFrame.padding&&sheet.width+.5>=detailViewport.width+2*root.detailFrame.padding
+                readonly property real fittedHeight: Math.min(height, detailViewport.height)
+                readonly property bool fitsWidth: sheet.width + .5 >= detailViewport.width + 2 * root.detailFrame.padding
+                readonly property bool revealReady: selected && status === Loader.Ready && !root.outgoingDetailVisible
+                    && fitsWidth && sheet.height >= fittedHeight * .55 + 2 * root.detailFrame.padding
                 onRevealReadyChanged:if(revealReady)revealed=true
                 width:detailViewport.contentWidth;height:Math.max(0,Math.min(heldHeight,detailViewport.height),["focus","recorder"].includes(modelData)?item?.implicitHeight??0:0)
                 opacity:selected&&(revealed||revealReady)?1:0
-                visible:opacity>0;enabled:selected&&opacity>.7
+                visible:opacity>0
+                enabled: selected && opacity > .7 && fitsWidth && sheet.height >= fittedHeight * .9 + 2 * root.detailFrame.padding
                 transform:Translate {y:4*(1-loader.opacity)}
-                Behavior on opacity {NumberAnimation {duration:loader.selected?Tokens.animFast:Tokens.reducedMotion?0:Math.round(70/Preferences.motionSpeed);easing.type:Easing.OutCubic}}
+                Behavior on opacity {NumberAnimation {duration:loader.selected?Tokens.animFast:Tokens.reducedMotion?0:Math.round(100/Preferences.motionSpeed);easing.type:Easing.InOutQuad}}
                 active:selected||opacity>0;asynchronous:true
                 source:({performance:"PerformanceMenu.qml",focus:"FocusMenu.qml",recorder:"RecorderMenu.qml",wifi:"WifiMenu.qml",bluetooth:"BluetoothMenu.qml",display:"DisplayMenu.qml",sound:"SoundMenu.qml",notifhistory:"NotifHistory.qml"})[modelData]
                 onLoaded:{Qt.callLater(measure);Qt.callLater(settle);}

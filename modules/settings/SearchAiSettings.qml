@@ -17,10 +17,10 @@ ColumnLayout {
     readonly property string backend:Qt.resolvedUrl("../../scripts/command-canvas.py").toString().replace("file://","")
     Component.onCompleted:Luma.refreshUsage()
     RowLayout {Layout.fillWidth:true;spacing:8
-        PanelText {Layout.fillWidth:true;text:"Recent API calls · "+(Luma.usage.gemini||0)+" answers · "+(Luma.usage.jev||0)+" Jev decisions";font.pixelSize:12;color:Theme.subtext;wrapMode:Text.WordWrap}
+        PanelText {Layout.fillWidth:true;text:"Recent API calls · "+(Luma.usage.gemini||0)+" answers · "+(Luma.usage.jev||0)+" Jev decisions";font.pixelSize:Tokens.textSize(12);color:Theme.subtext;wrapMode:Text.WordWrap}
         ActionButton {text:"Refresh";implicitHeight:28;onClicked:Luma.refreshUsage()}
     }
-    PanelText {Layout.fillWidth:true;visible:!!Luma.usage.failures;text:(Luma.usage.previews||0)+" automatic answer calls · "+Luma.usage.failures+" failed calls. Local commands use no API quota.";font.pixelSize:12;color:Theme.subtext;wrapMode:Text.WordWrap}
+    PanelText {Layout.fillWidth:true;visible:!!Luma.usage.failures;text:(Luma.usage.previews||0)+" automatic answer calls · "+Luma.usage.failures+" failed calls. Local commands use no API quota.";font.pixelSize:Tokens.textSize(12);color:Theme.subtext;wrapMode:Text.WordWrap}
     Repeater {
         id:credentials;model:[{id:"gemini",label:"Gemini · answers"},{id:"jev",label:"Jev · tools & decisions"}]
         ColumnLayout {
@@ -42,7 +42,7 @@ ColumnLayout {
                 pendingKey=keyInput.text.trim();root.drafts[modelData.id]="";keyInput.clear();run("key-set");
             }
             Component.onCompleted:run("key-status")
-            PanelText {text:credential.modelData.label;font.pixelSize:12;font.weight:Font.Medium}
+            PanelText {text:credential.modelData.label;font.pixelSize:Tokens.textSize(12);font.weight:Font.Medium}
             RowLayout {
                 Layout.fillWidth:true;spacing:8
                 EntryField {id:keyInput;objectName:"custom-"+credential.modelData.id;Layout.fillWidth:true;echoMode:TextInput.Password;text:root.drafts[credential.modelData.id];onTextEdited:root.drafts[credential.modelData.id]=text;placeholderText:credential.configured?"Replace saved key":"API key";Accessible.name:credential.modelData.label+" API key";onAccepted:if(text.trim().length>=20)credential.save()}
@@ -51,7 +51,7 @@ ColumnLayout {
             }
             RowLayout {
                 Layout.fillWidth:true
-                PanelText {Layout.fillWidth:true;text:credential.message||(worker.running?"Checking…":credential.configured?"Saved privately on this PC":"No key saved");font.pixelSize:12;color:Theme.subtext;wrapMode:Text.WordWrap}
+                PanelText {Layout.fillWidth:true;text:credential.message||(worker.running?"Checking…":credential.configured?"Saved privately on this PC":"No key saved");font.pixelSize:Tokens.textSize(12);color:Theme.subtext;wrapMode:Text.WordWrap}
                 ActionButton {text:"Check connection";visible:credential.modelData.id==="jev"&&credential.configured;enabled:!worker.running;implicitHeight:28;onClicked:credential.run("jev-check")}
             }
             Process {
@@ -62,7 +62,7 @@ ColumnLayout {
         }
     }
     Rectangle {Layout.fillWidth:true;implicitHeight:1;color:Theme.withAlpha(Theme.text,.08)}
-    PanelText {text:"Personal notes";font.pixelSize:12;font.weight:Font.Medium}
+    PanelText {text:"Personal notes";font.pixelSize:Tokens.textSize(12);font.weight:Font.Medium}
     Rectangle {
         id:notesFrame
         Layout.fillWidth:true;implicitHeight:164;radius:12;color:Theme.withAlpha(Theme.text,.025)
@@ -77,13 +77,13 @@ ColumnLayout {
                 cursorDelegate:InputCaret {editor:notes;viewport:notesViewport}
                 onTextEdited:{root.drafts.notes=text;root.drafts.hasNotes=true;}
                 textFormat:TextEdit.PlainText
-                color:Theme.text;placeholderTextColor:Theme.subtext;font.family:Tokens.font;font.pixelSize:12
+                color:Theme.text;placeholderTextColor:Theme.subtext;font.family:Tokens.font;font.pixelSize:Tokens.textSize(12)
                 selectionColor:Theme.accent;selectedTextColor:Theme.accentText;background:Item {}
                 Accessible.name:"Luma personal notes"
             }
         }
     }
-    PanelText {Layout.fillWidth:true;visible:!!Luma.memoryError;text:Luma.memoryError;font.pixelSize:12;color:Theme.red;wrapMode:Text.WordWrap}
+    PanelText {Layout.fillWidth:true;visible:!!Luma.memoryError;text:Luma.memoryError;font.pixelSize:Tokens.textSize(12);color:Theme.red;wrapMode:Text.WordWrap}
     Flow {Layout.fillWidth:true;spacing:8
         ActionButton {id:saveNotes;objectName:"custom-save-notes";text:"Save notes";enabled:!Preferences.preview&&!Luma.savingMemory;onClicked:{if(Preferences.preview)return;Luma.saveMemory(notes.text);root.drafts.hasNotes=false;root.drafts.notes="";}}
         ActionButton {id:clearNotes;objectName:"custom-clear-notes";text:"Clear notes";enabled:!Preferences.preview&&!Luma.savingMemory;onClicked:{if(Preferences.preview)return;notes.clear();Luma.saveMemory("");root.drafts.hasNotes=false;root.drafts.notes="";}}

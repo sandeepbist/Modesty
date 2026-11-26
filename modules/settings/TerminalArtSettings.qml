@@ -52,7 +52,7 @@ ColumnLayout {
     PreferenceSwitch {id:showArtwork;Layout.fillWidth:true;label:"Show artwork";checked:Preferences.terminalGreeting;onToggled:checked=>Preferences.set("terminalGreeting",checked)}
     RowLayout {
         Layout.fillWidth:true;visible:!Preferences.terminalGreeting;spacing:8
-        PanelText {Layout.fillWidth:true;text:"Turn on Show artwork to edit artwork controls.";font.pixelSize:12;color:Theme.subtext;wrapMode:Text.Wrap}
+        PanelText {Layout.fillWidth:true;text:"Turn on Show artwork to edit artwork controls.";font.pixelSize:Tokens.textSize(12);color:Theme.subtext;wrapMode:Text.Wrap}
         ActionButton {text:"Go to Show artwork";onClicked:root.targetRequested("show-artwork")}
     }
     ColumnLayout {
@@ -93,8 +93,8 @@ ColumnLayout {
                 }
                 ColumnLayout {
                     Layout.fillWidth:true;spacing:10
-                    PanelText {Layout.fillWidth:true;text:root.selected?root.selected.title:"No artwork";font.pixelSize:16;font.weight:Font.Medium;wrapMode:Text.Wrap;elide:Text.ElideNone}
-                    PanelText {Layout.fillWidth:true;text:root.selected&&Preferences.terminalArtHidden.includes(root.selected.id)?"Hidden from rotation":Preferences.terminalArtPinned?"Fixed artwork":"Rotating collection";font.pixelSize:12;color:Theme.subtext}
+                    PanelText {Layout.fillWidth:true;text:root.selected?root.selected.title:"No artwork";font.pixelSize:Tokens.textSize(16);font.weight:Font.Medium;wrapMode:Text.Wrap;elide:Text.ElideNone}
+                    PanelText {Layout.fillWidth:true;text:root.selected&&Preferences.terminalArtHidden.includes(root.selected.id)?"Hidden from rotation":Preferences.terminalArtPinned?"Fixed artwork":"Rotating collection";font.pixelSize:Tokens.textSize(12);color:Theme.subtext}
                     RowLayout {
                         visible:!!root.selected;spacing:8
                         IconButton {id:favoriteArtwork;objectName:"custom-favorites";icon:"favorite";label:root.selected&&Preferences.terminalArtFavorites.includes(root.selected.id)?"Remove favorite":"Add favorite";color:root.selected&&Preferences.terminalArtFavorites.includes(root.selected.id)?Theme.accent:Theme.subtext;onClicked:root.toggleList("terminalArtFavorites",root.selected.id)}
@@ -154,7 +154,7 @@ ColumnLayout {
                                 opacity:Preferences.terminalArtHidden.includes(tile.modelData.id)?.25:1
                                 transform:Translate {y:tile.hovered?-2:0;Behavior on y {NumberAnimation {duration:Tokens.animFast;easing.type:Easing.OutCubic}}}
                             }
-                            PanelText {anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;anchors.margins:12;text:tile.modelData.title;font.pixelSize:11;horizontalAlignment:Text.AlignHCenter}
+                            PanelText {anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;anchors.margins:12;text:tile.modelData.title;font.pixelSize:Tokens.textSize(11);horizontalAlignment:Text.AlignHCenter}
                             Rectangle {
                                 anchors.top:parent.top;anchors.right:parent.right;anchors.margins:8
                                 width:22;height:22;radius:11;color:Theme.bgSolid
@@ -166,7 +166,7 @@ ColumnLayout {
                 }
             }
         }
-        PanelText {visible:!!root.error||root.enabledArt.length===0;Layout.fillWidth:true;text:root.error||"No artwork in this selection. Show an image or change your favorites filter.";wrapMode:Text.Wrap;elide:Text.ElideNone;font.pixelSize:12;color:Theme.subtext}
+        PanelText {visible:!!root.error||root.enabledArt.length===0;Layout.fillWidth:true;text:root.error||"No artwork in this selection. Show an image or change your favorites filter.";wrapMode:Text.Wrap;elide:Text.ElideNone;font.pixelSize:Tokens.textSize(12);color:Theme.subtext}
         Flow {
             Layout.fillWidth:true;spacing:6
             Repeater {id:formatOptions;model:[{key:"image",name:"Image"},{key:"ascii",name:"ASCII"}];ActionButton {required property var modelData;objectName:"custom-format-"+modelData.key;text:modelData.name;primary:Preferences.terminalArtFormat===modelData.key;onClicked:Preferences.set("terminalArtFormat",modelData.key)}}
@@ -174,12 +174,12 @@ ColumnLayout {
         }
         RowLayout {
             Layout.fillWidth:true;visible:Preferences.terminalArtFormat!=="ascii";spacing:8
-            PanelText {Layout.fillWidth:true;text:"Choose ASCII to edit artwork palette.";font.pixelSize:12;color:Theme.subtext;wrapMode:Text.Wrap}
+            PanelText {Layout.fillWidth:true;text:"Choose ASCII to edit artwork palette.";font.pixelSize:Tokens.textSize(12);color:Theme.subtext;wrapMode:Text.Wrap}
             ActionButton {text:"Go to Artwork format";onClicked:root.targetRequested("format")}
         }
         PreferenceSlider {id:artworkSize;Layout.fillWidth:true;label:"Artwork size";display:Preferences.terminalArtSize+" columns";from:24;to:60;stepSize:2;value:Preferences.terminalArtSize;onMoved:value=>Preferences.set("terminalArtSize",value)}
         PreferenceSwitch {id:favoritesOnly;Layout.fillWidth:true;label:"Favorites only";checked:Preferences.terminalArtFavoritesOnly;onToggled:checked=>{Preferences.set("terminalArtFavoritesOnly",checked);Preferences.set("terminalArtPinned","");}}
         PreferenceSwitch {id:minimalGreeting;Layout.fillWidth:true;label:"Minimal greeting";description:"Artwork and prompt";checked:Preferences.terminalArtMinimal;onToggled:checked=>Preferences.set("terminalArtMinimal",checked)}
-        PanelText {text:"Applies to new terminals";font.pixelSize:11;color:Theme.subtext}
+        PanelText {text:"Applies to new terminals";font.pixelSize:Tokens.textSize(11);color:Theme.subtext}
     }
 }

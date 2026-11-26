@@ -69,7 +69,7 @@ FocusScope {
                 id:message;width:parent.width-8;x:4
                 text:root.detailsExpanded?root.flow?.message??"":root.request.caption||root.flow?.message||""
                 horizontalAlignment:Text.AlignHCenter
-                wrapMode:Text.Wrap;elide:Text.ElideNone;font.pixelSize:13;lineHeight:1.25;color:Theme.subtext
+                wrapMode:Text.Wrap;elide:Text.ElideNone;font.pixelSize:Tokens.textSize(13);lineHeight:1.25;color:Theme.subtext
             }
         }
         ComboBox {
@@ -78,12 +78,12 @@ FocusScope {
             model:root.flow?.identities??[];textRole:"displayName"
             currentIndex:model.indexOf(root.flow?.selectedIdentity)
             onActivated:index=>{if(root.flow)root.flow.selectedIdentity=model[index];}
-            Accessible.name:"Authorize as";font.family:Tokens.font;font.pixelSize:12
+            Accessible.name:"Authorize as";font.family:Tokens.font;font.pixelSize:Tokens.textSize(12)
             background:Rectangle {radius:10;color:Theme.surfaceSolid;border.width:1;border.color:identity.activeFocus?Theme.accent:Theme.withAlpha(Theme.text,.12)}
-            contentItem:PanelText {leftPadding:12;rightPadding:28;text:identity.displayText;verticalAlignment:Text.AlignVCenter;font.pixelSize:12}
+            contentItem:PanelText {leftPadding:12;rightPadding:28;text:identity.displayText;verticalAlignment:Text.AlignVCenter;font.pixelSize:Tokens.textSize(12)}
         }
         EntryField {
-            id:response;caretRevealed:response.echoMode===TextInput.Normal&&response.text.length>0;Layout.fillWidth:true;implicitHeight:46;leftPadding:14;rightPadding:14;font.pixelSize:16
+            id:response;caretRevealed:response.echoMode===TextInput.Normal&&response.text.length>0;Layout.fillWidth:true;implicitHeight:46;leftPadding:14;rightPadding:14;font.pixelSize:Tokens.textSize(16)
             horizontalAlignment:TextInput.AlignHCenter
             transform:Translate {x:root.shake}
             property string hint:root.waiting?"":root.flow?.inputPrompt||"Password"
@@ -104,7 +104,7 @@ FocusScope {
             PanelText {
                 anchors.fill:parent;anchors.leftMargin:14;anchors.rightMargin:14
                 text:response.hint;visible:!response.text.length&&!response.preeditText.length
-                font.family:Tokens.font;font.pixelSize:13;color:Theme.subtext
+                font.family:Tokens.font;font.pixelSize:Tokens.textSize(13);color:Theme.subtext
                 horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter
             }
             background:Rectangle {
@@ -125,7 +125,7 @@ FocusScope {
         PanelText {
             Layout.fillWidth:true;visible:!!root.flow?.supplementaryMessage
             horizontalAlignment:Text.AlignHCenter
-            text:root.flow?.supplementaryMessage??"";font.pixelSize:11
+            text:root.flow?.supplementaryMessage??"";font.pixelSize:Tokens.textSize(11)
             color:root.hasError?Theme.red:Theme.subtext;wrapMode:Text.Wrap;maximumLineCount:3;elide:Text.ElideRight
         }
         RowLayout {
@@ -149,7 +149,7 @@ FocusScope {
                     Rectangle {anchors.fill:parent;radius:parent.radius;color:Theme.withAlpha(Theme.bgSolid,confirm.down?.14:confirm.hovered?.06:0)}
                 }
                 contentItem:PanelText {
-                    text:confirm.text;font.pixelSize:12;font.weight:Font.Medium
+                    text:confirm.text;font.pixelSize:Tokens.textSize(12);font.weight:Font.Medium
                     color:confirm.enabled?Theme.accentText:Theme.subtext
                     horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter
                     Behavior on color {ColorAnimation {duration:Tokens.animFast}}

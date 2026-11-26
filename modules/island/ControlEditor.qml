@@ -156,17 +156,17 @@ FocusScope {
                 }
             }
         }
-        Rectangle {Layout.fillWidth:true;Layout.preferredHeight:40;radius:12;color:root.removing?Theme.withAlpha(Theme.red,.15):"transparent";border.width:1;border.color:root.removing?Theme.red:Theme.withAlpha(Theme.text,.1);PanelText {anchors.centerIn:parent;text:"Remove";font.pixelSize:11;color:root.removing?Theme.red:Theme.subtext}}
+        Rectangle {Layout.fillWidth:true;Layout.preferredHeight:40;radius:12;color:root.removing?Theme.withAlpha(Theme.red,.15):"transparent";border.width:1;border.color:root.removing?Theme.red:Theme.withAlpha(Theme.text,.1);PanelText {anchors.centerIn:parent;text:"Remove";font.pixelSize:Tokens.textSize(11);color:root.removing?Theme.red:Theme.subtext}}
         RowLayout {visible:!!root.selectedItem;enabled:!root.gesture;Layout.fillWidth:true
-            PanelText {Layout.fillWidth:true;text:root.selected; font.pixelSize:12;font.weight:Font.Medium}
+            PanelText {Layout.fillWidth:true;text:root.selected; font.pixelSize:Tokens.textSize(12);font.weight:Font.Medium}
             ActionButton {text:"Rotate";onClicked:root.resize(root.selectedItem.h,root.selectedItem.w)}
             ActionButton {text:"Remove";onClicked:ControlLayout.remove(root.selected)}
         }
         PreferenceSlider {visible:!!root.selectedItem;enabled:!root.gesture;Layout.fillWidth:true;label:"Tile width";display:(root.selectedItem?.w??1)+" columns";from:1;to:ControlLayout.columns;stepSize:1;value:root.selectedItem?.w??1;onMoved:value=>root.resize(value,root.selectedItem.h)}
         PreferenceSlider {visible:!!root.selectedItem;enabled:!root.gesture;Layout.fillWidth:true;label:"Tile height";display:(root.selectedItem?.h??1)+" rows";from:1;to:6;stepSize:1;value:root.selectedItem?.h??1;onMoved:value=>root.resize(root.selectedItem.w,value)}
-        PanelText {text:"Add a control";font.pixelSize:12;font.weight:Font.Medium}
+        PanelText {text:"Add a control";font.pixelSize:Tokens.textSize(12);font.weight:Font.Medium}
         Flow {Layout.fillWidth:true;spacing:6;Repeater {model:Object.keys(ControlLayout.shapes).filter(id=>!ControlLayout.items.some(a=>a.id===id));ActionButton {required property string modelData;text:({nightlight:"Night Light",awake:"Keep Awake"})[modelData]||modelData.charAt(0).toUpperCase()+modelData.slice(1);onClicked:ControlLayout.add(modelData)}}}
-        PanelText {Layout.fillWidth:true;visible:!!ControlLayout.error;text:ControlLayout.error;font.pixelSize:11;color:ControlLayout.error?Theme.red:Theme.subtext;wrapMode:Text.Wrap;elide:Text.ElideNone}
+        PanelText {Layout.fillWidth:true;visible:!!ControlLayout.error;text:ControlLayout.error;font.pixelSize:Tokens.textSize(11);color:ControlLayout.error?Theme.red:Theme.subtext;wrapMode:Text.Wrap;elide:Text.ElideNone}
         ActionButton {text:"Open live control center";onClicked:IslandState.openMenu("quicksettings")}
     }
 }

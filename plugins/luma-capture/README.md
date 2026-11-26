@@ -39,7 +39,22 @@ fails and native protection can black out the shared monitor. Check `status` aft
 a compositor update. Both `enabled` and `loaded` must be true for this feature.
 
 Luma still opens with Super+Space and accepts keyboard input. No per-call toggle
-is needed. To turn off the feature, stop sharing first, then run:
+is needed. The same setting also enables private interaction. The canvas stays
+hidden until native routing is armed. Click Luma to type there, or click the
+browser to return typing while Luma stays visible. Escape closes Luma in either
+case. Drag the handle in its header to move it within the current screen. Tab to
+the handle and use arrow keys for keyboard movement. Repeating Super+Space
+resumes Luma typing without clearing or closing it.
+
+Private interaction retains the browser's native keyboard focus. The production
+test checks Chromium DOM focus and blur events. This does not guarantee that a
+website cannot infer activity from timing or actions in the shared application.
+Active IMEs, seat grabs, pointer constraints and input capture refuse or end
+private interaction. Resuming while a sibling Modesty window owns keyboard focus
+also closes Luma with an explicit error. Focus the browser and reopen Luma.
+
+Turn the setting off to restore ordinary focus and dismissal. Stop sharing first,
+then run:
 
 ```sh
 python3 scripts/luma-capture.py disable
@@ -54,6 +69,11 @@ the new one in the same session.
 A failed unload keeps the saved plugin path so `disable` can retry. If the final
 configuration reload fails after unloading, run `disable` again even when the
 saved setting is already off.
+
+If any keys or modifiers remain held, disable closes Luma but keeps protection
+loaded. Release every key, then turn the setting off again. Direct external
+plugin unload bypasses this check and can restore held physical modifiers to the
+native application; use the setting or helper for a safe handoff.
 
 ## Build and verify
 
@@ -97,14 +117,25 @@ The client requires the harness's explicit test marker and nested socket. The
 verification also compares legacy alpha-discard blur against native rendering
 over a checkerboard. Run directories retain source and binary hash manifests.
 
+The production interaction check uses a disposable Chromium profile and virtual
+input devices inside a nested compositor:
+
+```sh
+python3 tests/luma-private-live.py --plugin PATH_TO_BUILT_PLUGIN
+```
+
+It checks editing, clipboard, pointer handoff, drag bounds, menus, attachments,
+Escape, held keys, modifier draining, lock, target loss, unsupported input states,
+toggle transactions and capture pixels while interacting. Only answer generation
+is replaced by a local fixture. It does not send test prompts to a provider.
+
 ## Review and limits
 
 The isolated verification can exercise the production canvas, protocol lifecycle,
 legacy blur, additional plugins and cold-start restoration. The callback check
 exercises frame completion and destruction under ASan and UBSan.
 Application-level recipient verification remains separate and incomplete.
-The implementation uses seven
-internal function hooks and temporarily exchanges renderer resources during a
+The implementation uses internal function hooks and temporarily exchanges renderer resources during a
 synchronous capture pass. A compositor plugin can crash the desktop if its
 assumptions are wrong. Do not treat the nested fixture as proof of compatibility
 with other plugins, the portal, Google Meet or Discord.

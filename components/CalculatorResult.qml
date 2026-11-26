@@ -25,9 +25,9 @@ Rectangle {
     }}
     Process {id:worker;stdout:StdioCollector {onStreamFinished:{try{const d=JSON.parse(text);if(d.query===root.query){root.result=d.result;root.error=d.error;}}catch(e){root.error="Couldn't calculate this expression";}}}}
     Column {anchors.fill:parent;anchors.margins:16;spacing:9
-        PanelText {text:"Calculator";font.pixelSize:11;color:Theme.subtext}
+        PanelText {text:"Calculator";font.pixelSize:Tokens.textSize(11);color:Theme.subtext}
         PanelText {width:parent.width;text:root.result||root.error||"Calculating…";font.pixelSize:root.result?23:13;font.weight:Font.Medium;maximumLineCount:2;wrapMode:Text.Wrap}
-        PanelText {visible:root.copied;text:"Copied";font.pixelSize:11;color:Theme.subtext}
+        PanelText {visible:root.copied;text:"Copied";font.pixelSize:Tokens.textSize(11);color:Theme.subtext}
     }
     MouseArea {anchors.fill:parent;enabled:root.valid;cursorShape:Qt.PointingHandCursor;onClicked:root.copy()}
 }
