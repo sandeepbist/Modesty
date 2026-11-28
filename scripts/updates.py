@@ -37,7 +37,7 @@ def git(*args, cwd=None):
                             cwd=cwd or ROOT, env=env, capture_output=True, text=True, timeout=120)
     if result.returncode:
         raise RuntimeError((result.stderr or result.stdout).strip()[-1600:] or f'Git {args[0]} failed with exit code {result.returncode}.')
-    return result.stdout.strip()
+    return result.stdout if '-z' in args else result.stdout.strip()
 
 
 def sha(value):
@@ -152,7 +152,7 @@ def installed_session():
 
 def reject_ignored_collisions(target):
     ignored = [p for p in git('ls-files', '--others', '--ignored', '--exclude-standard', '-z').split('\0') if p]
-    added = [p for p in git('diff', '--name-only', '--diff-filter=A', '-z', 'HEAD', target).split('\0') if p]
+    added = [p for p in git('diff', '--no-renames', '--name-only', '--diff-filter=A', '-z', 'HEAD', target).split('\0') if p]
     if any(a == p or a.startswith(p+'/') or p.startswith(a+'/') for a in added for p in ignored):
         raise RuntimeError('An ignored local file conflicts with this revision. Move it outside the checkout before updating.')
 
@@ -240,7 +240,6 @@ def switch(target, rollback=False):
     if not rollback:
         verify_checks(target)
     control.assert_unlocked()
-    reject_ignored_collisions(target)
     if control.health():
         busy_work()
     elif not rollback:
@@ -249,6 +248,7 @@ def switch(target, rollback=False):
     if clean_checkout() != before:
         raise RuntimeError('Checkout changed during validation. Retry.')
     control.assert_unlocked()
+    reject_ignored_collisions(target)
     if not rollback:
         git('update-ref', ROLLBACK, before)
     save(phase='applying', pid=os.getpid(), previous=before, target=target, message='Installing and reloading…')
@@ -259,7 +259,7 @@ def switch(target, rollback=False):
         # Even a failed Git command can have partly updated the working tree.
         changed = True
         if rollback:
-            git('reset', '--hard', target)
+            git('switch', '--no-overwrite-ignore', '-C', 'main', target)
         else:
             git('merge', '--ff-only', '--no-overwrite-ignore', '--no-edit', target)
         control.start()

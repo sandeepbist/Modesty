@@ -6,12 +6,16 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import tempfile
 
 from desktop_environment import clean_environment
 
 
 class QtMismatch(RuntimeError):
     """The installed Quickshell binary needs a matching Qt build."""
+
+
+QT_MISMATCH = 'Quickshell reports a Qt mismatch. Finish a full Arch upgrade and rebuild your installed Quickshell package.'
 
 
 def version(text):
@@ -33,7 +37,30 @@ def qt_mismatch(output):
     return bool(re.search(r'COMPATIBILITY WARNING|Qt.*(?:mismatch|incompatible)|built against Qt.+(?:but|system|updated)', output, re.I))
 
 
-def inspect(root, live=True):
+def probe_quickshell():
+    with tempfile.TemporaryDirectory(prefix='modesty-qt-probe-') as directory:
+        directory = Path(directory)
+        runtime = directory/'runtime'
+        runtime.mkdir(mode=0o700)
+        config = directory/'probe.qml'
+        config.write_text('import QtQuick\nimport Quickshell\nShellRoot { Timer { interval: 50; running: true; '
+                          'onTriggered: { console.log("MODESTY_QT_READY"); Qt.quit(); } } }\n')
+        env = dict(clean_environment(), HOME=str(directory), QT_QPA_PLATFORM='offscreen',
+                   XDG_RUNTIME_DIR=str(runtime), QS_NO_RELOAD_POPUP='1', MODESTY_PREVIEW='1')
+        for label in ('CONFIG', 'DATA', 'STATE', 'CACHE'):
+            env[f'XDG_{label}_HOME'] = str(directory/label.lower())
+        for key in ('WAYLAND_DISPLAY', 'DISPLAY', 'HYPRLAND_INSTANCE_SIGNATURE', 'DBUS_SESSION_BUS_ADDRESS'):
+            env.pop(key, None)
+        result = subprocess.run(['quickshell', '--no-color', '-p', str(config)], env=env,
+                                capture_output=True, text=True, timeout=8)
+        output = result.stdout + result.stderr
+        if qt_mismatch(output):
+            raise QtMismatch(QT_MISMATCH)
+        if result.returncode or 'MODESTY_QT_READY' not in output:
+            raise RuntimeError('Quickshell did not complete its startup check.')
+
+
+def inspect(root, live=True, *, probe_startup=True):
     requirements = json.loads((Path(root)/'runtime-requirements.json').read_text())
     if requirements.get('schema') != 1:
         raise RuntimeError('This update needs a newer updater. Update manually after reviewing its requirements.')
@@ -57,7 +84,9 @@ def inspect(root, live=True):
                               f'{".".join(map(str, bounds["minimum"]))} to below '
                               f'{".".join(map(str, bounds["before"]))}. Keep the current shell or use a compatible revision.')
             if qt_mismatch(output):
-                errors.append('Quickshell reports a Qt mismatch. Finish a full Arch upgrade and rebuild your installed Quickshell package.')
+                errors.append(QT_MISMATCH)
+            elif name == 'quickshell' and probe_startup:
+                probe_quickshell()
         except (RuntimeError, ValueError, OSError, subprocess.TimeoutExpired) as error:
             errors.append(str(error))
     if shutil.which('pacman'):
@@ -88,7 +117,7 @@ def inspect(root, live=True):
 
 
 def require(root, live=True):
-    report = inspect(root, live)
+    report = inspect(root, live, probe_startup=False)
     if not report['ok']:
         raise RuntimeError('\n'.join(report['errors']))
     return report

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise recorder process ownership and failures without capturing the desktop."""
 import importlib.util
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -44,9 +45,9 @@ with tempfile.TemporaryDirectory(prefix='modesty-recording-check-') as temporary
     recorder = executable('gpu-screen-recorder', '''import os, pathlib, signal, sys, time
 path=pathlib.Path(sys.argv[sys.argv.index('-o')+1])
 path.write_bytes(b'fixture video bytes')
-(path.parent/'child.pid').write_text(str(os.getpid()))
 signal.signal(signal.SIGUSR2,lambda *_:None)
 signal.signal(signal.SIGINT,signal.SIG_IGN if os.getenv('MODESTY_HUNG_RECORDER') else lambda *_:sys.exit(0))
+(path.parent/'child.pid').write_text(str(os.getpid()))
 while True:time.sleep(.05)
 ''')
     (state / 'preferences.json').write_text('{"recordCountdown":0}')
@@ -82,6 +83,46 @@ while True:time.sleep(.05)
         cli('stop');saved = wait('saved')
         assert Path(saved['path']).read_bytes() == b'fixture video bytes'
         assert personal.read_text() == 'keep me'
+        # Deliver a real CLI pause while the owner is publishing its first recording status.
+        (home / 'Videos/Recordings/child.pid').unlink()
+        wrapper = subprocess.Popen([sys.executable, '-c', '''import importlib.util, json, pathlib, subprocess, sys, time
+spec=importlib.util.spec_from_file_location('recording',sys.argv[1])
+recording=importlib.util.module_from_spec(spec);spec.loader.exec_module(recording)
+replace=pathlib.Path.replace
+injected=False
+def pause_at_replace(path,target):
+    global injected
+    boundary=not injected and target==recording.STATUS and json.loads(path.read_text()).get('phase')=='recording'
+    if boundary:
+        injected=True
+        ready=pathlib.Path.home()/'Videos/Recordings/child.pid'
+        end=time.monotonic()+3
+        while not ready.exists() and time.monotonic()<end:time.sleep(.01)
+        assert ready.exists(),'Fixture recorder did not start'
+        subprocess.run([sys.executable,sys.argv[1],'pause'],check=True,timeout=3)
+        time.sleep(.05)
+    result=replace(path,target)
+    if boundary:(recording.STATE/'pause-boundary').touch()
+    return result
+pathlib.Path.replace=pause_at_replace
+recording.run(False,False)
+''', str(ROOT / 'scripts/recording.py')], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        try:
+            end = time.monotonic() + 5
+            while not (state / 'pause-boundary').exists() and wrapper.poll() is None and time.monotonic() < end:
+                time.sleep(.01)
+            assert (state / 'pause-boundary').exists(), ('Pause interrupted status publication', json.loads(status.read_text()))
+            paused = wait('paused')
+            child = int((Path(paused['path']).parent / 'child.pid').read_text())
+            assert wrapper.poll() is None and alive(child), 'Pause interrupted recorder publication'
+            cli('pause');wait('recording')
+            cli('stop');wait('saved')
+            output, error = wrapper.communicate(timeout=3)
+            assert wrapper.returncode == 0, output + error
+        finally:
+            if wrapper.poll() is None:
+                wrapper.terminate()
+                wrapper.wait(timeout=3)
         # A stale receipt must not signal an unrelated live process with a reused PID.
         unrelated = subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(30)'])
         try:
@@ -89,9 +130,21 @@ while True:time.sleep(.05)
             cli('stop');cli('pause')
             assert unrelated.poll() is None
             assert json.loads(cli('status'))['phase'] == 'error'
+            assert json.loads(status.read_text())['phase'] == 'error'
         finally:
             unrelated.terminate();unrelated.wait(timeout=3)
-        cli('start', '--region');wait('cancelled')
+        with (state/'recording-status.lock').open('a') as status_lock:
+            fcntl.flock(status_lock, fcntl.LOCK_EX)
+            def start_claimed():
+                with (state/'recording.lock').open('a') as owner_lock:
+                    try: fcntl.flock(owner_lock, fcntl.LOCK_EX|fcntl.LOCK_NB)
+                    except BlockingIOError: return True
+                    return False
+            cli('start', '--region')
+            deadline = time.monotonic()+3
+            while not start_claimed() and time.monotonic()<deadline: time.sleep(.01)
+            assert start_claimed() and json.loads(status.read_text())['phase']=='error'
+        wait('cancelled')
         recorder.unlink()
         cli('start');failed = wait('error')
         assert 'gpu-screen-recorder' in failed['error']
@@ -119,4 +172,4 @@ while True:time.sleep(.05)
             if alive(pid):
                 try:os.kill(pid,9)
                 except ProcessLookupError:pass
-print('PASS recorder start/pause/resume/save, stale PID refusal, selection cancel, missing backend and bounded hung-recorder cleanup')
+print('PASS recorder start/pause/resume/save, pause during publication, locked status repair, stale PID refusal, selection cancel, missing backend and bounded hung-recorder cleanup')

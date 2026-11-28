@@ -131,9 +131,9 @@ def validate_shell(root=ROOT, headless=False):
     result = subprocess.run(['quickshell', '--no-color', '-p', str(root/'typecheck.qml')],
                             env=env, capture_output=True, text=True, timeout=15)
     output = result.stdout + result.stderr
-    from compatibility import QtMismatch, qt_mismatch
+    from compatibility import QT_MISMATCH, QtMismatch, qt_mismatch
     if qt_mismatch(output):
-        raise QtMismatch('Quickshell reports a Qt mismatch. Finish a full Arch upgrade and rebuild your installed Quickshell package. The running shell was kept.\n'+output[-3000:])
+        raise QtMismatch(QT_MISMATCH+' The running shell was kept.\n'+output[-3000:])
     checked = output
     if headless:
         # Before the first desktop login there may be no PipeWire server. This

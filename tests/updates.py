@@ -73,7 +73,7 @@ def installed(argv):
     raise AssertionError(argv)
 
 with patch.object(compatibility, 'capture', side_effect=installed), patch.object(compatibility.shutil, 'which', return_value='/usr/bin/tool'), patch.dict(compatibility.os.environ, {'HYPRLAND_INSTANCE_SIGNATURE': ''}), patch.object(compatibility.importlib.util, 'find_spec', return_value=True):
-    assert compatibility.inspect(ROOT)['ok']
+    assert compatibility.require(ROOT)['ok']
     def mixed(argv):
         if argv[-1] == 'qt6-declarative': return 'qt6-declarative 6.10.2-1'
         return installed(argv)
@@ -87,6 +87,19 @@ with patch.object(compatibility, 'capture', side_effect=installed), patch.object
         rejected(lambda: compatibility.require(ROOT), 'Qt mismatch')
     with patch.object(compatibility.shutil, 'which', side_effect=lambda name: None if name=='bwrap' else '/usr/bin/tool'):
         rejected(lambda: compatibility.require(ROOT), 'bubblewrap')
+    def launch(argv, **options):
+        probe = Path(argv[-1])
+        assert probe.is_file() and 'MODESTY_QT_READY' in probe.read_text()
+        environment = options['env']
+        assert environment['QT_QPA_PLATFORM'] == 'offscreen' and 'WAYLAND_DISPLAY' not in environment
+        assert Path(environment['XDG_RUNTIME_DIR']).parent == probe.parent
+        return subprocess.CompletedProcess(argv, 0, 'MODESTY_QT_READY',
+                                           'Quickshell was built against Qt 6.12.0 but the system has updated to Qt 6.12.1')
+    with patch.dict(compatibility.os.environ, {'WAYLAND_DISPLAY': 'fixture-wayland'}), patch.object(compatibility.subprocess, 'run', side_effect=launch) as startup:
+        report = compatibility.inspect(ROOT)
+        assert not report['ok'] and any('Qt mismatch' in error for error in report['errors']), report
+        startup.assert_called_once()
+        assert not Path(startup.call_args.args[0][-1]).exists()
 print('PASS stable/git versions, unsupported runtime, missing dependencies and mixed/compiled Qt gates')
 
 with tempfile.TemporaryDirectory(prefix='modesty-update-check-') as directory, contextlib.redirect_stdout(io.StringIO()):
@@ -96,10 +109,14 @@ with tempfile.TemporaryDirectory(prefix='modesty-update-check-') as directory, c
     raw('init', '-b', 'main'); raw('config', 'user.email', 'test@example.invalid'); raw('config', 'user.name', 'Update test')
     raw('remote', 'add', 'origin', updates.UPSTREAM)
     (repo/'version.txt').write_text('old')
-    (repo/'.gitignore').write_text('notes.cache\n')
+    (repo/'.gitignore').write_text('notes.cache\n/ local/\n')
+    original = repo/' local/notes.txt'
+    original.parent.mkdir()
+    original.write_text('original tracked file\n')
     shutil.copy2(ROOT/'runtime-requirements.json', repo/'runtime-requirements.json')
-    raw('add', '.'); raw('commit', '-m', 'Old version'); old = raw('rev-parse', 'HEAD')
+    raw('add', '.'); raw('add', '-f', ' local/notes.txt'); raw('commit', '-m', 'Old version'); old = raw('rev-parse', 'HEAD')
     (repo/'version.txt').write_text('new');(repo/'notes.cache').write_text('upstream file');raw('add','--force','notes.cache')
+    raw('mv', ' local/notes.txt', 'notes-template.txt')
     raw('commit', '-am', 'New version'); new = raw('rev-parse', 'HEAD')
     raw('reset', '--hard', old)
     control = MagicMock(unsafe=True); control.health.return_value = {'locked': False}
@@ -151,6 +168,17 @@ with tempfile.TemporaryDirectory(prefix='modesty-update-check-') as directory, c
         assert raw('rev-parse', 'HEAD') == new and (repo/'version.txt').read_text() == 'new'
         assert updates.status()['rollback'] == old and not updates.STAGE.exists()
         with patch.object(updates, 'api', side_effect=AssertionError('Rollback must stay offline')):
+            original.parent.mkdir(exist_ok=True)
+            original.write_text('local ignored notes')
+            stops = control.stop_modesty.call_count
+            rejected(lambda: updates.switch(old, rollback=True), 'ignored local file')
+            assert control.stop_modesty.call_count == stops
+            assert raw('rev-parse', 'HEAD') == new and original.read_text() == 'local ignored notes'
+            original.unlink()
+            with patch.object(control, 'stop_modesty', side_effect=lambda: original.write_text('notes added during shutdown')):
+                rejected(lambda: updates.switch(old, rollback=True), 'would be overwritten')
+            assert raw('rev-parse', 'HEAD') == new and original.read_text() == 'notes added during shutdown'
+            original.unlink()
             updates.switch(old, rollback=True)
         assert raw('rev-parse', 'HEAD') == old and updates.status()['rollback'] == ''
         # Startup failure restores the old tree and starts it again.

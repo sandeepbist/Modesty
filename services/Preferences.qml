@@ -149,6 +149,28 @@ Singleton {
     readonly property bool preview: Quickshell.env("MODESTY_PREVIEW") === "1"
     readonly property string stateDir: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/modesty"
     readonly property var defaults: ({companionSide:"right",companionInset:36,companionEnabled:true,companionZen:true,companionTerminal:true,companionSize:64,agentFeedback:true,privacyRadar:true,privacyIndicatorGap:25,privacyIndicatorRightPadding:19,remindersEnabled:true,deviceIndicator:true,focusMinutes:25,breakMinutes:5,recordCountdown:3,recordFps:60,recordCursor:true,contextDevices:true,contextBattery:true,footerTray:true,compactMissingLyrics:true,launcherCalculator:true,launcherDescriptions:false,matugenAutomatic:true,matugenScheme:"scheme-tonal-spot",matugenContrast:0,matugenSource:0,themeGtk:true,themeFolders:false,themeQt:true,themeFoot:true,themeSpotify:true,footerVisible:true,footerSettings:true,wallpaperTransition:"fade",wallpaperLivePreview:false,wallpaperDuration:.35,windowGap:0,trayIconSize:20,traySpacing:5,crispText:true,controlGap:9,controlRadius:16,controlIconSize:24,sliderThickness:8,lockScreenStyle:"legacy",lockDuration:520,modernLockDuration:300,lockRebound:true,lockFrost:100,lockBlur:.6,lockDim:.36,lockClockSize:124, fontFamily:"Inter Variable",clockFontFamily:"Inter Variable",bodyFontSize:9.75,spacingUnit:4,fieldRadius:12,surfaceRadius:16,profileImage:"",liveMedia:true,mediaAutoHide:true,focusQuiet:true,footerPerformance:true,lockClockStyle:"soft",mediaVisualizer:true,mediaLyrics:true,welcomeAtLogin: true, fuzzyApps: true, rememberApps: true, terminal: "foot", terminalGreeting:true, terminalArtFormat:"image", terminalArtMode:"original", terminalArtCollection:"portraits", terminalArtPinned:"", terminalArtFavorites:[], terminalArtHidden:[], terminalArtFavoritesOnly:false, terminalArtMinimal:false, terminalArtSize:36, launcherVisibleRows: 5, agentActivity:true, agentActivityInterval:5, contextWorkspace: true, contextVolume: true, contextBrightness: true, contextDuration: 1500, tooltipDelay: 500, hoverLift: 5, motionSpeed: 1.0, notificationDuration: 6000, notificationBody: true, wallpaperColors: true, contextEvents: true, use24Hour: true, showSeconds: false, motion: "fluid", uiScale: 1, topMargin: 11, barHeight: 33, collapsedWidth: 90, clusterGap: 14, expandedRadius: 28, innerPadding: 10, showAlbum: true, showStatus: true, shadows: true, mediaWidth: 360, controlsWidth: 370, launcherWidth: 550, searchWidth:700, searchBarHeight:80, searchMaxHeight:560, searchRows:5, searchX:50, searchY:50, searchRadius:24, searchMotion:210, searchTravelDuration:620, searchWebPrefix:"web", searchFilePrefix:"file", lumaJev:true,lumaVoice:true,lumaVoiceWarm:false,lumaLocalFiles:true,lumaKnowledgeRoots:[],lumaWeb:true,lumaDesktop:true,lumaSystem:true,lumaAccess:"review",lumaEffects:true,lumaActionDetails:false,lumaTextSize:14,lumaWindowContext:true,lumaRemember:true,lumaAutoAnswer:true,lumaAnswerDelay:1500,searchAiEnabled:true, searchAiModel:"gemini-3.5-flash-lite", calendarWidth: 320 })
+    function normalizedSearchPrefix(value: var): string {
+        return typeof value === "string" && /^[a-z][a-z0-9_-]{0,19}$/i.test(value.trim()) ? value.trim().toLowerCase() : "";
+    }
+    function apply(data: var): void {
+        const savedWeb = normalizedSearchPrefix(data.searchWebPrefix);
+        const savedFile = normalizedSearchPrefix(data.searchFilePrefix);
+        let web = savedWeb || defaults.searchWebPrefix;
+        let file = savedFile || defaults.searchFilePrefix;
+        if (web === file) {
+            // Preserve a valid partial prefix by using the other default for its missing or invalid partner.
+            if (!savedWeb) web = defaults.searchFilePrefix;
+            else if (!savedFile) file = defaults.searchWebPrefix;
+            else { web = defaults.searchWebPrefix; file = defaults.searchFilePrefix; }
+        }
+        if (searchWebPrefix !== web || searchFilePrefix !== file) {
+            searchWebPrefix = web;
+            searchFilePrefix = file;
+            if (!preview) saveDelay.restart();
+        }
+        for (const key of Object.keys(defaults))
+            if (key in data && !["searchWebPrefix", "searchFilePrefix"].includes(key)) set(key, data[key]);
+    }
     function set(key: string, value: var): void {
         if (!(key in defaults)) return;
         if (typeof defaults[key] === "boolean" && typeof value !== "boolean") return;
@@ -172,8 +194,8 @@ Singleton {
         if(extraRanges[key]){if(!Number.isFinite(value))return;value=Math.max(extraRanges[key][0],Math.min(extraRanges[key][1],value));if(!["motionSpeed","lockBlur","lockDim","wallpaperDuration","matugenContrast","searchX","searchY"].includes(key))value=Math.round(value);}
         if(key==="profileImage"&&(typeof value!=="string"||!(value===""||value==="none"||value.startsWith("file://"))))return;
         if(["searchWebPrefix","searchFilePrefix"].includes(key)){
-            if(typeof value!=="string"||!(/^[a-z][a-z0-9_-]{0,19}$/i).test(value.trim()))return;
-            value=value.trim().toLowerCase();
+            value=normalizedSearchPrefix(value);
+            if(!value)return;
             if(value===root[key==="searchWebPrefix"?"searchFilePrefix":"searchWebPrefix"])return;
         }
         if(key==="searchAiModel"&&!["gemini-3.5-flash-lite","gemini-3.8-flash","gemini-3.1-flash-lite","gemini-2.5-flash-lite"].includes(value))return;
@@ -201,7 +223,7 @@ Singleton {
         root[key] = value;
         if (!preview) saveDelay.restart();
     }
-    function reset(): void { for (const key of Object.keys(defaults)) set(key, defaults[key]); }
+    function reset(): void { apply(defaults); }
     function snapshot(): var { const data = {}; for (const key of Object.keys(defaults)) data[key] = root[key]; return data; }
     Timer { id: saveDelay; interval: 300; onTriggered: { if (writer.running) { restart(); return; } writer.command = ["python3", Qt.resolvedUrl("../scripts/preferences.py").toString().replace("file://", ""), JSON.stringify(root.snapshot())]; writer.running = true; } }
     Process { id: writer; onExited: code => root.saveError = code === 0 ? "" : "Couldn't save your preferences" }
@@ -214,7 +236,7 @@ Singleton {
                 const oldTransition = data.wallpaperTransition && !["fade", "none"].includes(data.wallpaperTransition);
                 if (oldTransition) { data.wallpaperTransition = "fade"; data.wallpaperDuration = .35; }
                 const oldDuration = data.wallpaperDuration > .7;
-                for (const key of Object.keys(root.defaults)) if (key in data) root.set(key, data[key]);
+                root.apply(data);
                 saveDelay.stop();
                 if (oldTransition || oldDuration) saveDelay.restart();
             }

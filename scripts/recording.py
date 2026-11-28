@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 """Own one recorder process; finalize only that process and retain session status."""
-import fcntl,json,os,re,signal,subprocess,sys,time
+import fcntl,json,os,re,signal,subprocess,sys,tempfile,time
 from datetime import datetime
 from pathlib import Path
 STATE=Path(os.environ.get('XDG_STATE_HOME',Path.home()/'.local/state'))/'modesty'
 STATUS=STATE/'recording.json'
+ACTIVE_PHASES=('preparing','selecting','countdown','recording','paused','saving')
 
 def write(data):
-    tmp=STATUS.with_suffix('.tmp');tmp.write_text(json.dumps(data));tmp.replace(STATUS)
+    fd,name=tempfile.mkstemp(dir=STATE,prefix='recording-',suffix='.tmp');tmp=Path(name)
+    try:
+        with os.fdopen(fd,'w') as stream:json.dump(data,stream)
+        tmp.replace(STATUS)
+    finally:tmp.unlink(missing_ok=True)
 def read():
     try:return json.loads(STATUS.read_text())
     except (OSError,ValueError):return {}
@@ -17,6 +22,18 @@ def ticks(pid):
         return fields[19] if fields[0] not in ('Z','X') else ''
     except (OSError,IndexError):return ''
 def alive(data):return bool(data.get('pid') and data.get('token') and ticks(data['pid'])==data['token'])
+def status():
+    STATE.mkdir(parents=True,exist_ok=True)
+    with (STATE/'recording-status.lock').open('a') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX)
+        data=read()
+        if not STATUS.exists():
+            data={'phase':'idle'}
+            write(data)
+        elif data.get('phase') in ACTIVE_PHASES and not alive(data):
+            data.update(phase='error',error='The recorder is no longer running.')
+            write(data)
+        return data
 def control(action):
     data=read()
     if alive(data):
@@ -30,7 +47,7 @@ def run(region,sound):
     try:prefs=json.loads((STATE/'preferences.json').read_text())
     except (OSError,ValueError):prefs={}
     data={'pid':os.getpid(),'token':ticks(os.getpid()),'phase':'preparing','sound':sound,'region':region,'started':0,'elapsed':0,'path':'','error':''}
-    child=None;selector=None;cancelled=False;stopped_at=0;paused=False;paused_at=0;paused_total=0
+    child=None;selector=None;cancelled=False;stopped_at=0;paused=False;paused_at=0;paused_total=0;pause_requests=[]
     def stop(*_):
         nonlocal cancelled,stopped_at
         if not cancelled:stopped_at=time.monotonic()
@@ -38,15 +55,11 @@ def run(region,sound):
         if child and child.poll() is None:child.send_signal(signal.SIGINT)
         if selector and selector.poll() is None:selector.terminate()
     def pause(*_):
-        nonlocal paused,paused_at,paused_total
-        if child and child.poll() is None and data['phase'] in ('recording','paused'):
-            child.send_signal(signal.SIGUSR2)
-            paused=not paused
-            if paused:paused_at=time.monotonic()
-            else:paused_total+=time.monotonic()-paused_at
-            data['phase']='paused' if paused else 'recording';write(data)
+        if data['phase'] in ('recording','paused') and not cancelled:pause_requests.append(None)
     signal.signal(signal.SIGTERM,stop);signal.signal(signal.SIGINT,stop);signal.signal(signal.SIGUSR2,pause)
-    write(data)
+    with (STATE/'recording-status.lock').open('a') as status_lock:
+        fcntl.flock(status_lock,fcntl.LOCK_EX)
+        write(data)
     try:
         # Allow the panel to finish closing before any capture/selection begins.
         time.sleep(.4)
@@ -77,6 +90,14 @@ def run(region,sound):
         child=subprocess.Popen(['gpu-screen-recorder',*args,'-o',str(path)],stdin=subprocess.DEVNULL,stdout=log,stderr=log)
         start=time.monotonic();data.update(phase='recording',started=time.time(),path=str(path));write(data)
         while child.poll() is None:
+            while pause_requests:
+                pause_requests.pop()
+                if cancelled:continue
+                child.send_signal(signal.SIGUSR2)
+                paused=not paused
+                if paused:paused_at=time.monotonic()
+                else:paused_total+=time.monotonic()-paused_at
+                data['phase']='paused' if paused else 'recording'
             now=paused_at if paused else time.monotonic()
             data['elapsed']=int(now-start-paused_total)
             if cancelled:
@@ -112,11 +133,7 @@ if __name__=='__main__':
     elif action=='run':run('--region' in sys.argv,'--sound' in sys.argv)
     elif action in ('stop','pause'):control(action)
     elif action=='status':
-        STATE.mkdir(parents=True,exist_ok=True)
-        if not STATUS.exists():write({'phase':'idle'})
-        data=read()
-        if data.get('phase') in ('preparing','selecting','countdown','recording','paused','saving') and not alive(data):data.update(phase='error',error='The recorder is no longer running.');write(data)
-        print(json.dumps(data))
+        print(json.dumps(status()))
     elif action in ('start','toggle'):
         if alive(read()):
             if action=='toggle':control('stop')
