@@ -7,12 +7,18 @@ Entries are prepared before publishing. GitHub Releases records which versions h
 
 ### Added
 
+- The island expands into a dock with workspace controls, media, the clock, active timers, and status.
+- Settings offers a modern lock screen with a translucent clock and animated password dots. The legacy layout remains available.
+- Luma's Analyze Page can send the selected window image and exposed document text to the configured AI provider.
 - Quick Notes captures plain text and Markdown with search, pins, archive, trash, restore, and Markdown export. Drafts survive delayed or failed saves, and native note edits require the current revision.
 - Reminders support recurring schedules, revision-checked edits, durable command retries, and calendar-day selection.
 - Luma can request native note, reminder, media, display, network, workspace, and power actions. Completion follows the actual persistence receipt or observed result.
 
 ### Fixed
 
+- Unreadable wallpapers cannot become active. If an image fails to load on screen, the last visible wallpaper stays in place.
+- The wallpaper picker rebuilds missing thumbnails and previews from the source image.
+- Settings updates require the latest push runs of Checks and CodeQL to pass for the selected commit. The updater checks again before restarting the shell.
 - Notes action menus follow the shell scale, expose their full pointer region, and retain native keyboard navigation and scrolling.
 - Notes recovery refuses to replace a readable current store. Shell shutdown requires a Notes save acknowledgement before stopping a live instance.
 - Reminder completion, removal, and Luma Undo reject stale revisions. Undo reports success only after the durable command receipt.
@@ -36,6 +42,7 @@ Entries are prepared before publishing. GitHub Releases records which versions h
 
 ### Changed
 
+- The power panel requires a hold to log out, restart, or shut down.
 - Wallpaper color scans defer full palette parsing until the selected entry needs it, while preserving preview colors and complete color metadata. Identical preview palettes skip redundant Theme updates.
 - Main-shell startup has an optional local AMD Mesa optimization that avoids loading unused EGL vendors. Other desktops retain normal startup, and explicit graphics overrides or failed verification use the normal path. Animations and warm voice remain enabled.
 - Hidden wallpaper and file-drop surfaces suspend redundant rendering and resume updates for geometry, exposure, and input changes.

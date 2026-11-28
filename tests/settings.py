@@ -523,6 +523,60 @@ ShellRoot {
 }
 '''
 
+PREFIXES = PERSISTENCE.replace(
+    'Settings.SettingRow {id:row;anchors.fill:parent;setting:Catalog.page("status").blocks.find(b=>b.id==="privacy").items.find(s=>s.key==="privacyIndicatorGap")}',
+    '''Column {
+            width:parent.width
+            Settings.SettingRow {id:web; width:parent.width;setting:Catalog.page("luma-layout").blocks.find(b=>b.id==="prefixes").items[0]}
+            Settings.SettingRow {id:file;width:parent.width;setting:Catalog.page("luma-layout").blocks.find(b=>b.id==="prefixes").items[1]}
+        }''').replace('property int phase:0', '''function edit(row,value) {
+        const field=row.reveal();field.forceActiveFocus();input.keyClick(Qt.Key_A,Qt.ControlModifier);
+        for(let i=0;i<value.length;i++)input.keyClick(value[i]);
+        input.keyClick(Qt.Key_Return);
+    }
+    function pair(web,file) {
+        if(Preferences.searchWebPrefix!==web||Preferences.searchFilePrefix!==file)
+            throw new Error("Prefix pair "+Preferences.searchWebPrefix+"/"+Preferences.searchFilePrefix+", expected "+web+"/"+file);
+        if(Preferences.saveError)throw new Error(Preferences.saveError);
+    }
+    property int phase:0''')
+
+
+def test_search_prefixes():
+    with tempfile.TemporaryDirectory(prefix='modesty-settings-prefixes-') as directory:
+        environment = workspace(directory, preview=False)
+        stored = Path(environment['XDG_STATE_HOME']) / 'modesty/preferences.json'
+
+        def prefixes(action, assertion, marker):
+            source = PREFIXES.replace('ACTION', action).replace('ASSERTION', assertion).replace('MARKER', marker)
+            run(directory, environment, source, marker)
+
+        prefixes('edit(web,"temporary");edit(file,"web");edit(web,"file");',
+                 'pair("file","web");', 'SETTINGS PREFIX WRITE PASS')
+        data = json.loads(stored.read_text())
+        assert (data['searchWebPrefix'], data['searchFilePrefix']) == ('file', 'web')
+        prefixes('', 'pair("file","web");', 'SETTINGS PREFIX RESTART PASS')
+        prefixes('Preferences.reset();', 'pair("web","file");', 'SETTINGS PREFIX RESET PASS')
+        data = json.loads(stored.read_text())
+        assert (data['searchWebPrefix'], data['searchFilePrefix']) == ('web', 'file')
+        prefixes('', 'pair("web","file");', 'SETTINGS PREFIX RESET RESTART PASS')
+        prefixes('edit(web,"FILE");edit(file,"WEB");',
+                 'pair("web","file");', 'SETTINGS PREFIX DUPLICATE PASS')
+
+        for index, (saved, expected) in enumerate((
+                ({'searchWebPrefix': ' News_2 ', 'searchFilePrefix': ' Docs-3 '}, ('news_2', 'docs-3')),
+                ({'searchWebPrefix': 'news'}, ('news', 'file')),
+                ({'searchFilePrefix': 'docs'}, ('web', 'docs')),
+                ({'searchWebPrefix': 'file'}, ('file', 'web')),
+                ({'searchFilePrefix': 'web'}, ('file', 'web')),
+                ({'searchWebPrefix': 'bad prefix', 'searchFilePrefix': 'docs'}, ('web', 'docs')),
+                ({'searchWebPrefix': 'file', 'searchFilePrefix': None}, ('file', 'web')),
+                ({'searchWebPrefix': 'news', 'searchFilePrefix': ' NEWS '}, ('web', 'file')),
+                ({'searchWebPrefix': [], 'searchFilePrefix': 3}, ('web', 'file')))):
+            stored.write_text(json.dumps(saved))
+            prefixes('', f'pair({json.dumps(expected[0])},{json.dumps(expected[1])});',
+                     f'SETTINGS PREFIX LOAD PASS {index}')
+
 
 def test_drafts():
     with tempfile.TemporaryDirectory(prefix='modesty-settings-drafts-') as directory:
@@ -559,6 +613,7 @@ def test_preview_drafts():
 
 
 def main():
+    test_search_prefixes()
     test_drafts()
     test_preview_drafts()
     for width, height, mode in ((760, 560, 'dark'), (960, 720, 'light')):

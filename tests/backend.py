@@ -4,7 +4,11 @@ import json
 from pathlib import Path
 import tempfile
 import sys
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+from urllib.parse import unquote, urlsplit
 from unittest.mock import patch
+from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'scripts'))
 
 def module(name):
@@ -13,7 +17,8 @@ def module(name):
 system, prefs = module('system'), module('preferences')
 with tempfile.TemporaryDirectory() as tmp:
     directory=Path(tmp); walls=directory/'walls'; walls.mkdir(); state=directory/'state'
-    tricky=walls/"quote ' and $().png"; tricky.write_bytes(b'fake test image')
+    tricky=walls/"quote ' and $().png"; Image.new('RGB',(80,60),'red').save(tricky)
+    thumbnail=directory/'thumbnail.png';Image.new('RGB',(80,60),'red').save(thumbnail)
     options=dict(automatic=False,scheme='scheme-fidelity',contrast=.25,source=2)
     data={
         'colors':{name:{mode:{'color':'#102030' if mode=='dark' else '#e0d0c0'} for mode in ('dark','light')}
@@ -27,7 +32,7 @@ with tempfile.TemporaryDirectory() as tmp:
           patch.object(system,'BUNDLED_WALLS',directory/'unavailable'),
           patch.object(system,'WALL_CACHE',directory/'wallpapers.json'),
           patch.object(system,'optional',return_value='[]'),
-          patch.object(system.wallpaper_tools,'cached_image',side_effect=lambda path,*args:Path(path)) as images,
+          patch.object(system.wallpaper_tools,'cached_image',side_effect=lambda path,kind,*_:thumbnail if kind=='preview' else Path(path)) as images,
           patch.object(system.wallpaper_tools,'cached_data',return_value=data),
           patch.object(system.wallpaper_tools,'generate_data',return_value=data),
           patch.object(system.wallpaper_tools,'display_url',return_value=tricky.as_uri()),
@@ -86,6 +91,109 @@ with tempfile.TemporaryDirectory() as tmp:
         system.action('wallpaper', json.dumps({'path': marble['path']}))
         assert json.loads((system.STATE / 'wallpaper.json').read_text())['path'] == marble['path']
 print('PASS bundled theme wallpapers install without a personal wallpaper library')
+
+with tempfile.TemporaryDirectory() as tmp:
+    directory=Path(tmp);walls=directory/'walls';walls.mkdir();state=directory/'state'
+    good=walls/'good.png';Image.new('RGB',(800,600),'red').save(good)
+    other=walls/'other.png';Image.new('RGB',(800,600),'blue').save(other)
+    corrupt=walls/'corrupt.png';corrupt.write_bytes(b'not an image')
+    truncated=walls/'truncated.jpg';Image.new('RGB',(800,600),'green').save(truncated)
+    truncated.write_bytes(truncated.read_bytes()[:-100])
+    oversized=walls/'oversized.png';Image.new('RGB',(1200,1200),'green').save(oversized)
+    with Image.open(truncated) as image:
+        assert image.size==(800,600), 'Truncated fixture must retain a readable header'
+    with (patch.object(system,'WALLS',walls),patch.object(system,'STATE',state),
+          patch.object(system,'BUNDLED_WALLS',directory/'missing'),
+          patch.object(system,'WALL_CACHE',directory/'wallpapers.json'),
+          patch.object(system,'optional',return_value='[]'),
+          patch.object(system.wallpaper_tools,'IMAGE_CACHE',directory/'images'),
+          patch.object(system.wallpaper_tools,'command',return_value='[]'),
+          patch.object(Image,'MAX_IMAGE_PIXELS',500_000)):
+        selected=system.action('wallpaper',str(good))
+        assert selected['ok'] and Path(unquote(urlsplit(selected['wallpaperDisplay']).path)).is_file()
+        saved=(state/'wallpaper.json').read_bytes()
+        preferences=state/'preferences.json';preferences.write_text('{"wallpaper":"original"}')
+        for rejected in (corrupt,truncated,oversized):
+            try: system.action('wallpaper',str(rejected))
+            except (OSError,ValueError): pass
+            else: raise AssertionError('Undecodable wallpaper accepted: '+rejected.name)
+            assert (state/'wallpaper.json').read_bytes()==saved
+            assert preferences.read_text()=='{"wallpaper":"original"}'
+        rows=system.wallpapers()
+        assert {row['path'] for row in rows}=={str(good),str(other)}, 'Corrupt wallpapers remain listed'
+        for field in ('thumbnailUrl','displayUrl'):
+            derivative=Path(unquote(urlsplit(next(row for row in rows if row['path']==str(good))[field]).path))
+            derivative.unlink()
+            with patch.object(system.wallpaper_tools,'cached_image',wraps=system.wallpaper_tools.cached_image) as render:
+                assert system.wallpapers()==rows
+                assert derivative.is_file(), 'Missing derivative was not repaired: '+field
+                assert {call.args[0] for call in render.call_args_list}=={good}, 'Intact wallpaper was regenerated'
+        with patch.object(system.wallpaper_tools,'cached_image',wraps=system.wallpaper_tools.cached_image) as render:
+            assert system.wallpapers()==rows
+            render.assert_not_called()
+        with patch.object(system,'WALL_CACHE',directory/'unwritten.json'):
+            with patch.object(system.wallpaper_tools,'cached_image',side_effect=PermissionError('cache is read-only')):
+                assert system.action('wallpaper',str(good))['wallpaperDisplay']==good.as_uri()
+                with patch.object(system.wallpaper_tools,'write_json',side_effect=PermissionError('cache is read-only')):
+                    fallback=system.wallpapers()
+                assert {row['path'] for row in fallback}=={str(good),str(other)}
+                assert all(row['thumbnailUrl']==row['url']==row['displayUrl'] for row in fallback)
+                assert system.wallpapers()==fallback
+            assert system.wallpapers()==rows, 'Cached original fallback never retries derivatives'
+        manifest=json.loads(system.WALL_CACHE.read_text())
+        for malformed in ([None],[{'path':[]}],[{'path':'/outside-library.png'}]):
+            system.wallpaper_tools.write_json(system.WALL_CACHE,dict(manifest,wallpapers=malformed))
+            assert system.wallpapers()==rows, 'Malformed manifest rows were not rebuilt'
+        for invalid in (None,{},'https://example.com/image.png','file://[invalid'):
+            broken=json.loads(json.dumps(manifest));broken['wallpapers'][0]['thumbnailUrl']=invalid
+            system.wallpaper_tools.write_json(system.WALL_CACHE,broken)
+            with patch.object(system.wallpaper_tools,'cached_image',wraps=system.wallpaper_tools.cached_image) as render:
+                assert system.wallpapers()==rows
+                assert {call.args[0] for call in render.call_args_list}=={good}
+        deleted=walls/'deleted.png';Image.new('RGB',(80,60),'red').save(deleted)
+        listed=[good,deleted];deleted.unlink()
+        with (patch.object(system,'wallpaper_files',return_value=listed),
+              patch.object(system,'WALL_CACHE',directory/'deleted.json')):
+            assert [row['path'] for row in system.wallpapers()]==[str(good)]
+        for current in (str(corrupt),str(directory/'missing.jpg'),'relative.jpg'):
+            system.wallpaper_tools.write_json(state/'wallpaper.json',{'path':current,'backend':'native'})
+            assert system.snapshot()['wallpaper']==current
+print('PASS undecodable wallpaper rejection, unchanged state/preferences, corrupt picker filtering, per-item derivative repair, cache failure/recovery, malformed manifests, deletion race, legacy snapshots')
+
+def contend(write):
+    barrier=Barrier(2)
+    replace=Path.replace
+    def synchronized(path,target):
+        barrier.wait(timeout=5)
+        return replace(path,target)
+    with patch.object(Path,'replace',synchronized),ThreadPoolExecutor(max_workers=2) as workers:
+        for future in [workers.submit(write,index) for index in range(2)]:
+            future.result(timeout=8)
+
+with tempfile.TemporaryDirectory() as tmp:
+    directory=Path(tmp);tools=system.wallpaper_tools
+    target=directory/'shared.json'
+    contend(lambda index:tools.write_json(target,{'writer':index}))
+    assert json.loads(target.read_text()) in ({'writer':0},{'writer':1})
+    published=target.read_bytes()
+    with patch.object(Path,'replace',side_effect=OSError('disk is full')):
+        try: tools.write_json(target,{'writer':2})
+        except OSError: pass
+        else: raise AssertionError('Failed JSON publication reported success')
+    assert target.read_bytes()==published
+    source=directory/'wallpaper.png';Image.new('RGB',(800,600),'red').save(source)
+    with patch.object(tools,'IMAGE_CACHE',directory/'images'):
+        contend(lambda _:tools.cached_image(source,'preview'))
+        rendered=tools.cached_image(source,'preview')
+        with Image.open(rendered) as image:
+            image.load();assert image.size==(347,260)
+        with patch.object(Image.Image,'save',side_effect=OSError('disk is full')):
+            try: tools.cached_image(source,'display')
+            except OSError: pass
+            else: raise AssertionError('Failed image publication reported success')
+    assert set(directory.iterdir())=={target,source,directory/'images'}
+    assert list((directory/'images').iterdir())==[rendered], 'Temporary image files remain'
+print('PASS deterministic concurrent JSON/image publication and staging cleanup')
 
 # A rounded snapshot must not generate an unsolicited brightness OSD on panel open.
 import os

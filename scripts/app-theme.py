@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate managed application colors through Matugen's template engine."""
-import json, os, re, shutil, subprocess, stat, configparser, io, importlib.util, hashlib
+import json, os, re, shutil, subprocess, stat, configparser, importlib.util, hashlib
 import folder_theme
 from pathlib import Path
 
@@ -20,6 +20,62 @@ def integrate(path,line,state,enabled):
     clean='\n'.join(x for x in old.splitlines() if 'modesty-generated' not in x)
     if enabled:clean=(line+'\n'+clean) if line.startswith('include=') else clean+'\n'+line
     if clean.strip()!=old.strip():backup(path,state);write(path,clean.strip()+'\n')
+
+def gtk_value(record,key,current,value,enabled):
+    previous=record.get(key)
+    owned=previous and current in (previous['applied'],previous.get('previous',previous['applied']))
+    if enabled:
+        original=previous['original'] if owned else current
+        record[key]={'original':original,'applied':value}
+        if owned and current!=value:record[key]['previous']=current
+        return value
+    return previous['original'] if owned else current
+
+def complete_gtk_receipt(receipt,record,enabled,keys):
+    if not enabled:
+        receipt.unlink()
+    elif any('previous' in record[key] for key in keys):
+        for key in keys:record[key].pop('previous',None)
+        write(receipt,json.dumps(record))
+
+def gtk_settings(path,state,mode,enabled):
+    receipt=state/'gtk-settings'/(path.parent.name+'.json')
+    if not enabled and not receipt.exists():return
+    record=json.loads(receipt.read_text()) if receipt.exists() else {}
+    old=path.read_text() if path.exists() else ''
+    parser=configparser.ConfigParser(interpolation=None);parser.read_string(old)
+    values={'gtk-application-prefer-dark-theme':'1' if mode=='dark' else '0'}
+    theme='adw-gtk3-dark' if mode=='dark' else 'adw-gtk3'
+    if (Path('/usr/share/themes')/theme).exists():values['gtk-theme-name']=theme
+    changes={}
+    for key in values if enabled else list(record):
+        current=parser.get('Settings',key,fallback=None)
+        value=gtk_value(record,key,current,values.get(key),enabled)
+        if value!=current:changes[key]=value
+    if enabled:write(receipt,json.dumps(record))
+    if changes:
+        section=re.search(r'(?m)^[ \t]*\[Settings\][^\r\n]*(?:\r?\n|$)',old)
+        start=section.end() if section else len(old)
+        end=re.search(r'(?m)^[ \t]*\[',old[start:])
+        end=start+end.start() if end else len(old)
+        body=old[start:end]
+        for key,value in changes.items():
+            pattern=re.compile(r'^([ \t]*'+re.escape(key)+r'[ \t]*[=:][ \t]*)[^\r\n]*(\r?\n|$)',re.M|re.I)
+            if pattern.search(body):
+                body=pattern.sub(lambda match:match[1]+value+match[2] if value is not None else '',body)
+            elif value is not None:
+                body+=('' if not body or body.endswith('\n') else '\n')+key+'='+value+'\n'
+        prefix=old[:start]
+        if not section:prefix+=('' if not prefix or prefix.endswith('\n') else '\n')+'[Settings]\n'
+        elif prefix and not prefix.endswith('\n'):prefix+='\n'
+        backup(path,state);write(path,prefix+body+old[end:])
+    complete_gtk_receipt(receipt,record,enabled,values)
+
+def gtk_import(path,state,enabled):
+    old=path.read_text() if path.exists() else ''
+    clean=re.sub(r'''(?m)^[ \t]*@import[ \t]+["']modesty-generated\.css["'][ \t]*;[ \t]*(?:\r?\n|$)''','',old)
+    new='@import "modesty-generated.css";\n'+clean if enabled else clean
+    if new!=old:backup(path,state);write(path,new)
 
 def migrate_thunar(path,state):
     # Migrate only unchanged bundled versions; preserve user-edited CSS.
@@ -131,22 +187,8 @@ def apply(raw,mode,state,targets):
         if targets.get('gtk'):write(target,(generated/'gtk.css').read_text())
         if targets.get('gtk'):
             migrate_thunar(css.parent/'thunar.css',state)
-            old=css.read_text() if css.exists() else ''
-            backup(css,state)
-            # Imports precede rules; remove only legacy definitions of our managed roles.
-            clean='\n'.join(line for line in old.splitlines() if 'modesty-generated' not in line)
-            for name in (*names,'theme_selected_bg_color','theme_unfocused_selected_bg_color'):
-                clean=re.sub(r'@define-color\s+'+re.escape(name)+r'\s+[^;]+;','',clean)
-            write(css,'@import "modesty-generated.css";\n'+clean.strip()+'\n')
-            settings=css.parent/'settings.ini'
-            parser=configparser.ConfigParser(interpolation=None);parser.read(settings)
-            if not parser.has_section('Settings'):parser.add_section('Settings')
-            parser.set('Settings','gtk-application-prefer-dark-theme','1' if mode=='dark' else '0')
-            gtk_theme='adw-gtk3-dark' if mode=='dark' else 'adw-gtk3'
-            if (Path('/usr/share/themes')/gtk_theme).exists():parser.set('Settings','gtk-theme-name',gtk_theme)
-            buffer=io.StringIO();parser.write(buffer,space_around_delimiters=False)
-            backup(settings,state);write(settings,buffer.getvalue())
-        else:integrate(css,'@import "modesty-generated.css";',state,False)
+        gtk_import(css,state,bool(targets.get('gtk')))
+        gtk_settings(css.parent/'settings.ini',state,mode,bool(targets.get('gtk')))
     foot_config=CONFIG/'foot'/'foot.ini'
     if foot_config.exists():
         target=foot_config.parent/'modesty-generated.ini'

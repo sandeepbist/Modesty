@@ -62,10 +62,18 @@ def apply(data, directory):
     except Exception as error:errors.append(str(error))
     if shutil.which('gsettings'):
         subprocess.run(['gsettings','set','org.gnome.desktop.interface','color-scheme','prefer-'+data['mode']],check=True,capture_output=True,text=True,timeout=5)
-        if data.get('targets',{}).get('gtk'):
-            theme='adw-gtk3-dark' if data['mode']=='dark' else 'adw-gtk3'
-            if (Path('/usr/share/themes')/theme).exists():
-                subprocess.run(['gsettings','set','org.gnome.desktop.interface','gtk-theme',theme],check=True,capture_output=True,text=True,timeout=5)
+        enabled=bool(data.get('targets',{}).get('gtk'))
+        theme='adw-gtk3-dark' if data['mode']=='dark' else 'adw-gtk3'
+        receipt=directory/'gtk-settings/gsettings.json'
+        if (enabled and (Path('/usr/share/themes')/theme).exists()) or (not enabled and receipt.exists()):
+            command=['gsettings','get','org.gnome.desktop.interface','gtk-theme']
+            current=subprocess.run(command,check=True,capture_output=True,text=True,timeout=5).stdout.strip()
+            record=json.loads(receipt.read_text()) if receipt.exists() else {}
+            value=module.gtk_value(record,'gtk-theme',current,repr(theme),enabled)
+            if enabled:module.write(receipt,json.dumps(record))
+            if value!=current:
+                subprocess.run(['gsettings','set','org.gnome.desktop.interface','gtk-theme',value],check=True,capture_output=True,text=True,timeout=5)
+            module.complete_gtk_receipt(receipt,record,enabled,('gtk-theme',))
     if errors:raise RuntimeError('; '.join(errors))
 
 

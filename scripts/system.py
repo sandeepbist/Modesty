@@ -6,6 +6,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+from urllib.parse import unquote, urlsplit
 import wallpaper as wallpaper_tools
 
 STATE = Path(os.environ.get('XDG_STATE_HOME') or Path.home() / '.local/state') / 'modesty'
@@ -39,28 +40,47 @@ def wallpapers(options=None):
     try: monitors = json.loads(optional(['hyprctl','monitors','-j']))
     except ValueError: monitors = []
     displays = [[m['width'],m['height']] for m in monitors if m.get('width') and m.get('height')]
-    files = wallpaper_files()
-    signature = [[str(path), path.stat().st_mtime_ns, path.stat().st_size] for path in files]
-    key = [4, displays, signature]
-    result = None
+    signature = []
+    for path in wallpaper_files():
+        try: stat = path.stat()
+        except FileNotFoundError: continue
+        signature.append([str(path), stat.st_mtime_ns, stat.st_size])
+    key = [5, displays, signature]
+    cached = None
+    entries = [{'path': row[0]} for row in signature]
+    paths = {entry['path'] for entry in entries}
     try:
         cached = json.loads(WALL_CACHE.read_text())
-        if cached.get('key') == key and isinstance(cached.get('wallpapers'), list):
-            result = cached['wallpapers']
-        else: result = None
+        if (cached.get('key') == key and isinstance(cached.get('wallpapers'), list)
+                and all(isinstance(entry, dict) and isinstance(entry.get('path'), str)
+                        and entry['path'] in paths for entry in cached['wallpapers'])):
+            entries = cached['wallpapers']
     except (OSError, ValueError, AttributeError): pass
-    if result is None:
-        result = []
-        for path in files:
+    result = []
+    for entry in entries:
+        path = Path(entry['path'])
+        try:
+            urls = [urlsplit(entry[field]) for field in ('thumbnailUrl', 'displayUrl')
+                    if isinstance(entry.get(field), str)]
+            ready = (entry.get('thumbnailUrl') != path.as_uri() and len(urls) == 2
+                     and all(url.scheme == 'file' and not url.netloc and url.path.startswith('/')
+                             and Path(unquote(url.path)).is_file() for url in urls))
+        except (OSError, ValueError): ready = False
+        if not ready:
             try:
                 thumb = wallpaper_tools.cached_image(path, 'preview')
                 display = wallpaper_tools.cached_image(path, 'display', displays)
-            except (OSError, ValueError): thumb = display = path
+            except (OSError, ValueError):
+                try: wallpaper_tools.validate_image(path)
+                except (OSError, ValueError): continue
+                thumb = display = path
             entry = {'name':path.name,'path':str(path),'url':path.as_uri(),'thumbnailUrl':thumb.as_uri(),'displayUrl':display.as_uri()}
             if path.name in BUNDLED_THEMES:
                 entry['theme'] = BUNDLED_THEMES[path.name]
-            result.append(entry)
-        wallpaper_tools.write_json(WALL_CACHE, {'key':key, 'wallpapers':result})
+        result.append(entry)
+    if not isinstance(cached, dict) or cached.get('key') != key or cached.get('wallpapers') != result:
+        try: wallpaper_tools.write_json(WALL_CACHE, {'key':key, 'wallpapers':result})
+        except OSError: pass
     if options:
         result = [dict(entry) for entry in result]
         for entry in result:

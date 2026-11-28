@@ -220,9 +220,10 @@ the repository for Settings updates. Published versions appear on GitHub Release
 2. Choose **Download** to validate the new revision.
 3. Choose **Install and reload** to apply it and restart the shell.
 
-Checks and downloads run only when requested. The updater uses the latest `main`
-revision with passing GitHub checks, validates it in a separate checkout, then
-switches and reloads. If startup fails, it attempts to restore and restart the
+Checks and downloads run only when requested. The latest `main` revision is
+eligible once its latest Checks and CodeQL push runs both pass. The updater
+validates the candidate in a separate checkout and checks those runs again before
+installing that revision. If startup fails, it attempts to restore and restart the
 previous revision. **Roll back** restores the revision saved before the last update.
 
 **Don't see Updates in Settings?** Your installation may predate the updater.

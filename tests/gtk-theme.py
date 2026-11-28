@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Generate real GTK palettes and parse the shipped Thunar CSS without a display."""
+import configparser
+import importlib.util
 import json
 from itertools import product
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -44,6 +47,164 @@ profiles = [
     ('light', dict(accent='#365f9d', accentText='#ffffff', bg='#f5f6fa', surface='#e9edf5',
                    text='#242a38', subtext='#5a6374', green='#35683b', yellow='#7e611f', red='#aa3856')),
 ]
+
+
+def check_gtk_opt_out():
+    """Exercise the real appearance entry point with isolated desktop settings."""
+    with tempfile.TemporaryDirectory(prefix='modesty-gtk-opt-out-') as temporary:
+        directory = Path(temporary)
+        environment = {key: value for key, value in os.environ.items() if key not in (
+            'DISPLAY', 'WAYLAND_DISPLAY', 'DBUS_SESSION_BUS_ADDRESS', 'HYPRLAND_INSTANCE_SIGNATURE')}
+        for key, name in [('HOME', 'home'), ('XDG_CONFIG_HOME', 'config'),
+                          ('XDG_STATE_HOME', 'state'), ('XDG_DATA_HOME', 'data'),
+                          ('XDG_CACHE_HOME', 'cache'), ('XDG_RUNTIME_DIR', 'runtime')]:
+            path = directory/name
+            path.mkdir(mode=0o700)
+            environment[key] = str(path)
+        commands = directory/'bin'
+        commands.mkdir()
+        (commands/'matugen').symlink_to(shutil.which('matugen'))
+        (commands/'hyprctl').write_text('#!/bin/sh\nexit 0\n')
+        (commands/'hyprctl').chmod(0o755)
+        oracle = directory/'gsettings.json'
+        oracle.write_text(json.dumps({'gtk-theme': 'UserTheme', 'color-scheme': 'default'}))
+        environment['MODESTY_TEST_GSETTINGS'] = str(oracle)
+        environment['MODESTY_TEST_GSETTINGS_FAIL'] = str(directory/'fail-gsettings')
+        (commands/'gsettings').write_text('#!'+sys.executable+'\n'+'''import json, os, sys
+from pathlib import Path
+path = Path(os.environ['MODESTY_TEST_GSETTINGS'])
+values = json.loads(path.read_text())
+action, schema, key, *args = sys.argv[1:]
+assert schema == 'org.gnome.desktop.interface'
+assert key in values
+if action == 'get':
+    assert not args
+    print(repr(values[key]))
+else:
+    assert action == 'set' and len(args) == 1
+    failure = Path(os.environ['MODESTY_TEST_GSETTINGS_FAIL'])
+    if key == 'gtk-theme' and failure.exists():
+        failure.unlink()
+        sys.exit('Injected GSettings write failure')
+    values[key] = args[0].strip("'")
+    path.write_text(json.dumps(values))
+''')
+        (commands/'gsettings').chmod(0o755)
+        environment['PATH'] = str(commands)
+        original_css = ('/* Keep modesty-generated.css references in user comments. */\n'
+                        '@import "my-modesty-generated.css";\n'
+                        '@define-color accent_color #7245a2;\n'
+                        'button { color: @accent_color; }\n')
+        original_ini = ('# User settings\n[Settings]\n'
+                        'gtk-application-prefer-dark-theme=0\n'
+                        'gtk-theme-name=UserTheme\ncustom-setting=keep\n')
+        config = Path(environment['XDG_CONFIG_HOME'])
+        for version in ('3.0', '4.0'):
+            gtk = config/('gtk-'+version)
+            gtk.mkdir()
+            (gtk/'gtk.css').write_text(original_css)
+            (gtk/'settings.ini').write_text(original_ini)
+
+        def apply(mode, enabled, success=True):
+            data = dict(paletteName='midnight', mode=mode, colors=dict(profiles)[mode], targets={'gtk': enabled})
+            result = real_run([sys.executable, str(ROOT/'scripts/appearance.py'), '--stdin'],
+                              input=json.dumps(data)+'\n', env=environment, text=True,
+                              capture_output=True, timeout=20)
+            assert (result.returncode == 0) == success, result.stdout+result.stderr
+            assert json.loads(result.stdout)['ok'] == success
+
+        apply('dark', True)
+        for version in ('3.0', '4.0'):
+            gtk = config/('gtk-'+version)
+            css = (gtk/'gtk.css').read_text()
+            assert css == '@import "modesty-generated.css";\n'+original_css, 'GTK sync destroyed user CSS'
+            parser = configparser.ConfigParser()
+            parser.read(gtk/'settings.ini')
+            assert parser.get('Settings', 'gtk-application-prefer-dark-theme') == '1'
+            if Path('/usr/share/themes/adw-gtk3-dark').exists():
+                assert parser.get('Settings', 'gtk-theme-name') == 'adw-gtk3-dark'
+                assert json.loads(oracle.read_text())['gtk-theme'] == 'adw-gtk3-dark'
+        apply('light', False)
+        for version in ('3.0', '4.0'):
+            gtk = config/('gtk-'+version)
+            assert (gtk/'gtk.css').read_text() == original_css
+            assert (gtk/'settings.ini').read_text() == original_ini, 'GTK opt-out did not restore owned settings'
+        assert json.loads(oracle.read_text()) == {'gtk-theme': 'UserTheme', 'color-scheme': 'prefer-light'}
+
+        apply('dark', True)
+        edited_ini = original_ini.replace('gtk-theme-name=UserTheme', 'gtk-theme-name=EditedTheme')+'# Keep this edit\nother-setting=keep-too\n'
+        (config/'gtk-3.0/settings.ini').write_text(edited_ini)
+        current = json.loads(oracle.read_text())
+        current['gtk-theme'] = 'EditedTheme'
+        oracle.write_text(json.dumps(current))
+        apply('light', False)
+        assert (config/'gtk-3.0/settings.ini').read_text() == edited_ini, 'GTK opt-out overwrote intervening edits'
+        assert (config/'gtk-4.0/settings.ini').read_text() == original_ini
+        assert json.loads(oracle.read_text()) == {'gtk-theme': 'EditedTheme', 'color-scheme': 'prefer-light'}
+        # Old full-file backups cannot prove ownership of any current value.
+        for version in ('3.0', '4.0'):
+            backup = Path(environment['XDG_STATE_HOME'])/'modesty/theme-backups'/('gtk-'+version)/'settings.ini'
+            backup.write_text(original_ini.replace('UserTheme', 'AmbiguousOldBackup'))
+        apply('dark', False)
+        assert (config/'gtk-3.0/settings.ini').read_text() == edited_ini
+        assert (config/'gtk-4.0/settings.ini').read_text() == original_ini
+        assert json.loads(oracle.read_text()) == {'gtk-theme': 'EditedTheme', 'color-scheme': 'prefer-dark'}
+        # Repeated palette changes retain the latest user baseline, not a stale backup.
+        apply('dark', True)
+        if all((Path('/usr/share/themes')/theme).exists() for theme in ('adw-gtk3', 'adw-gtk3-dark')):
+            Path(environment['MODESTY_TEST_GSETTINGS_FAIL']).touch()
+            apply('light', True, success=False)
+            assert json.loads(oracle.read_text())['gtk-theme'] == 'adw-gtk3-dark'
+        apply('light', True)
+        apply('dark', False)
+        assert (config/'gtk-3.0/settings.ini').read_text() == edited_ini
+        assert (config/'gtk-4.0/settings.ini').read_text() == original_ini
+        assert json.loads(oracle.read_text()) == {'gtk-theme': 'EditedTheme', 'color-scheme': 'prefer-dark'}
+        # Keys initially absent must be removed without deleting unrelated content.
+        absent_ini = '[Other]\nkeep=value\n[Settings]\n# Keep this comment\ncustom-setting=keep\n'
+        for version in ('3.0', '4.0'):
+            (config/('gtk-'+version)/'settings.ini').write_text(absent_ini)
+        apply('dark', True)
+        apply('light', False)
+        for version in ('3.0', '4.0'):
+            assert (config/('gtk-'+version)/'settings.ini').read_text() == absent_ini
+        assert not list((Path(environment['XDG_STATE_HOME'])/'modesty/gtk-settings').glob('*.json'))
+
+        spec = importlib.util.spec_from_file_location('app_theme', ROOT/'scripts/app-theme.py')
+        app = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(app)
+        app.CONFIG = config
+        settings = config/'gtk-3.0/settings.ini'
+        settings.write_text(original_ini)
+        state = Path(environment['XDG_STATE_HOME'])/'modesty'
+        receipt = state/'gtk-settings/gtk-3.0.json'
+        original_write = app.write
+        for destination, failed_attempt in ((receipt, 1), (settings, 1), (receipt, 2)):
+            app.gtk_settings(settings, state, 'dark', True)
+            before = settings.read_text()
+            attempts = 0
+            def fail_write(path, text):
+                nonlocal attempts
+                if path == destination:
+                    attempts += 1
+                    if attempts == failed_attempt:
+                        raise OSError('Injected GTK write failure')
+                original_write(path, text)
+            with patch.object(app, 'write', side_effect=fail_write):
+                try:
+                    app.gtk_settings(settings, state, 'light', True)
+                except OSError:
+                    pass
+                else:
+                    raise AssertionError('Expected injected GTK write failure')
+            if failed_attempt == 1:
+                assert settings.read_text() == before, 'GTK settings changed despite failed publication'
+            app.gtk_settings(settings, state, 'light', True)
+            app.gtk_settings(settings, state, 'dark', False)
+            assert settings.read_text() == original_ini
+
+
+check_gtk_opt_out()
 for mode, colors in profiles:
     for source, revision in product(('midnight', 'wallpaper'), ('legacy', 'solid', 'inset', 'pass1')):
         fixture = ROOT/'tests/fixtures'/f'thunar-{revision}.css'
@@ -53,7 +214,7 @@ for mode, colors in profiles:
             for version in ('3.0', '4.0'):
                 gtk = config/('gtk-'+version)
                 gtk.mkdir(parents=True)
-                (gtk/'gtk.css').write_text('@import "thunar.css";\n')
+                (gtk/'gtk.css').write_text((ROOT/'setup/config/gtk-3.0/gtk.css').read_text())
                 # Exercise migration on an existing install, not only fresh CSS.
                 (gtk/'thunar.css').write_text(fixture.read_text())
             data = dict(paletteName=source, mode=mode, colors=colors, targets={'gtk': True})
@@ -154,4 +315,4 @@ for mode, colors in profiles:
             with patch.dict(os.environ, XDG_CONFIG_HOME=str(config)), patch.object(appearance.subprocess, 'run', side_effect=isolated_run):
                 appearance.apply(data, directory/'state')
             assert custom.is_symlink() and linked.read_bytes() == original
-print('PASS GTK palette generation, named/wallpaper selection foreground, dark/light contrast, legacy/solid/inset/pass1 migrations and Thunar CSS parsing'+('; native icon/list selection states and sidebar contrast' if '--live' in sys.argv else ''))
+print('PASS GTK opt-out ownership, user CSS/INI edits, GTK palette generation, named/wallpaper selection foreground, dark/light contrast, legacy/solid/inset/pass1 migrations and Thunar CSS parsing'+('; native icon/list selection states and sidebar contrast' if '--live' in sys.argv else ''))
