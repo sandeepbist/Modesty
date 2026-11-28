@@ -3,12 +3,14 @@
 import argparse
 import hashlib
 import importlib.util
+import json
 from pathlib import Path
 import subprocess
 import shutil
 import tarfile
 import tempfile
 import zipfile
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('release', ROOT / 'scripts/release.py')
@@ -49,6 +51,20 @@ for override in (dict(head_sha='b'*40), dict(head_branch='feature'), dict(event=
     assert not release.passed([{**run, **override}], revision)
 assert not release.passed([run, {**run, 'run_attempt': 2, 'conclusion': 'failure'}], revision)
 assert not release.passed([run, {**run, 'run_number': 3, 'status': 'queued', 'conclusion': None}], revision)
+
+for failing_workflow in (None, 'checks.yml', 'codeql.yml'):
+    def github(argv, **kwargs):
+        workflow = argv[2].split('/workflows/')[1].split('/')[0]
+        assert argv == ['gh', 'api', f'repos/{release.REPOSITORY}/actions/workflows/{workflow}/runs?branch=main&event=push&head_sha={revision}&per_page=100']
+        runs = [] if workflow == failing_workflow else [run]
+        return subprocess.CompletedProcess(argv, 0, stdout=json.dumps({'workflow_runs': runs}))
+    with patch.object(release, 'git') as ancestry, patch.object(release.subprocess, 'run', side_effect=github) as requests:
+        if failing_workflow:
+            refused(lambda: release.verify_checks(ROOT, revision))
+        else:
+            release.verify_checks(ROOT, revision)
+            assert requests.call_count == 2
+        ancestry.assert_called_once_with(ROOT, 'merge-base', '--is-ancestor', revision, 'origin/main')
 
 with tempfile.TemporaryDirectory(prefix='modesty-release-test-') as temporary:
     base = Path(temporary)

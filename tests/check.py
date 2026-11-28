@@ -30,6 +30,7 @@ commands = [
     [sys.executable, 'tests/luma-page-qml.py'],
     [sys.executable, 'tests/luma-capture-loader.py'],
     [sys.executable, 'tests/luma-capture-settings.py'],
+    [sys.executable, 'tests/luma-capture-callbacks.py'],
     [sys.executable, 'tests/lock-screen-ui.py'],
     [sys.executable, 'tests/inactive-content.py'],
     [sys.executable, 'tests/palette-cache.py'],

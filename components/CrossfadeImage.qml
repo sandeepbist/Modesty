@@ -6,6 +6,7 @@ Item {
     property int decodeWidth: 320
     property int decodeHeight: 320
     property int transitionDuration: 320
+    property bool retainOnFailure: false
     property bool front: false
     property string requestedSource: ""
     property int request: 0
@@ -75,10 +76,15 @@ Item {
         cleanup.stop();
         firstFade.stop();
         secondFade.stop();
-        first.source = "";
-        second.source = "";
-        first.opacity = 0;
-        second.opacity = 0;
+        const outgoing = incoming === first ? second : first;
+        if (retainOnFailure && outgoing.status === Image.Ready) {
+            outgoing.opacity = 1;
+            front = outgoing === first;
+        } else {
+            clearOutgoing(incoming);
+        }
+        incoming.source = "";
+        incoming.opacity = 0;
         failed();
     }
     onSourceChanged: update()

@@ -34,6 +34,7 @@ PanelWindow {
     CrossfadeImage {
         id: wallpaper
         anchors.fill: parent
+        retainOnFailure: true
         source: SystemInfo.displayedWallpaper || FileUrls.fromPath(SystemInfo.wallpaper)
         decodeWidth: Math.round(root.screen.width * root.screen.devicePixelRatio)
         decodeHeight: Math.round(root.screen.height * root.screen.devicePixelRatio)

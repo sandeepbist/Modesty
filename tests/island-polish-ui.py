@@ -180,8 +180,9 @@ import qs.services
 ShellRoot {
     property int phase:0
     property int presentations:0
+    property int failures:0
     FloatingWindow {visible:true;implicitWidth:300;implicitHeight:200
-        CrossfadeImage {id:art;width:80;height:80;source:"ART_URL/first.svg";onPresented:presentations++}
+        CrossfadeImage {id:art;width:80;height:80;source:"ART_URL/first.svg";onPresented:presentations++;onFailed:failures++}
     }
     TestCase {id:input;when:false}
     function check(ok,label) {if(!ok)throw new Error(label+" presentations="+presentations);}
@@ -200,6 +201,19 @@ ShellRoot {
         waitReady();check(current().opacity===1&&presentations===3,"Instant pending decode never presented once");input.wait(100);check(presentations===3,"Pending decode emits presented twice");
         Preferences.motion="gentle";art.source="ART_URL/last.svg";waitReady();input.wait(60);
         check(current().opacity>0&&current().opacity<1,"Later fluid artwork does not fade");input.wait(400);check(presentations===4,"Later fluid completion not once-only");
+        art.source="ART_URL/missing.svg";
+        for(let i=0;i<150&&failures===0;i++)input.wait(10);
+        check(failures===1&&!art.ready&&!art.transitioning,"Missing artwork should show the fallback");
+        art.retainOnFailure=true;
+        art.source="ART_URL/first.svg";waitReady();
+        art.source="ART_URL/missing.svg";
+        for(let i=0;i<150&&failures===1;i++)input.wait(10);
+        check(failures===2&&art.ready&&!art.transitioning,"Failed wallpaper blanked the previous image");
+        check(slots().some(c=>String(c.source).endsWith("first.svg")&&c.opacity===1),"Previous wallpaper is not visible");
+        art.source="";
+        check(!art.ready,"An empty wallpaper source did not clear the image");
+        art.source="ART_URL/second.svg";waitReady();
+        check(current().opacity===1&&presentations===6,"Valid wallpaper did not recover after a failed load");
         console.log("POLISH ART PASS");Qt.quit();
     }catch(e){console.error(e);Qt.exit(1);}}}
 }
@@ -209,6 +223,9 @@ ShellRoot {
 def artwork_source():
     class ImageHandler(BaseHTTPRequestHandler):
         def do_GET(self):
+            if self.path == '/missing.svg':
+                self.send_error(404)
+                return
             if self.path == '/slow.svg':
                 sleep(.3)
             color = 'red' if self.path == '/first.svg' else 'blue'

@@ -16,11 +16,12 @@ import time
 import urllib.request
 
 import compatibility
+import release
 from desktop_environment import clean_environment
 
 ROOT = Path(__file__).resolve().parents[1]
 UPSTREAM = 'https://github.com/sandeepbist/Modesty.git'
-API = 'https://api.github.com/repos/sandeepbist/Modesty/'
+API = f'https://api.github.com/repos/{release.REPOSITORY}/'
 STATE = Path(os.environ.get('XDG_STATE_HOME') or Path.home()/'.local/state')/'modesty/updates'/hashlib.sha256(str(ROOT).encode()).hexdigest()[:16]
 STAGE = STATE/'candidate'
 RECORD = STATE/'status.json'
@@ -111,13 +112,17 @@ def api(path):
         return json.load(response)
 
 
+def verify_checks(target):
+    for workflow in release.WORKFLOWS:
+        runs = api(release.workflow_runs_path(workflow, target))['workflow_runs']
+        if not release.passed(runs, target):
+            raise RuntimeError(f'{workflow} has not passed for this exact main revision. Keep the current version and try again later.')
+
+
 def verified_revision():
     commit = api('commits/main')
     target = sha(commit['sha'])
-    runs = api('actions/workflows/checks.yml/runs?branch=main&event=push&per_page=30')['workflow_runs']
-    if not any(r['head_sha'] == target and r['head_branch'] == 'main' and
-               r['event'] == 'push' and r['status'] == 'completed' and r['conclusion'] == 'success' for r in runs):
-        raise RuntimeError('Latest main has not passed its checks yet. Keep the current version and try again later.')
+    verify_checks(target)
     return target, commit['commit']['message'].split('\n')[0][:240]
 
 
@@ -232,6 +237,8 @@ def switch(target, rollback=False):
     compatibility.require(STAGE)
     control = installed_session()
     control.validate_shell(STAGE)
+    if not rollback:
+        verify_checks(target)
     control.assert_unlocked()
     reject_ignored_collisions(target)
     if control.health():

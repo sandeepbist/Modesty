@@ -12,6 +12,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY = 'sandeepbist/Modesty'
+WORKFLOWS = ('checks.yml', 'codeql.yml')
 VERSION = re.compile(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-rc\.[1-9]\d*)?', re.ASCII)
 
 
@@ -50,13 +51,17 @@ def passed(runs, revision):
     return latest.get('status') == 'completed' and latest.get('conclusion') == 'success'
 
 
+def workflow_runs_path(workflow, revision):
+    return f'actions/workflows/{workflow}/runs?branch=main&event=push&head_sha={revision}&per_page=100'
+
+
 def verify_checks(root, revision):
     try:
         git(root, 'merge-base', '--is-ancestor', revision, 'origin/main')
     except ValueError as error:
         raise ValueError('Release commit must belong to main.') from error
-    for workflow in ('checks.yml', 'codeql.yml'):
-        endpoint = f'repos/{REPOSITORY}/actions/workflows/{workflow}/runs?branch=main&event=push&head_sha={revision}&per_page=100'
+    for workflow in WORKFLOWS:
+        endpoint = f'repos/{REPOSITORY}/'+workflow_runs_path(workflow, revision)
         result = subprocess.run(['gh', 'api', endpoint], capture_output=True, text=True, check=True, timeout=30)
         if not passed(json.loads(result.stdout)['workflow_runs'], revision):
             raise ValueError(f'{workflow} has not passed for the exact release commit.')

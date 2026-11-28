@@ -6,14 +6,22 @@ import os
 import re
 from pathlib import Path
 import subprocess
+import tempfile
 
 IMAGE_CACHE = Path(os.environ.get('XDG_CACHE_HOME', Path.home()/'.cache'))/'modesty'/'wallpaper-images'
+
+def open_image(path):
+    from PIL import Image
+    try:
+        return Image.open(path)
+    except Image.DecompressionBombError as error:
+        raise ValueError('Wallpaper exceeds the image size limit.') from error
 
 def cached_image(path, kind, displays=()):
     from PIL import Image, ImageOps
     stat = path.stat()
     if kind == 'display':
-        with Image.open(path) as source:
+        with open_image(path) as source:
             width, height = source.size
             if source.getexif().get(274) in (5, 6, 7, 8): width, height = height, width
         factor = max((max(mw/width, mh/height) for mw, mh in displays), default=max(1920/width, 1080/height))
@@ -28,19 +36,24 @@ def cached_image(path, kind, displays=()):
     output = IMAGE_CACHE/(key+('.png' if png else '.jpg'))
     if output.exists(): return output
     IMAGE_CACHE.mkdir(parents=True, exist_ok=True)
-    with Image.open(path) as source:
+    with open_image(path) as source:
         image = ImageOps.exif_transpose(source)
         if kind == 'display': image = image.resize(size, Image.Resampling.LANCZOS)
         else: image.thumbnail(size, Image.Resampling.LANCZOS)
-        temporary = output.with_suffix(output.suffix+'.tmp')
-        if png: image.save(temporary, format='PNG')
-        else:
-            if 'A' in image.getbands():
-                opaque = Image.new('RGB', image.size, (18, 26, 27))
-                opaque.paste(image, mask=image.getchannel('A'))
-                image = opaque
-            image.convert('RGB').save(temporary, format='JPEG', quality=95 if kind == 'display' else 90, subsampling=0)
-        temporary.replace(output)
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(dir=IMAGE_CACHE, prefix='.'+output.name+'-', delete=False) as stream:
+                temporary = Path(stream.name)
+                if png: image.save(stream, format='PNG')
+                else:
+                    if 'A' in image.getbands():
+                        opaque = Image.new('RGB', image.size, (18, 26, 27))
+                        opaque.paste(image, mask=image.getchannel('A'))
+                        image = opaque
+                    image.convert('RGB').save(stream, format='JPEG', quality=95 if kind == 'display' else 90, subsampling=0)
+            temporary.replace(output)
+        finally:
+            if temporary is not None: temporary.unlink(missing_ok=True)
     return output
 
 def command(args, timeout=12):
@@ -50,6 +63,7 @@ def command(args, timeout=12):
     return result.stdout
 
 def display_url(path):
+    path = path.resolve()
     try:
         monitors = json.loads(command(['hyprctl', 'monitors', '-j']))
         displays = [(m['width'], m['height']) for m in monitors if m.get('width') and m.get('height')]
@@ -115,11 +129,21 @@ def generate_palettes(path):
 
 def write_json(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp = path.with_name(path.name+'.tmp')
-    temp.write_text(json.dumps(data))
-    temp.replace(path)
+    temp = None
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', dir=path.parent, prefix='.'+path.name+'-', delete=False) as stream:
+            temp = Path(stream.name)
+            json.dump(data, stream)
+        temp.replace(path)
+    finally:
+        if temp is not None: temp.unlink(missing_ok=True)
+
+def validate_image(path):
+    with open_image(path) as image:
+        image.load()
 
 def apply_wallpaper(path, state):
+    validate_image(path)
     display = display_url(path)
     write_json(state/'wallpaper.json', {'path':str(path), 'backend':'native'})
     return dict(ok=True, wallpaper=str(path), wallpaperDisplay=display, wallpaperBackend='native')
