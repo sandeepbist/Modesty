@@ -10,7 +10,7 @@ sys.path.insert(0, str(ROOT/'scripts'))
 commands = [
     ['node', 'tests/layout.cjs'], ['node', 'tests/search.cjs'], ['node', 'tests/palette.cjs'],
     *[[sys.executable, f'tests/{name}.py'] for name in
-      ('release', 'install', 'installation', 'updates', 'structure', 'backend', 'file-urls', 'desktop-configs', 'display', 'privacy-camera', 'recording', 'appearance', 'terminal', 'terminal-effects-qml', 'settings', 'wallpaper-colors', 'gtk-theme', 'folder-theme', 'session-control', 'night-light',
+      ('release', 'install', 'installation', 'updates', 'structure', 'backend', 'file-urls', 'desktop-configs', 'display', 'privacy-camera', 'recording', 'appearance', 'terminal', 'terminal-effects-qml', 'wallpaper-colors', 'gtk-theme', 'folder-theme', 'session-control', 'night-light',
        'launcher', 'launcher-ui', 'motion', 'frame-spring', 'input-caret', 'voice', 'luma', 'luma-light', 'luma-system', 't3-status', 'status-orb', 'levels', 'conversation', 'calculator', 'control-tiles', 'live-media', 'file-drop', 'companion')],
     ['node', 'tests/wallpaper-palette.cjs'],
     [sys.executable, 'tests/shell-renderer.py'],
@@ -37,17 +37,18 @@ commands = [
     *[['dbus-run-session', '--', sys.executable, f'tests/{name}.py'] for name in
       ('bluetooth', 'notifications', 'session-events', 'dock-ui')],
 ]
-island_tests = (
+native_ui_tests = (
+    'settings',
     'activity-header-ui', 'dock-balance-ui', 'dock-bindings', 'dock-contour-gl',
     'dock-corrections', 'dock-data', 'dock-identity', 'dock-input', 'dock-media',
     'dock-order-ui', 'focus-countdown-ui', 'island-appearance-ui', 'island-controls-ui',
     'island-geometry-ui', 'island-polish-ui', 'power-menu-ui', 'provider-privacy-ui', 'tray-hover-ui',
 )
-island_commands = [[sys.executable, f'tests/{name}.py'] for name in island_tests]
-commands.extend(island_commands)
+native_ui_commands = [[sys.executable, '-u', f'tests/{name}.py'] for name in native_ui_tests]
+commands.extend(native_ui_commands)
 for command in commands:
     print('CHECK ' + ' '.join(command), flush=True)
-    subprocess.run(command, cwd=ROOT, check=True, timeout=180 if command in island_commands else 60)
+    subprocess.run(command, cwd=ROOT, check=True, timeout=180 if command in native_ui_commands else 60)
 spec = importlib.util.spec_from_file_location('session_control', ROOT / 'scripts/session-control.py')
 session = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(session)
