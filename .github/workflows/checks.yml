@@ -73,6 +73,8 @@ jobs:
             set -euo pipefail
             # Keep the complete package set within runtime-requirements.json's Hyprland 0.56 range.
             printf '%s\n' 'Server = https://archive.archlinux.org/repos/2026/10/27/$repo/os/$arch' > /etc/pacman.d/mirrorlist
+            # The archive can pause for over 10 seconds between bytes. The job still has a 45-minute limit.
+            sed -i '/^\[options\]$/a DisableDownloadTimeout' /etc/pacman.conf
             pacman -Syyuu --noconfirm --needed git nodejs python dbus lua mesa xorg-server-xvfb xorg-xauth
             # Install the installer's actual required set so packaging omissions
             # fail here, before a user's first login. Optional AUR apps stay out.
